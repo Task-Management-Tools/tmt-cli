@@ -1,0 +1,100 @@
+import argparse
+import pathlib
+import subprocess
+import yaml
+
+
+def find_tmt_root() -> pathlib.Path:
+    """Find the root directory of tmt tasks."""
+
+    current = pathlib.Path.cwd()
+    while current != current.parent:
+        if (current / "problem.yaml").exists():
+            return current
+        current = current.parent
+    raise FileNotFoundError(
+        "No tmt root found in the directory hierarchy. The directory must contain a problem.yaml file.")
+
+
+def initialize_directory(root_dir: pathlib.Path):
+    """Initialize the given directory for tmt tasks."""
+
+    if not root_dir.exists():
+        raise FileNotFoundError(f"Directory {root_dir} does not exist.")
+    if not root_dir.is_dir():
+        raise NotADirectoryError(f"{root_dir} is not a directory.")
+    if any(root_dir.iterdir()):
+        raise ValueError(f"Directory {root_dir} is not empty.")
+
+    raise NotImplementedError(
+        "Directory initialization is not implemented yet.")
+
+
+def generate_testcases(root_dir: pathlib.Path):
+    """Generate test cases in the given directory."""
+
+    if not root_dir.exists():
+        raise FileNotFoundError(f"Directory {root_dir} does not exist.")
+    if not root_dir.is_dir():
+        raise NotADirectoryError(f"{root_dir} is not a directory.")
+
+    print(f"Generating test cases in {root_dir}...")
+
+    # use PyYAML to parse the problem.yaml file
+    problem_yaml_path = root_dir / "problem.yaml"
+    with open(problem_yaml_path, 'r') as file:
+        problem_yaml = yaml.safe_load(file)
+
+    script_path = pathlib.Path(__file__).parent.resolve()
+    internal_makefile_path = script_path / "internal" / "Makefile"
+    # Compile generators, validators and solutions
+    for subdir in ["generator", "validator", "solution"]:
+        subdir_path = root_dir / subdir
+        if not subdir_path.exists() or not subdir_path.is_dir():
+            raise FileNotFoundError(
+                f"Subdirectory {subdir_path} does not exist.")
+        cmd = ["make", "-C", str(subdir_path), "-f",
+               str(internal_makefile_path)]
+        CXXFLAGS = "-std=c++20 -Wall -Wextra -O2"
+        subprocess.run(cmd,
+                       capture_output=False,
+                       check=True,
+                       env={
+                           "CXXFLAGS": CXXFLAGS,
+                       })
+
+    # TODO
+    # run recipe's command
+
+    print(problem_yaml)
+    print("Test cases generated successfully.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="tmt - task management tools")
+    parser.add_argument(
+        "--version", action="version", version="tmt 0.0.0",
+        help="Show the version of tmt"
+    )
+    parser.add_argument(
+        "command", choices=["init", "gen", "clean"],
+        help="Command to execute: init, gen, or clean"
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "init":
+        initialize_directory(pathlib.Path.cwd())
+    elif args.command == "gen":
+        root_dir = find_tmt_root()
+        generate_testcases(root_dir)
+    elif args.command == "clean":
+        root_dir = find_tmt_root()
+        # clean_testcases(root_dir)
+        raise NotImplementedError(
+            "The 'clean' command is not implemented yet."
+        )
+
+
+if __name__ == "__main__":
+    main()
