@@ -20,6 +20,7 @@ class Executable:
     
     def __init__(self):
         self.commands: List[List[str]] = []
+        self.test_name: Optional[str] = None  # Added for naming functionality
     
     def add_command_sequence(self, command_sequence: str):
         """
@@ -50,6 +51,22 @@ class Executable:
             executable_name = get_executable_name(parts[0])
             command_list = [executable_name] + parts[1:]
             self.commands.append(command_list)
+    
+    def set_test_name(self, test_name: str):
+        """
+        Set the standardized test name for this executable.
+        Also replaces '_tmt_internal_testcase_name' in all commands with the actual test name.
+        
+        Args:
+            test_name (str): Standardized test name
+        """
+        self.test_name = test_name
+        
+        # Replace '_tmt_internal_testcase_name' with actual test name in all commands
+        for command_list in self.commands:
+            for i, arg in enumerate(command_list):
+                if '_tmt_internal_testcase_name' in arg:
+                    command_list[i] = arg.replace('_tmt_internal_testcase_name', test_name)
 
 
 class Testset:
@@ -64,6 +81,7 @@ class Testset:
         self.testset_index: int = testset_index
         self.description: Optional[str] = None
         self.tests: List[Executable] = []
+        self.extra_file: Set[str] = set()
     
     def add_test(self, command_sequence: str):
         """
@@ -92,6 +110,37 @@ class Testset:
         if self.description is not None:
             raise ValueError(f"Description already set for testset '{self.testset_name}'")
         self.description = description
+
+    def add_extrafile(self, extension: str):
+        """
+        Add an extra file for this testset. The extra file will be opened during the generation of this testset.
+
+        Args:
+            extension (str): Extra file extension, should start with a dot (.)
+            
+        Raises:
+            ValueError: If the extension format error or it is already added 
+        """
+        if len(extension) == 0 or extension[0] != '.':
+            raise ValueError(f"Extra file {extension} should start with a dot (.)")
+        if extension in self.extra_file:
+            raise ValueError(f"Extra file {extension} already added for testset '{self.testset_name}'")
+        self.extra_file.add(extension)
+    
+    def generate_test_names(self, testset_index_width: int):
+        """
+        Generate standardized names for all test cases in this testset.
+        
+        Args:
+            testset_index_width (int): Width for zero-padding testset index
+        """
+        testcase_index_width = len(str(len(self.tests)))
+        testset_index_padded = str(self.testset_index).zfill(testset_index_width)
+        
+        for i, test in enumerate(self.tests, 1):
+            testcase_index_padded = str(i).zfill(testcase_index_width)
+            test_name = f"{testset_index_padded}_{self.testset_name}_{testcase_index_padded}"
+            test.set_test_name(test_name)
 
 
 class Subtask:
@@ -160,6 +209,41 @@ class ContestData:
         self.testsets: Dict[str, Testset] = {}
         self.subtasks: Dict[str, Subtask] = {}
         self.global_validation: List[Executable] = []
+    
+    def generate_all_test_names(self):
+        """
+        Generate standardized names for all test cases across all testsets.
+        This should be called after parsing is complete.
+        """
+        if not self.testsets:
+            return
+        
+        # Calculate the width needed for testset index padding
+        max_testset_index = max(testset.testset_index for testset in self.testsets.values())
+        testset_index_width = len(str(max_testset_index))
+        
+        # Generate names for each testset
+        for testset in self.testsets.values():
+            testset.generate_test_names(testset_index_width)
+    
+    def get_all_test_names(self) -> List[str]:
+        """
+        Get all test names in order.
+        
+        Returns:
+            List[str]: List of all test names sorted by testset index and testcase index
+        """
+        all_names = []
+        
+        # Sort testsets by index
+        sorted_testsets = sorted(self.testsets.values(), key=lambda ts: ts.testset_index)
+        
+        for testset in sorted_testsets:
+            for test in testset.tests:
+                if test.test_name:
+                    all_names.append(test.test_name)
+        
+        return all_names
 
 
 def get_executable_name(command: str) -> str:
@@ -198,7 +282,6 @@ class ParserContext:
         
         # Shared data storage for inter-handler communication
         self.constants = {}  # For storing user-defined constants
-        self.shared_data = {}  # For any other shared data between handlers
     
     def get_constant(self, name: str, default=None):
         """
@@ -221,6 +304,8 @@ class ParserContext:
             name (str): Constant name
             value: Constant value
         """
+        if self.has_constant(name):
+            raise ValueError(f"Redefinition on constant {name}")
         self.constants[name] = value
     
     def has_constant(self, name: str) -> bool:
@@ -252,7 +337,7 @@ class ParserContext:
         
         def replace_var(match):
             var_name = match.group(1)
-            if var_name not in self.constants:
+            if not self.has_constant(var_name):
                 raise ValueError(f"Undefined constant: ${{{var_name}}}")
             return str(self.constants[var_name])
         
@@ -272,29 +357,6 @@ class ParserContext:
         for i, s in enumerate(list_of_text):
             list_of_text[i] = self.expand_constants(s)
 
-    def get_shared_data(self, key: str, default=None):
-        """
-        Get shared data by key.
-        
-        Args:
-            key (str): Data key
-            default: Default value if key doesn't exist
-            
-        Returns:
-            Shared data value or default
-        """
-        return self.shared_data.get(key, default)
-    
-    def set_shared_data(self, key: str, value):
-        """
-        Set shared data.
-        
-        Args:
-            key (str): Data key
-            value: Data value
-        """
-        self.shared_data[key] = value
-    
     def next_testset_index(self) -> int:
         """
         Get the next testset index and increment counter.
@@ -466,6 +528,19 @@ class ConstantHandler(CommandHandler):
         self.context.set_constant(parts[1], parts[2])
 
 
+class ExtrafileHandler(CommandHandler):
+    """Handler for @extra_file commands."""
+    
+    def handle(self, parts: List[str]):
+        self.validate_args(parts, 2, 2)
+        
+        if self.context.current_context != "testset":
+            raise ValueError("@extra_file can only be used within testset context")
+       
+        self.context.current_object.add_extrafile(parts[2])
+        self.context.set_constant(parts[1], '_tmt_internal_testcase_name' + parts[2])
+
+
 class CommandRegistry:
     """
     Registry for all available command handlers.
@@ -480,6 +555,7 @@ class CommandRegistry:
             'include': IncludeHandler(parser_context),
             'validation': ValidationHandler(parser_context),
             'constant': ConstantHandler(parser_context),
+            'extra_file': ExtrafileHandler(parser_context),
         }
     
     def get_handler(self, command: str) -> CommandHandler:
@@ -510,32 +586,24 @@ class CommandRegistry:
         self.handlers[command] = handler
 
 
-def parse_contest_data(file_path: str) -> ContestData:
+def parse_contest_data(recipe_lines: List[str]) -> ContestData:
     """
-    Parse a contest data file and return the structured data.
+    Parse recipe and return the structured data.
     
     Args:
-        file_path (str): Path to the input file
+        recipe_lines (list of str): List of lines in a recipe file
         
     Returns:
         ContestData: Parsed contest data structure
         
     Raises:
-        FileNotFoundError: If the input file doesn't exist
-        ValueError: If the file format is invalid
+        ValueError: If the recipe format is invalid
     """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Input file not found: {file_path}")
-    except Exception as e:
-        raise ValueError(f"Error reading file '{file_path}': {e}")
     
     parser_context = ParserContext()
     command_registry = CommandRegistry(parser_context)
     
-    for line_num, line in enumerate(lines, 1):
+    for line_num, line in enumerate(recipe_lines, 1):
         line = line.strip()
         
         # Skip empty lines and comments
@@ -565,6 +633,9 @@ def parse_contest_data(file_path: str) -> ContestData:
         except ValueError as e:
             raise ValueError(f"Error on line {line_num}: {e}")
     
+    # Generate test names after parsing is complete
+    parser_context.contest_data.generate_all_test_names()
+    
     return parser_context.contest_data
 
 
@@ -587,9 +658,10 @@ gen --N=20000 seed=1
 gen --N=20000 seed=2
 
 @testset edge_case
+@extra_file NOTE .note
 @description generate some edge cases for N <= ${SMALL_N}
-special --N=1 seed=1
-special --N=2 seed=1
+special --N=1 --note=${NOTE} seed=1
+special --N=2 --note=${NOTE} seed=1
 gen --N=${SMALL_N} seed=1 | make_extreme
 
 @global_validation validator --N=${MAX_N}
@@ -614,23 +686,21 @@ gen --N=${SMALL_N} seed=1 | make_extreme
 @include s2
 """
     
-    # Write sample data to a temporary file
-    with open('test_input.txt', 'w') as f:
-        f.write(sample_data)
-    
     try:
         # Parse the sample data
-        contest_data = parse_contest_data('test_input.txt')
+        contest_data = parse_contest_data(sample_data.split('\n'))
         
         # Print parsed results
         print("=== TESTSETS ===")
         for name, testset in contest_data.testsets.items():
             print(f"Testset '{name}' (index: {testset.testset_index})")
+            if len(testset.extra_file) != 0:
+                print(f"  Extra files: {list(testset.extra_file)}")
             if testset.description:
                 print(f"  Description: {testset.description}")
             print(f"  Tests: {len(testset.tests)}")
             for i, test in enumerate(testset.tests):
-                print(f"    Test {i+1}: {len(test.commands)} commands")
+                print(f"    Test {i+1} (Name: {test.test_name}): {len(test.commands)} commands")
                 for j, cmd in enumerate(test.commands):
                     print(f"      Command {j+1}: {cmd}")
         
@@ -644,7 +714,7 @@ gen --N=${SMALL_N} seed=1 | make_extreme
             print(f"Subtask '{name}' (index: {subtask.subtask_index}, score: {subtask.score})")
             if subtask.description:
                 print(f"  Description: {subtask.description}")
-            print(f"  Tests: {sorted(subtask.tests)}")
+            print(f"  Testsets: {sorted(subtask.tests)}")
             print(f"  Validation: {len(subtask.validation)} validators")
             for i, validation in enumerate(subtask.validation):
                 print(f"    Validator {i+1}: {validation.commands}")
@@ -653,8 +723,3 @@ gen --N=${SMALL_N} seed=1 | make_extreme
         
     except Exception as e:
         print(f"Error: {e}")
-    
-    # Clean up
-    import os
-    if os.path.exists('test_input.txt'):
-        os.remove('test_input.txt')
