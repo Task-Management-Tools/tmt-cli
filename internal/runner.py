@@ -1,0 +1,142 @@
+import math
+import time
+import os
+import signal
+import subprocess
+import resource
+import traceback
+from threading import Timer
+
+
+class Process(subprocess.Popen):
+    """
+    Extending subprocess.Popen.
+    """
+
+    def __init__(self, *args, time_limit: float, memory_limit: int, output_limit: int = resource.RLIM_INFINITY,
+                 stdin_redirect=None, stdout_redirect=None, stderr_redirect=None, **kwargs):
+        """
+        @params time_limit: Generation stage time limit per task (miliseconds).
+        @params time_limit: Generation stage memory limit per task (kbytes).
+        """
+
+        self.time_limit: float = time_limit
+        self.memory_limit: int = memory_limit * 1024  # kbytes to bytes
+        self.output_limit: int = output_limit
+
+        self.stdin_redirect = stdin_redirect
+        self.stdout_redirect = stdout_redirect
+        self.stderr_redirect = stderr_redirect
+
+        self._preexec_fn = kwargs.get("preexec_fn", None)
+        kwargs["preexec_fn"] = self.prepare
+
+        super().__init__(*args, **kwargs)
+        self.popen_time: float = time.monotonic()
+        self.poll_time: float
+        self.wall_time_limit: float = time_limit + 1
+        self.timer = Timer(self.wall_time_limit, self.safe_kill)
+        self.status: int
+        self.rusage: resource.struct_rusage
+
+    def prepare(self):
+        try:
+            cpu_time = int(math.ceil(self.time_limit / 1000))
+            resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
+            # Single file size limit
+            resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit, self.output_limit))
+            # Address space (virtual memory) limit
+            resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
+            # Stack size same as address space
+            resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
+
+            if self.stdin_redirect is not None:
+                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_CREAT)
+                os.dup2(stdin_redirect, 0)
+                os.close(stdin_redirect)
+            if self.stdout_redirect is not None:
+                stdout_redirect = os.open(self.stdout_redirect, os.O_WRONLY | os.O_CREAT)
+                os.dup2(stdout_redirect, 1)
+                os.close(stdout_redirect)
+            if self.stderr_redirect is not None:
+                stderr_redirect = os.open(self.stderr_redirect, os.O_WRONLY | os.O_CREAT)
+                os.dup2(stderr_redirect, 2)
+                os.close(stderr_redirect)
+
+            if self._preexec_fn is not None:
+                self._preexec_fn()
+        except Exception as e:
+            traceback.print_exc()
+            raise e
+
+    def safe_kill(self):
+        # While this has a potential race condition, in practice I don't think the PID will be used
+        # up so fast that the ID cycles back to the same one, and that has to occur during the race
+        # condition window (that is testing returncode is None to actually sending the signal).
+        # There is a Linux 5 solution but the system call is not natively supported by Python.
+        if self.returncode is None:
+            try:
+                self.kill()
+            except ChildProcessError:
+                pass
+
+    def wait4(self) -> int:
+        if self.returncode is None:
+            poll_time = time.monotonic()
+            pid, status, rusage = os.wait4(self.pid, os.WNOHANG)
+            if pid != 0:
+                self.status = status
+                self.rusage = rusage
+                self.returncode = os.waitstatus_to_exitcode(status)
+                self.poll_time = poll_time
+
+        return self.returncode
+
+    @property
+    def get_deadline(self) -> float: return self.popen_time + self.wall_time_limit
+
+    @property
+    def cpu_time(self) -> float: return self.rusage.ru_utime + self.rusage.ru_stime
+
+    @property
+    def wall_clock_time(self) -> float: return self.poll_time - self.popen_time
+
+    # This is RSS and not VSS (which is what we acutally want)
+    # VSS is still restricted, but still required for TIOJ judge.
+    @property
+    def max_rss(self) -> int: return self.rusage.ru_maxrss
+
+    @property
+    def is_signaled_exit(self): return os.WIFSIGNALED(self.status) and os.WTERMSIG(self.status) == signal.SIGSEGV
+
+    @property
+    def is_timedout(self): return self.poll_time - self.popen_time > self.time_limit
+
+
+def wait_procs(procs: list[Process]):
+    # Block SIGCHLD so we can wait for it explicitly
+    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
+    remaining = procs.copy()
+    results = []
+    try:
+        while remaining:
+            # Wait for a SIGCHLD
+            signal.sigwaitinfo({signal.SIGCHLD})
+
+            # Poll with wait4
+            still_alive: list[Process] = []
+            for proc in remaining:
+                if proc.wait4() is None:
+                    still_alive.append(proc)
+
+            remaining = still_alive
+
+    except (KeyboardInterrupt, InterruptedError):
+        # Force kill the children to prevent orphans
+        # We should never recieve other singals other than SIGINT (and SIGKILL)
+        for process in remaining:
+            process.kill()
+    finally:
+        signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGCHLD})
+
+    return results

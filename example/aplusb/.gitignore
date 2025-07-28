@@ -1,3 +1,4 @@
 testcases/
 logs/
 sandbox/
+*.exe

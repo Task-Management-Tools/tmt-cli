@@ -2,7 +2,10 @@ import argparse
 import pathlib
 import subprocess
 import yaml
+import os
 
+from internal.generator_stage import GenerationStage
+from internal.recipe_parser import parse_contest_data
 
 def find_tmt_root() -> pathlib.Path:
     """Find the root directory of tmt tasks."""
@@ -48,7 +51,13 @@ def generate_testcases(root_dir: pathlib.Path):
     script_path = pathlib.Path(__file__).parent.resolve()
     internal_makefile_path = script_path / "internal" / "Makefile"
     # Compile generators, validators and solutions
-    for subdir in ["generator", "validator", "solution"]:
+
+    generation_stage = GenerationStage(str(root_dir), str(internal_makefile_path))
+    generation_stage.compile_generator()
+    print("Generator\t[OK]\n")
+    
+
+    for subdir in ["validator", "solution"]:
         subdir_path = root_dir / subdir
         if not subdir_path.exists() or not subdir_path.is_dir():
             raise FileNotFoundError(
@@ -61,10 +70,22 @@ def generate_testcases(root_dir: pathlib.Path):
                        check=True,
                        env={
                            "CXXFLAGS": CXXFLAGS,
-                       })
+                       } | os.environ)
 
     # TODO
     # run recipe's command
+
+    generation_stage.prepare_sandbox()
+    recipe = parse_contest_data(open(str(root_dir / "recipe")).readlines())
+    for testset in recipe.testsets.values():
+        for test in testset.tests:
+            print(f"\t{test.test_name}\t", end="")
+            result = generation_stage.run_generator(test.commands, 
+                                                    test.test_name, 
+                                                    test.test_name + "." + problem_yaml['input_extension'], 
+                                                    list(testset.extra_file))
+            print(f"gen [{'OK' if result else 'FAIL'}]\t", end="")
+            print("")
 
     print(problem_yaml)
     print("Test cases generated successfully.")
