@@ -82,7 +82,7 @@ def generate_testcases(root_dir: pathlib.Path):
             print(f"\t{test.test_name}\t", end="")
             result = generation_stage.run_generator(test.commands, 
                                                     test.test_name, 
-                                                    test.test_name + "." + problem_yaml['input_extension'], 
+                                                    problem_yaml['input_extension'], 
                                                     list(testset.extra_file))
             print(f"gen [{'OK' if result else 'FAIL'}]\t", end="")
             print("")
