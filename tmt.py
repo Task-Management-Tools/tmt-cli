@@ -4,8 +4,8 @@ import subprocess
 import yaml
 import os
 
-from internal.generation_stage import GenerationStage
-from internal.validation_stage import ValidationStage
+from internal.step_generation import GenerationStep
+from internal.step_validation import ValidationStep
 from internal.recipe_parser import parse_contest_data
 from internal.utils import format_compilation_string
 
@@ -57,8 +57,8 @@ def generate_testcases(root_dir: pathlib.Path):
     internal_makefile_path = script_path / "internal" / "Makefile"
     # Compile generators, validators and solutions
 
-    generation_stage = GenerationStage(str(root_dir), str(internal_makefile_path))
-    validation_stage = ValidationStage(str(root_dir), str(internal_makefile_path))
+    generation_stage = GenerationStep(str(root_dir), str(internal_makefile_path))
+    validation_stage = ValidationStep(str(root_dir), str(internal_makefile_path))
 
     ok_or_fail = lambda result: f"[{'OK' if result else 'FAIL'}]"
 

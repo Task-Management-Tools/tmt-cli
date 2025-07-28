@@ -10,7 +10,7 @@ from internal.runner import Process, wait_for_outputs
 
 MAKE = "make"
 
-class MetaMakefileCompileStage:
+class MetaMakefileCompileStep:
     def __init__(self, problem_dir: str, makefile_path: str,
                  time_limit: float = 10_000, memory_limit: int = 4 * 1024 * 1024):
         """

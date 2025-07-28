@@ -3,11 +3,11 @@ import shutil
 from pathlib import Path
 
 from internal.utils import make_file_extension
-from internal.meta_stage import MetaMakefileCompileStage
+from internal.step_meta_makefile import MetaMakefileCompileStep
 from internal.runner import Process, wait_procs
 
 
-class ValidationStage(MetaMakefileCompileStage):
+class ValidationStep(MetaMakefileCompileStep):
     def __init__(self, problem_dir: str, makefile_path: str,
                  time_limit: float = 10_000, memory_limit: int = 4 * 1024 * 1024):
         super().__init__(problem_dir=problem_dir,
