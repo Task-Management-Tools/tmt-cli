@@ -52,7 +52,7 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
 
             if self.stdin_redirect is not None:
-                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_TRUNC | os.O_CREAT)
+                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_CREAT)
                 os.dup2(stdin_redirect, 0)
                 os.close(stdin_redirect)
             if self.stdout_redirect is not None:

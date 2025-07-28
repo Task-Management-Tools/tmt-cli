@@ -61,7 +61,7 @@ class ValidationStep(MetaMakefileCompileStep):
 
                 validator = Process(command,
                             preexec_fn=lambda: os.chdir(self.working_dir.sandbox),
-                            stdin_redirect=os.path.join(self.working_dir.testcases, code_name + input_ext),
+                            stdin_redirect=os.path.join(self.working_dir.sandbox, code_name + input_ext),
                             stdout_redirect=sandbox_output_file,
                             stderr_redirect=sandbox_error_file,
                             time_limit=self.time_limit,
@@ -81,9 +81,7 @@ class ValidationStep(MetaMakefileCompileStep):
             raise exception
         
         self.working_dir.mkdir_logs()
-        self.working_dir.mkdir_testcases()
 
-        # Move extra files
         try:
             # Move logs
             shutil.move(os.path.join(self.working_dir.sandbox, file_out_name), 

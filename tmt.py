@@ -6,8 +6,10 @@ import os
 
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
+from internal.step_solution_batch import BatchSolutionStep
 from internal.recipe_parser import parse_contest_data
-from internal.utils import format_compilation_string
+from internal.utils import format_make_compile_string, format_single_compile_string
+
 
 def find_tmt_root() -> pathlib.Path:
     """Find the root directory of tmt tasks."""
@@ -34,6 +36,7 @@ def initialize_directory(root_dir: pathlib.Path):
     raise NotImplementedError(
         "Directory initialization is not implemented yet.")
 
+
 def cprint(*args, **kwargs):
     print(*args, **kwargs, end='', flush=True)
 
@@ -59,41 +62,37 @@ def generate_testcases(root_dir: pathlib.Path):
 
     generation_stage = GenerationStep(str(root_dir), str(internal_makefile_path))
     validation_stage = ValidationStep(str(root_dir), str(internal_makefile_path))
+    # TODO: change type and model solution path accordin to setting
+    solution_stage = BatchSolutionStep(executable_name=problem_yaml["id"],
+                                       problem_dir=str(root_dir),
+                                       submission_file="sol.cpp",
+                                       time_limit=problem_yaml["time_limit"],
+                                       memory_limit=problem_yaml["memory_limit"] * 1024,
+                                       output_limit=problem_yaml["output_limit"],
+                                       grader=None,
+                                       )
 
     ok_or_fail = lambda result: f"[{'OK' if result else 'FAIL'}]"
 
     cprint("Generator\tcompile ")
     compile_out, compile_err, compile_exitcode = generation_stage.compile()
-    cprint(format_compilation_string(compile_out, compile_err, compile_exitcode))
+    cprint(format_make_compile_string(compile_out, compile_err, compile_exitcode))
     if compile_exitcode != 0:
         exit(compile_exitcode)
 
     cprint("Validator\tcompile ")
     compile_out, compile_err, compile_exitcode = validation_stage.compile()
-    cprint(format_compilation_string(compile_out, compile_err, compile_exitcode))
+    cprint(format_make_compile_string(compile_out, compile_err, compile_exitcode))
     if compile_exitcode != 0:
         exit(compile_exitcode)
-    
 
-    for subdir in ["solution"]:
-        subdir_path = root_dir / subdir
-        if not subdir_path.exists() or not subdir_path.is_dir():
-            raise FileNotFoundError(
-                f"Subdirectory {subdir_path} does not exist.")
-        cmd = ["make", "-C", str(subdir_path), "-f",
-               str(internal_makefile_path)]
-        CXXFLAGS = "-std=c++20 -Wall -Wextra -O2"
-        subprocess.run(cmd,
-                       capture_output=False,
-                       check=True,
-                       env={
-                           "CXXFLAGS": CXXFLAGS,
-                       } | os.environ)
+    cprint("Solution\tcompile ")
+    compile_err, compile_exitcode = solution_stage.compile_solution()
+    cprint(format_single_compile_string(compile_err, compile_exitcode))
+    if compile_exitcode != 0:
+        exit(compile_exitcode)
 
-    # TODO
-    # run recipe's command
 
-    generation_stage.prepare_sandbox()
     recipe = parse_contest_data(open(str(root_dir / "recipe")).readlines())
 
     # TODO: it is better to do this in recipe_parser.py but I fear not to touch the humongous multiclass structure
@@ -108,21 +107,27 @@ def generate_testcases(root_dir: pathlib.Path):
                             if len(validator.commands) > 1:
                                 raise ValueError("Validator with pipe is not supported")
                             validations[tests.test_name].append(validator.commands[0])
-                        
+
+
     for testset in recipe.testsets.values():
         for test in testset.tests:
             cprint(f"\t{test.test_name}\t")
             cprint("gen ")
-            result = generation_stage.run_generator(test.commands, 
-                                                    test.test_name, 
-                                                    problem_yaml['input_extension'], 
+            result = generation_stage.run_generator(test.commands,
+                                                    test.test_name,
+                                                    problem_yaml['input_extension'],
                                                     list(testset.extra_file))
             cprint(f"{ok_or_fail(result)}\t")
             cprint("val ")
-            result = validation_stage.run_validator(validations[test.test_name], 
-                                                    test.test_name, 
-                                                    problem_yaml['input_extension'], 
+            result = validation_stage.run_validator(validations[test.test_name],
+                                                    test.test_name,
+                                                    problem_yaml['input_extension'],
                                                     list(testset.extra_file))
+            cprint(f"{ok_or_fail(result)}\t")
+            cprint("sol ")
+            result = solution_stage.run_solution_for_output(test.test_name,
+                                                            problem_yaml['input_extension'],
+                                                            problem_yaml['output_extension'])
             cprint(f"{ok_or_fail(result)}\n")
 
     print(problem_yaml)

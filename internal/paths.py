@@ -1,6 +1,9 @@
 import os
 import stat
 import errno
+import shutil
+
+from pathlib import Path
 
 class ProblemDirectoryHelper:
     """
@@ -10,7 +13,9 @@ class ProblemDirectoryHelper:
     VALIDATOR_PATH = "validator"
     GENERATOR_PATH = "generator"
     GENERATOR_MANUAL_PATH = "generator/manual"
+    SOLUTIONS_PATH = "solutions"
     TESTCASES_PATH = "testcases"
+    GRADERS_PATH = "graders"
     SANDBOX_PATH = "sandbox"
     LOGS_PATH = "logs"
 
@@ -27,13 +32,17 @@ class ProblemDirectoryHelper:
     def generator_manuals(self): return os.path.join(self.problem_dir, self.GENERATOR_MANUAL_PATH)
 
     @property
+    def solutions(self): return os.path.join(self.problem_dir, self.SOLUTIONS_PATH)
+
+    @property
     def testcases(self): return os.path.join(self.problem_dir, self.TESTCASES_PATH)
 
     @property
     def sandbox(self): return os.path.join(self.problem_dir, self.SANDBOX_PATH)
 
     @property
-    def logs(self): return os.path.join(self.problem_dir, self.SANDBOX_PATH)
+    def logs(self): return os.path.join(self.problem_dir, self.LOGS_PATH)
+
 
     def mkdir_testcases(self):
         if not os.path.isdir(self.testcases):
@@ -42,6 +51,14 @@ class ProblemDirectoryHelper:
     def mkdir_sandbox(self):
         if not os.path.isdir(self.sandbox):
             os.mkdir(self.sandbox)
+
+    def clear_sandbox(self):
+        self.mkdir_sandbox()
+        for item in Path(self.sandbox).iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
 
     def mkdir_logs(self):
         if not os.path.isdir(self.logs):
@@ -78,7 +95,25 @@ class ProblemDirectoryHelper:
         for test_file in test_files:
             if self._is_executable(test_file):
                 return test_file
-        raise FileNotFoundError(errno.ENOENT, f"Generator {file} could not be found.", file)
+        raise FileNotFoundError(errno.ENOENT, f"Validator {file} could not be found.", file)
+
+    def replace_with_solution(self, file: str):
+        test_files = [
+            os.path.join(self.solutions, file),
+        ]
+        for test_file in test_files:
+            if self._is_regular_file(test_file):
+                return test_file
+        raise FileNotFoundError(errno.ENOENT, f"Solution {file} could not be found.", file)
+
+    def replace_with_grader(self, file: str):
+        test_files = [
+            os.path.join(self.graders, file),
+        ]
+        for test_file in test_files:
+            if self._is_regular_file(test_file):
+                return test_file
+        raise FileNotFoundError(errno.ENOENT, f"Grader {file} could not be found.", file)
 
     def replace_with_manual(self, file: str):
         if self._is_regular_file(os.path.join(self.generator_manuals, file)):
