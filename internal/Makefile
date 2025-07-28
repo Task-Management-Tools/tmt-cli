@@ -1,6 +1,7 @@
 # Compiler and flags
 CXX = g++ # TODO find real g++ for mac users
 CXXFLAGS := -I ../include $(CXXFLAGS) # TODO not to use .. 
+SHELL := /bin/bash
 
 # Find all C++ source files with different extensions
 # TODO should we search for **/*.cpp ?
@@ -15,10 +16,10 @@ all: $(EXECUTABLES)
 # Only supports single-file mode
 
 %.exe: %.cpp
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> ._$*.compile.log
 
 %.exe: %.cc
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> ._$*.compile.log
 
 clean:
 	rm -f $(EXECUTABLES)

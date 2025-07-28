@@ -14,8 +14,9 @@ class GenerationStage(MetaMakefileCompileStage):
                          time_limit=time_limit,
                          memory_limit=memory_limit)
 
-    def compile_generator(self):
-        self.compile(self.working_dir.generator)
+    def compile(self) -> bool:
+        stdout, stderr, returncode = self.compile_with_make(self.working_dir.generator)
+        return returncode == 0
 
     def prepare_sandbox(self):
         self.working_dir.mkdir_sandbox()
@@ -28,7 +29,8 @@ class GenerationStage(MetaMakefileCompileStage):
     def run_generator(self, commands: list[list[str]], code_name: str,
                       output_ext: str, extra_output_exts: list[str]) -> bool:
         """
-        This function can raise FileNotFoundError.
+        This function can raise FileNotFoundError (when generator file or expected files do not exist),
+        TimeoutError (when the generator timed-out), and ChildProcessError (when the generator crashes).
         """
         # TODO: handle FileNotFoundError and print actual meaningful error in the console.
 
@@ -120,6 +122,8 @@ class GenerationStage(MetaMakefileCompileStage):
             raise exception
 
         for process in generator_processes:
-            if process.returncode != 0:
-                return False
+            if process.is_timedout:
+                raise TimeoutError()
+            if process.status != 0:
+                raise ChildProcessError()
         return True

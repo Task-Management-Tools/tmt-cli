@@ -2,6 +2,7 @@ import math
 import time
 import os
 import signal
+import select
 import subprocess
 import resource
 import traceback
@@ -51,15 +52,15 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
 
             if self.stdin_redirect is not None:
-                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_CREAT)
+                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_TRUNC | os.O_CREAT)
                 os.dup2(stdin_redirect, 0)
                 os.close(stdin_redirect)
             if self.stdout_redirect is not None:
-                stdout_redirect = os.open(self.stdout_redirect, os.O_WRONLY | os.O_CREAT)
+                stdout_redirect = os.open(self.stdout_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT)
                 os.dup2(stdout_redirect, 1)
                 os.close(stdout_redirect)
             if self.stderr_redirect is not None:
-                stderr_redirect = os.open(self.stderr_redirect, os.O_WRONLY | os.O_CREAT)
+                stderr_redirect = os.open(self.stderr_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT)
                 os.dup2(stderr_redirect, 2)
                 os.close(stderr_redirect)
 
@@ -113,11 +114,10 @@ class Process(subprocess.Popen):
     def is_timedout(self): return self.poll_time - self.popen_time > self.time_limit
 
 
-def wait_procs(procs: list[Process]):
+def wait_procs(procs: list[Process]) -> None:
     # Block SIGCHLD so we can wait for it explicitly
     signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
     remaining = procs.copy()
-    results = []
     try:
         while remaining:
             # Wait for a SIGCHLD
@@ -139,4 +139,36 @@ def wait_procs(procs: list[Process]):
     finally:
         signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGCHLD})
 
-    return results
+
+def wait_for_outputs(proc: Process) -> list[int]:
+    """
+    Wait for the conclusion of the processes in the list, avoiding
+    starving for input and output.
+
+    procs: a list of processes as returned by Popen.
+
+    return: a list of return codes.
+
+    This function is modified from cms-dev:cms/grading/Sandbox.py#L66.
+    """
+
+    stdout, stderr = "", ""
+
+    # Read stdout and stderr to the end without having to block
+    # because of insufficient buffering (and without allocating too
+    # much memory). Unix specific.
+    while proc.wait4() is None:
+        to_read = ([proc.stdout] if proc.stdout and not proc.stdout.closed else [] +
+                   [proc.stderr] if proc.stderr and not proc.stderr.closed else [])
+        if len(to_read) == 0:
+            break
+        available_read = select.select(to_read, [], [], 1.0)[0]
+        for file in available_read:
+            content = file.read(8 * 1024)
+            if type(content) is bytes:
+                content = content.decode()
+            if file is proc.stdout:
+                stdout += content
+            else:
+                stderr += content
+    return stdout, stderr

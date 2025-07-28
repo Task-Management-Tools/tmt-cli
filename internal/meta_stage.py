@@ -1,7 +1,8 @@
 import os
+import subprocess
 import platform
 from .paths import ProblemDirectoryHelper
-from .runner import Process, wait_procs
+from .runner import Process, wait_for_outputs
 
 
 MAKE = "make"
@@ -21,8 +22,8 @@ class MetaMakefileCompileStage:
         self.time_limit = time_limit
         self.memory_limit = memory_limit
 
-    def compile(self, directory):
-        command = [MAKE, "-s", "-C", directory, "-f", self.makefile_path]
+    def compile_with_make(self, directory) -> bool:
+        command = [MAKE, "-C", directory, "-f", self.makefile_path]
 
         cxx_flags = os.getenv("CXXFLAGS", "")
         cxx_flags += "-std=c++20 -Wall -Wextra -O2"
@@ -32,8 +33,11 @@ class MetaMakefileCompileStage:
             cxx_flags += f" -Wl,--stack,{self.memory_limit}"
 
         compile_process = Process(command,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE,
                                   time_limit=self.time_limit,
                                   memory_limit=self.memory_limit,
                                   env={"CXXFLAGS": cxx_flags} | os.environ)
 
-        wait_procs([compile_process])
+        stdout, stderr = wait_for_outputs(compile_process)
+        return stdout, stderr, compile_process.status

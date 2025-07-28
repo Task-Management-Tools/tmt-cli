@@ -7,6 +7,7 @@ class ProblemDirectoryHelper:
     Helps everything with files and directories.
     """
 
+    VALIDATOR_PATH = "validator"
     GENERATOR_PATH = "generator"
     GENERATOR_MANUAL_PATH = "generator/manual"
     TESTCASES_PATH = "testcases"
@@ -15,6 +16,9 @@ class ProblemDirectoryHelper:
 
     def __init__(self, problem_dir: str):
         self.problem_dir = problem_dir
+
+    @property
+    def validator(self): return os.path.join(self.problem_dir, self.VALIDATOR_PATH)
 
     @property
     def generator(self): return os.path.join(self.problem_dir, self.GENERATOR_PATH)
@@ -60,6 +64,16 @@ class ProblemDirectoryHelper:
         test_files = [
             os.path.join(self.generator, file),
             os.path.join(self.generator, file + ".exe")
+        ]
+        for test_file in test_files:
+            if self._is_executable(test_file):
+                return test_file
+        raise FileNotFoundError(errno.ENOENT, f"Generator {file} could not be found.", file)
+
+    def replace_with_validator(self, file: str):
+        test_files = [
+            os.path.join(self.validator, file),
+            os.path.join(self.validator, file + ".exe")
         ]
         for test_file in test_files:
             if self._is_executable(test_file):

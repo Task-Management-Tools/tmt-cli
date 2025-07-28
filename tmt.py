@@ -4,7 +4,8 @@ import subprocess
 import yaml
 import os
 
-from internal.generator_stage import GenerationStage
+from internal.generation_stage import GenerationStage
+from internal.validation_stage import ValidationStage
 from internal.recipe_parser import parse_contest_data
 
 def find_tmt_root() -> pathlib.Path:
@@ -32,6 +33,9 @@ def initialize_directory(root_dir: pathlib.Path):
     raise NotImplementedError(
         "Directory initialization is not implemented yet.")
 
+def cprint(*args, **kwargs):
+    print(*args, **kwargs, end='', flush=True)
+
 
 def generate_testcases(root_dir: pathlib.Path):
     """Generate test cases in the given directory."""
@@ -53,11 +57,19 @@ def generate_testcases(root_dir: pathlib.Path):
     # Compile generators, validators and solutions
 
     generation_stage = GenerationStage(str(root_dir), str(internal_makefile_path))
-    generation_stage.compile_generator()
-    print("Generator\t[OK]\n")
+    validation_stage = ValidationStage(str(root_dir), str(internal_makefile_path))
+
+    ok_or_fail = lambda result: f"[{'OK' if result else 'FAIL'}]"
+
+    cprint("Generator\tcompile ")
+    result = generation_stage.compile()
+    cprint(f"{ok_or_fail(result)}\n")
+    cprint("Validator\tcompile ")
+    result = validation_stage.compile()
+    cprint(f"{ok_or_fail(result)}\n")
     
 
-    for subdir in ["validator", "solution"]:
+    for subdir in ["solution"]:
         subdir_path = root_dir / subdir
         if not subdir_path.exists() or not subdir_path.is_dir():
             raise FileNotFoundError(
@@ -77,15 +89,35 @@ def generate_testcases(root_dir: pathlib.Path):
 
     generation_stage.prepare_sandbox()
     recipe = parse_contest_data(open(str(root_dir / "recipe")).readlines())
+
+    # TODO: it is better to do this in recipe_parser.py but I fear not to touch the humongous multiclass structure
+    # so I temporarily write it here
+    validations = {test.test_name: [] for testset in recipe.testsets.values() for test in testset.tests}
+    for subtask in recipe.subtasks.values():
+        for testset in subtask.tests:
+            for attempt_testset_match in recipe.testsets.values():
+                if attempt_testset_match.testset_name == testset:
+                    for tests in attempt_testset_match.tests:
+                        for validator in subtask.validation:
+                            if len(validator.commands) > 1:
+                                raise ValueError("Validator with pipe is not supported")
+                            validations[tests.test_name].append(validator.commands[0])
+                        
     for testset in recipe.testsets.values():
         for test in testset.tests:
-            print(f"\t{test.test_name}\t", end="")
+            cprint(f"\t{test.test_name}\t")
+            cprint("gen ")
             result = generation_stage.run_generator(test.commands, 
                                                     test.test_name, 
                                                     problem_yaml['input_extension'], 
                                                     list(testset.extra_file))
-            print(f"gen [{'OK' if result else 'FAIL'}]\t", end="")
-            print("")
+            cprint(f"{ok_or_fail(result)}\t")
+            cprint("val ")
+            result = validation_stage.run_validator(validations[test.test_name], 
+                                                    test.test_name, 
+                                                    problem_yaml['input_extension'], 
+                                                    list(testset.extra_file))
+            cprint(f"{ok_or_fail(result)}\n")
 
     print(problem_yaml)
     print("Test cases generated successfully.")
