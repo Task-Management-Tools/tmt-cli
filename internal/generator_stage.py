@@ -1,47 +1,21 @@
 import os
 import shutil
-import stat
-import platform
 import subprocess
-from .paths import ProblemDirectoryHelper
+from pathlib import Path
+from .meta_stage import MetaMakefileCompileStage
 from .runner import Process, wait_procs
 
 
-MAKE = "make"
-GENERATOR_LIST = "generators"
-
-
-class GenerationStage:
+class GenerationStage(MetaMakefileCompileStage):
     def __init__(self, problem_dir: str, makefile_path: str,
                  time_limit: float = 10_000, memory_limit: int = 4 * 1024 * 1024):
-        """
-        Parameters:
-            problem_dir: Absolute path to the problem working directory.
-            makefile_path: Absolute path to the compilation Makefile.
-            time_limit: Generation stage time limit per task (miliseconds, default: 30s).
-            memory_limit: Generation stage memory limit per task (kbytes, default: 4 GB).
-        """
-        self.working_dir = ProblemDirectoryHelper(problem_dir)
-        self.makefile_path = makefile_path
-        self.time_limit = time_limit
-        self.memory_limit = memory_limit
+        super().__init__(problem_dir=problem_dir,
+                         makefile_path=makefile_path,
+                         time_limit=time_limit,
+                         memory_limit=memory_limit)
 
     def compile_generator(self):
-        command = [MAKE, "-s", "-C", self.working_dir.generator, "-f", self.makefile_path]
-
-        cxx_flags = os.getenv("CXXFLAGS", "")
-        cxx_flags += "-std=c++20 -Wall -Wextra -O2"
-
-        # On MacOS, this has to be set during compile time
-        if platform.system() == "Darwin":
-            cxx_flags += f" -Wl,--stack,{self.memory_limit}"
-
-        compile_process = Process(command,
-                                  time_limit=self.time_limit,
-                                  memory_limit=self.memory_limit,
-                                  env={"CXXFLAGS": cxx_flags} | os.environ)
-
-        wait_procs([compile_process])
+        self.compile(self.working_dir.generator)
 
     def prepare_sandbox(self):
         self.working_dir.mkdir_sandbox()
@@ -52,7 +26,7 @@ class GenerationStage:
         return ext
 
     def run_generator(self, commands: list[list[str]], code_name: str,
-                       output_ext: str, extra_output_exts: list[str]) -> bool:
+                      output_ext: str, extra_output_exts: list[str]) -> bool:
         """
         This function can raise FileNotFoundError.
         """
@@ -71,9 +45,16 @@ class GenerationStage:
             else:
                 command[0] = self.working_dir.replace_with_generator(command[0])
 
-        file_out_name = f"{code_name}.gen.out"
+        file_out_name = f"{code_name}.out"
+        file_extra_out_names = [f"{code_name}{ext}" for ext in extra_output_exts]
         file_err_names = []
+
         sandbox_output_file = os.path.join(self.working_dir.sandbox, file_out_name)
+        Path(sandbox_output_file).touch()
+        for file_extra_out_name in file_extra_out_names:
+            (Path(self.working_dir.sandbox) / file_extra_out_name).touch()
+
+
 
         generator_processes: list[Process] = []
         prev_proc = None
@@ -96,13 +77,13 @@ class GenerationStage:
                     stdout_redirect = None
 
                 proc = Process(command,
-                            preexec_fn=lambda: os.chdir(self.working_dir.sandbox),
-                            stdin=stdin,
-                            stdout=subprocess.PIPE,
-                            stdout_redirect=stdout_redirect,
-                            stderr_redirect=sandbox_output_err,
-                            time_limit=self.time_limit,
-                            memory_limit=self.memory_limit)
+                               preexec_fn=lambda: os.chdir(self.working_dir.sandbox),
+                               stdin=stdin,
+                               stdout=subprocess.PIPE,
+                               stdout_redirect=stdout_redirect,
+                               stderr_redirect=sandbox_output_err,
+                               time_limit=self.time_limit,
+                               memory_limit=self.memory_limit)
 
                 # Close the unnecessary pipes in the parent,
                 # allowing the child to receive EOF when it's done
@@ -116,21 +97,24 @@ class GenerationStage:
             for proc in generator_processes:
                 proc.safe_kill()
             raise exception
-        
+
         generator_processes[-1].stdout.close()
         wait_procs(generator_processes)
 
         self.working_dir.mkdir_logs()
         self.working_dir.mkdir_testcases()
 
-        # Move extra files
         try:
             # Move tests
-            shutil.move(os.path.join(self.working_dir.sandbox, file_out_name), 
+            shutil.move(os.path.join(self.working_dir.sandbox, file_out_name),
                         os.path.join(self.working_dir.testcases, f"{code_name}{output_ext}"))
+            # Move extra files
+            for file_extra_out_name in file_extra_out_names:
+                shutil.move(os.path.join(self.working_dir.sandbox, file_extra_out_name),
+                            os.path.join(self.working_dir.testcases, file_extra_out_name))
             # Move logs
             for file_err_name in file_err_names:
-                shutil.move(os.path.join(self.working_dir.sandbox, file_err_name), 
+                shutil.move(os.path.join(self.working_dir.sandbox, file_err_name),
                             os.path.join(self.working_dir.logs, file_err_name))
         except FileNotFoundError:
             raise exception
