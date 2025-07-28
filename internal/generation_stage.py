@@ -2,8 +2,10 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from .meta_stage import MetaMakefileCompileStage
-from .runner import Process, wait_procs
+
+from internal.meta_stage import MetaMakefileCompileStage
+from internal.runner import Process, wait_procs
+from internal.utils import make_file_extension
 
 
 class GenerationStage(MetaMakefileCompileStage):
@@ -14,17 +16,11 @@ class GenerationStage(MetaMakefileCompileStage):
                          time_limit=time_limit,
                          memory_limit=memory_limit)
 
-    def compile(self) -> bool:
-        stdout, stderr, returncode = self.compile_with_make(self.working_dir.generator)
-        return returncode == 0
+    def compile(self) -> tuple[str, str, bool]:
+        return self.compile_with_make(self.working_dir.generator)
 
     def prepare_sandbox(self):
         self.working_dir.mkdir_sandbox()
-
-    def _make_file_extension(self, ext: str):
-        if not ext.startswith('.'):
-            ext = '.' + ext
-        return ext
 
     def run_generator(self, commands: list[list[str]], code_name: str,
                       output_ext: str, extra_output_exts: list[str]) -> bool:
@@ -34,9 +30,9 @@ class GenerationStage(MetaMakefileCompileStage):
         """
         # TODO: handle FileNotFoundError and print actual meaningful error in the console.
 
-        output_ext = self._make_file_extension(output_ext)
+        output_ext = make_file_extension(output_ext)
         for i in range(len(extra_output_exts)):
-            extra_output_exts[i] = self._make_file_extension(extra_output_exts[i])
+            extra_output_exts[i] = make_file_extension(extra_output_exts[i])
 
         # preprocess
         for command in commands:

@@ -7,6 +7,7 @@ import os
 from internal.generation_stage import GenerationStage
 from internal.validation_stage import ValidationStage
 from internal.recipe_parser import parse_contest_data
+from internal.utils import format_compilation_string
 
 def find_tmt_root() -> pathlib.Path:
     """Find the root directory of tmt tasks."""
@@ -62,11 +63,16 @@ def generate_testcases(root_dir: pathlib.Path):
     ok_or_fail = lambda result: f"[{'OK' if result else 'FAIL'}]"
 
     cprint("Generator\tcompile ")
-    result = generation_stage.compile()
-    cprint(f"{ok_or_fail(result)}\n")
+    compile_out, compile_err, compile_exitcode = generation_stage.compile()
+    cprint(format_compilation_string(compile_out, compile_err, compile_exitcode))
+    if compile_exitcode != 0:
+        exit(compile_exitcode)
+
     cprint("Validator\tcompile ")
-    result = validation_stage.compile()
-    cprint(f"{ok_or_fail(result)}\n")
+    compile_out, compile_err, compile_exitcode = validation_stage.compile()
+    cprint(format_compilation_string(compile_out, compile_err, compile_exitcode))
+    if compile_exitcode != 0:
+        exit(compile_exitcode)
     
 
     for subdir in ["solution"]:

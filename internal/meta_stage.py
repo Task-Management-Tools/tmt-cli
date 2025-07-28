@@ -1,8 +1,11 @@
 import os
 import subprocess
 import platform
-from .paths import ProblemDirectoryHelper
-from .runner import Process, wait_for_outputs
+
+from pathlib import Path
+
+from internal.paths import ProblemDirectoryHelper
+from internal.runner import Process, wait_for_outputs
 
 
 MAKE = "make"
@@ -39,5 +42,13 @@ class MetaMakefileCompileStage:
                                   memory_limit=self.memory_limit,
                                   env={"CXXFLAGS": cxx_flags} | os.environ)
 
-        stdout, stderr = wait_for_outputs(compile_process)
+        stdout, _ = wait_for_outputs(compile_process)
+        # We have to obtain stderr again from files since they are piped out.
+
+        logs = sorted(Path(directory).glob('._*.compile.log'))
+        stderr = ""
+        for log in logs:
+            with log.open('r') as infile:
+                stderr += infile.read()
+
         return stdout, stderr, compile_process.status

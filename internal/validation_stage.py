@@ -1,9 +1,10 @@
 import os
 import shutil
-import subprocess
 from pathlib import Path
-from .meta_stage import MetaMakefileCompileStage
-from .runner import Process, wait_procs
+
+from internal.utils import make_file_extension
+from internal.meta_stage import MetaMakefileCompileStage
+from internal.runner import Process, wait_procs
 
 
 class ValidationStage(MetaMakefileCompileStage):
@@ -14,17 +15,11 @@ class ValidationStage(MetaMakefileCompileStage):
                          time_limit=time_limit,
                          memory_limit=memory_limit)
 
-    def compile(self):
-        stdout, stderr, returncode = self.compile_with_make(self.working_dir.validator)
-        return returncode == 0
+    def compile(self) -> tuple[str, str, bool]:
+        return self.compile_with_make(self.working_dir.validator)
 
     def prepare_sandbox(self):
         self.working_dir.mkdir_sandbox()
-
-    def _make_file_extension(self, ext: str):
-        if not ext.startswith('.'):
-            ext = '.' + ext
-        return ext
 
     def run_validator(self, commands: list[list[str]], code_name: str,
                       input_ext: str, extra_input_exts: list[str]) -> bool:
@@ -39,9 +34,9 @@ class ValidationStage(MetaMakefileCompileStage):
         """
         # TODO: handle FileNotFoundError and print actual meaningful error in the console.
 
-        input_ext = self._make_file_extension(input_ext)
+        input_ext = make_file_extension(input_ext)
         for i in range(len(extra_input_exts)):
-            extra_input_exts[i] = self._make_file_extension(extra_input_exts[i])
+            extra_input_exts[i] = make_file_extension(extra_input_exts[i])
 
         # preprocess
         for command in commands:
