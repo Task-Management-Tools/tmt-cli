@@ -53,7 +53,7 @@ class ValidationStep(MetaMakefileCompileStep):
 
         valid = True
         try:
-            for command in enumerate(commands):
+            for command in commands:
                 # Copy input and extra inputs
                 shutil.copy(os.path.join(context.path.testcases, input_name),
                             os.path.join(context.path.sandbox, input_name))

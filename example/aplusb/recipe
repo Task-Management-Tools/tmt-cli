@@ -11,4 +11,9 @@ manual 1.in
 @extra_file PROOF .proof
 print-with-proof 12 23 ${PROOF}
 
+@subtask full 100
+@description No additional constraints
+@validation validator 
+@include handmade
+@include with-proof
 # return-1
