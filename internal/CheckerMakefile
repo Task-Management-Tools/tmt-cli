@@ -1,0 +1,23 @@
+# Compiler and flags
+
+# This can be override by environment variables
+CXX ?= g++ 
+CXXFLAGS := -I ../include $(CXXFLAGS) # TODO not to use .. 
+SHELL := /bin/bash
+
+# Find all C++ source files with different extensions
+# TODO should we search for **/*.cpp ?
+CPP_SOURCES = $(wildcard *.cpp) $(wildcard *.cc)
+
+SOURCES = $(CPP_SOURCES) $(CC_SOURCES)
+EXECUTABLES = checker
+
+all: $(EXECUTABLES)
+
+checker: $(CPP_SOURCES)
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(CPP_SOURCES) -o checker 2> ._checker.compile.log
+
+clean:
+	rm -f $(EXECUTABLES)
+
+.PHONY: all clean

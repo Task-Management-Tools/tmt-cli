@@ -2,14 +2,15 @@ import os
 import platform
 import resource
 import shutil
+import signal
 
 from pathlib import Path
 
 from internal.runner import Process, wait_procs
 from internal.utils import make_file_extension
-from internal.step_solution import MetaSolutionStep
+from internal.step_solution import MetaSolutionStep, EvaluationOutcome, EvaluationResult
 
-
+# TODO: in this solution step, only one file can be submitted
 class BatchSolutionStep(MetaSolutionStep):
     def __init__(self, executable_name: str, problem_dir: str, submission_file: str,
                  time_limit: float, memory_limit: int, output_limit: int,
@@ -46,41 +47,37 @@ class BatchSolutionStep(MetaSolutionStep):
         return self.compile(cxx, files, compile_flags)
 
     def prepare_sandbox(self):
-        self.working_dir.mkdir_sandbox()
-        self.working_dir.clear_sandbox()
+        self.working_dir.mkdir_sandbox_solution()
 
-    def _run_solution(self, code_name: str, input_ext: str, output_ext: str) -> bool:
-        pass
-
-    def run_solution_for_output(self, code_name: str, input_ext: str, output_ext: str) -> bool:
+    def run_solution(self, code_name: str, input_ext: str, output_ext: str, store_output: bool) -> EvaluationResult:
         """
-        This function can raise FileNotFoundError (when validator file or expected files do not exist),
-        TimeoutError (when the validator timed-out), and ChildProcessError (when the validator crashes by signaled).
+        This function only returns FileNotFoundError for execution error.
 
-        Note the latter is not the same with validation failed: validators could still run sucessfully and return non-zero value.
+        If store_output is specified, then we will move the output out of the sandbox and store it to the testcases.
+        Otherwise, we keep that file inside the sandbox, and we invoke checker to check the file.
         """
-        # TODO: abstract this to _run_solution to reuse it for actual evaluation.
-
         input_ext = make_file_extension(input_ext)
         output_ext = make_file_extension(output_ext)
 
-        # It is fine to use the same output file: we use O_TRUNC so the logs will be the last
-        # validator stdout/stderr.
         file_in_name = f"{code_name}{input_ext}"
         file_out_name = f"{code_name}{output_ext}"
-        file_err_name = f"{code_name}.sol.err"
-        sandbox_input_file = os.path.join(self.working_dir.sandbox, file_in_name)
-        sandbox_output_file = os.path.join(self.working_dir.sandbox, file_out_name)
-        sandbox_error_file = os.path.join(self.working_dir.sandbox, file_err_name)
+        if store_output:  # We are working with official output
+            file_err_name = f"{code_name}.sol.err"
+        else:  # We are invoking and testing the solution
+            file_err_name = f"{code_name}.invoke.err"
+
+        testcase_input = os.path.join(self.working_dir.testcases, file_in_name)
+        sandbox_input_file = os.path.join(self.working_dir.sandbox_solution, file_in_name)
+        sandbox_output_file = os.path.join(self.working_dir.sandbox_solution, file_out_name)
+        sandbox_error_file = os.path.join(self.working_dir.sandbox_solution, file_err_name)
         Path(sandbox_output_file).touch()
         Path(sandbox_error_file).touch()
 
         try:
-            shutil.copy(os.path.join(self.working_dir.testcases, file_in_name),
-                        sandbox_input_file)
+            shutil.copy(testcase_input, sandbox_input_file)
 
-            solution = Process(os.path.join(self.working_dir.sandbox, self.executable_name),
-                               preexec_fn=lambda: os.chdir(self.working_dir.sandbox),
+            solution = Process(os.path.join(self.working_dir.sandbox_solution, self.executable_name),
+                               preexec_fn=lambda: os.chdir(self.working_dir.sandbox_solution),
                                stdin_redirect=sandbox_input_file,
                                stdout_redirect=sandbox_output_file,
                                stderr_redirect=sandbox_error_file,
@@ -89,25 +86,46 @@ class BatchSolutionStep(MetaSolutionStep):
                                output_limit=self.output_limit)
 
             wait_procs([solution])
-            if solution.is_timedout or solution.is_signaled_exit or solution.status:
-                return False
+
+            os.unlink(sandbox_input_file)
 
         except FileNotFoundError as exception:
             # We can simply raise, since there will be no processes left
             raise exception
 
-        self.working_dir.mkdir_testcases()
-        self.working_dir.mkdir_logs()
+        finally:
+            # We have to clean up the testcases anyways
+            self.working_dir.mkdir_testcases()
+            self.working_dir.mkdir_logs()
 
-        try:
-            os.unlink(sandbox_input_file)
             # Move output
-            shutil.move(sandbox_output_file,
-                        os.path.join(self.working_dir.testcases, file_out_name))
+            if store_output:
+                shutil.move(sandbox_output_file,
+                            os.path.join(self.working_dir.testcases, file_out_name))
             # Move logs
             shutil.move(sandbox_error_file,
                         os.path.join(self.working_dir.logs, file_err_name))
-        except FileNotFoundError as exception:
-            raise exception
 
-        return True
+        result = EvaluationResult(
+            verdict=EvaluationOutcome.RUN_SUCCESS,
+            execution_time=solution.cpu_time,
+            execution_wall_clock_time=solution.wall_clock_time,
+            execution_memory=solution.max_vss,
+            exit_code=solution.exit_code,
+            exit_signal=solution.exit_signal,
+            output_file=None if store_output else sandbox_output_file
+        )
+        if solution.cpu_time > self.time_limit:
+            result.verdict = EvaluationOutcome.TIMEOUT
+        elif solution.is_timedout:
+            result.verdict = EvaluationOutcome.TIMEOUT_WALL
+        elif solution.exit_signal == signal.SIGXFSZ:
+            result.verdict = EvaluationOutcome.RUNERROR_SIGNAL
+        elif solution.exit_signal == signal.SIGXCPU: # this can happen
+            result.verdict = EvaluationOutcome.TIMEOUT
+        elif solution.exit_signal != 0:
+            result.verdict = EvaluationOutcome.RUNERROR_SIGNAL
+        elif solution.exit_code != 0:
+            result.verdict = EvaluationOutcome.RUNERROR_EXITCODE
+
+        return result

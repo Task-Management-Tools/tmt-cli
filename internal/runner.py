@@ -107,6 +107,16 @@ class Process(subprocess.Popen):
     @property
     def max_rss(self) -> int: return self.rusage.ru_maxrss
 
+    # We cannot know with this type of execution, so return 0 instead
+    @property
+    def max_vss(self) -> int: return 0
+
+    @property
+    def exit_signal(self): return os.WTERMSIG(self.status) if os.WIFSIGNALED(self.status) else 0
+
+    @property
+    def exit_code(self): return os.WEXITSTATUS(self.status) if os.WIFEXITED(self.status) else 0
+
     @property
     def is_signaled_exit(self): return os.WIFSIGNALED(self.status) and os.WTERMSIG(self.status) == signal.SIGSEGV
 

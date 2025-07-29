@@ -1,18 +1,17 @@
 import os
 import platform
-import shutil
 import subprocess
 
 from enum import Enum
-from pathlib import Path
 from dataclasses import dataclass
 
 from internal.paths import ProblemDirectoryHelper
 from internal.runner import Process, wait_for_outputs
-from internal.utils import make_file_extension
 
 
 class EvaluationOutcome(Enum):
+    # The submission has run successfully.
+    RUN_SUCCESS = "run-success"
     # The submission has run successfully and is correct.
     ACCEPTED = "success"
     # The submission has run successfully and is partially correct.
@@ -56,7 +55,7 @@ class EvaluationResult:
     execution_time: float
     execution_wall_clock_time: float
     execution_memory: int
-    exit_status: int
+    exit_code: int
     exit_signal: int
     output_file: str
 
@@ -79,6 +78,7 @@ class MetaSolutionStep:
 
     def compile(self, compiler: str, files: list[str], flags: list[str]) -> tuple[str, int]:
 
+
         cxx_flags = os.getenv("CXXFLAGS", "").split()
         cxx_flags += flags
 
@@ -89,7 +89,7 @@ class MetaSolutionStep:
         cxx_flags += files + ["-o", self.executable_name]
 
         compilation = Process([compiler] + cxx_flags,
-                              preexec_fn=lambda: os.chdir(self.working_dir.sandbox),
+                              preexec_fn=lambda: os.chdir(self.working_dir.sandbox_solution),
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
                               time_limit=self.compile_time_limit,
@@ -100,8 +100,7 @@ class MetaSolutionStep:
 
 
     def prepare_sandbox(self):
-        self.working_dir.mkdir_sandbox()
-        self.working_dir.clear_sandbox()
+        self.working_dir.mkdir_sandbox_solution()
 
     def compile_solution(self) -> tuple[str, int]:
         pass
@@ -112,9 +111,6 @@ class MetaSolutionStep:
     def compile_manager(self) -> tuple[str, int]:
         pass
 
-    def compile_checker(self) -> tuple[str, int]:
-        pass
-
-    def run_solution_for_output(self, code_name: str, input_ext: str, output_ext: str) -> bool:
+    def run_solution_for_output(self, code_name: str, input_ext: str, output_ext: str) -> EvaluationResult:
         pass
 

@@ -36,3 +36,12 @@ def format_single_compile_string(stderr: str, returncode: int) -> str:
         return f"[{ANSI_YELLOW}WARN{ANSI_RESET}]\n"
     else:
         return f"[{ANSI_GREEN}OK{ANSI_RESET}]\n"
+
+def format_single_run_string(result: bool) -> str:
+    """
+    Formats the compilation output.
+    """
+    if result == False:
+        return f"[{ANSI_RED}FAIL{ANSI_RESET}]"
+    else:
+        return f"[{ANSI_GREEN}OK{ANSI_RESET}]  "
