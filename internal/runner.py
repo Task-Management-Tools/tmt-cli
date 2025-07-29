@@ -35,14 +35,16 @@ class Process(subprocess.Popen):
         super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
-        self.wall_time_limit: float = time_limit + 1
-        self.timer = Timer(self.wall_time_limit, self.safe_kill)
+        self.wall_time_limit: float = time_limit + 1000 # add one second on top of that
+
+        self.timer = Timer(self.wall_time_limit / 1000, self.safe_kill)
+        self.timer.start()
         self.status: int
         self.rusage: resource.struct_rusage
 
     def prepare(self):
         try:
-            cpu_time = int(math.ceil(self.time_limit / 1000))
+            cpu_time = int(math.ceil(self.time_limit / 1000)) + 1
             resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
             resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit, self.output_limit))
@@ -78,6 +80,7 @@ class Process(subprocess.Popen):
         if self.returncode is None:
             try:
                 self.kill()
+                # self.wait4()
             except ChildProcessError:
                 pass
 
@@ -90,7 +93,7 @@ class Process(subprocess.Popen):
                 self.rusage = rusage
                 self.returncode = os.waitstatus_to_exitcode(status)
                 self.poll_time = poll_time
-
+                self.timer.cancel()
         return self.returncode
 
     @property
@@ -98,9 +101,11 @@ class Process(subprocess.Popen):
 
     @property
     def cpu_time(self) -> float: return self.rusage.ru_utime + self.rusage.ru_stime
+    """This is in seconds."""
 
     @property
     def wall_clock_time(self) -> float: return self.poll_time - self.popen_time
+    """This is in seconds."""
 
     # This is RSS and not VSS (which is what we acutally want)
     # VSS is still restricted, but still required for TIOJ judge.
@@ -124,7 +129,15 @@ class Process(subprocess.Popen):
     def is_timedout(self): return self.poll_time - self.popen_time > self.time_limit
 
 
+def pre_wait_procs() -> None:
+
+    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
+
 def wait_procs(procs: list[Process]) -> None:
+    """
+    Wait until all processes either terminate or meet their deadlines.
+    This process muse be used with pre_wait_procs() to block child with too early terminations.
+    """
     # Block SIGCHLD so we can wait for it explicitly
     signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
     remaining = procs.copy()
@@ -141,11 +154,12 @@ def wait_procs(procs: list[Process]) -> None:
 
             remaining = still_alive
 
-    except (KeyboardInterrupt, InterruptedError):
+    except (KeyboardInterrupt, InterruptedError) as exception:
         # Force kill the children to prevent orphans
         # We should never recieve other singals other than SIGINT (and SIGKILL)
         for process in remaining:
-            process.kill()
+            process.safe_kill()
+        raise exception # this exception should be unhandled, since the user asked that
     finally:
         signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGCHLD})
 

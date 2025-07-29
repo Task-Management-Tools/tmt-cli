@@ -5,7 +5,7 @@ import pathlib
 from internal.utils import make_file_extension
 from internal.globals import context
 from internal.step_checker import CheckerStep
-from internal.runner import Process, wait_procs
+from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.step_solution import EvaluationOutcome, EvaluationResult
 
 
@@ -50,6 +50,8 @@ class ICPCCheckerStep(CheckerStep):
         # the output validator is invoked via
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
+
+        pre_wait_procs()
         checker_process = Process([checker, input_file, answer_file, feedback_dir] + arguments,
                                   stdin_redirect=evaluation_record.output_file,
                                   stdout=None,

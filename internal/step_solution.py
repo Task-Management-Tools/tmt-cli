@@ -2,6 +2,7 @@ import os
 import platform
 import subprocess
 
+from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass
 
@@ -61,26 +62,32 @@ class EvaluationResult:
 
 
 class MetaSolutionStep:
-    def __init__(self, *, executable_name: str, memory_limit: int):
-        # memory_limit is required because compilation requires setting stack size in MacOS
-
-        self.executable_name = executable_name
-        self.memory_limit = memory_limit
+    def __init__(self, *, submission_files: list[str], grader: str | None):
 
         self.prepare_interactor = False
         self.prepare_manager = False
         self.prepare_checker = False
 
-    def compile(self, compiler: str, files: list[str], flags: list[str]) -> tuple[str, int]:
+    def compile(self, compiler: str, files: list[str], flags: list[str],
+                stack_size: int, executable_name: str) -> tuple[str, int]:
+        """
+        Stack size is specified in MB.
+        Returns a string as the compilation standard error, and an int as the exit code.
+        The integer will be -1 if one of the files does not exist.
+        """
+        for file in files:
+            if not Path(file).exists():
+                return f"File {file} could not be found.", -1
+            
 
         cxx_flags = os.getenv("CXXFLAGS", "").split()
         cxx_flags += flags
 
         # On MacOS, this has to be set during compile time
         if platform.system() == "Darwin":
-            cxx_flags += f" -Wl,--stack,{self.memory_limit}"
+            cxx_flags += f" -Wl,--stack,{stack_size * 1024 * 1024}"
 
-        cxx_flags += files + ["-o", self.executable_name]
+        cxx_flags += files + ["-o", executable_name]
 
         compilation = Process([compiler] + cxx_flags,
                               preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
@@ -90,7 +97,8 @@ class MetaSolutionStep:
                               memory_limit=context.config.trusted_step_memory_limit)
 
         _, stderr = wait_for_outputs(compilation)
-        return stderr, compilation.status
+        print(_, stderr)
+        return stderr, compilation.status == 0
 
     def prepare_sandbox(self):
         context.path.mkdir_sandbox_solution()

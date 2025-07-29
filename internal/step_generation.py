@@ -5,7 +5,7 @@ from pathlib import Path
 
 from internal.globals import context
 from internal.step_meta_makefile import MetaMakefileCompileStep
-from internal.runner import Process, wait_procs
+from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.utils import make_file_extension
 
 
@@ -22,17 +22,15 @@ class GenerationStep(MetaMakefileCompileStep):
     def prepare_sandbox(self):
         context.path.mkdir_sandbox()
 
-    def run_generator(self, commands: list[list[str]], code_name: str,
-                      output_ext: str, extra_output_exts: list[str]) -> bool:
+    def run_generator(self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]) -> bool:
         """
         This function can raise FileNotFoundError (when generator file or expected files do not exist),
         TimeoutError (when the generator timed-out), and ChildProcessError (when the generator crashes).
         """
         # TODO: handle FileNotFoundError and print actual meaningful error in the console.
 
-        output_ext = make_file_extension(output_ext)
-        for i in range(len(extra_output_exts)):
-            extra_output_exts[i] = make_file_extension(extra_output_exts[i])
+        input_file = context.construct_input_filename(code_name)
+        input_extra_files = [context.construct_test_filename(code_name, ext) for ext in extra_output_exts]
 
         # preprocess
         for command in commands:
@@ -43,18 +41,17 @@ class GenerationStep(MetaMakefileCompileStep):
             else:
                 command[0] = context.path.replace_with_generator(command[0])
 
-        file_out_name = f"{code_name}.out"
-        file_extra_out_names = [f"{code_name}{ext}" for ext in extra_output_exts]
         file_err_names = []
 
-        sandbox_output_file = os.path.join(context.path.sandbox, file_out_name)
+        sandbox_output_file = os.path.join(context.path.sandbox, input_file)
         Path(sandbox_output_file).touch()
-        for file_extra_out_name in file_extra_out_names:
-            (Path(context.path.sandbox) / file_extra_out_name).touch()
+        for filename in input_extra_files:
+            (Path(context.path.sandbox) / filename).touch()
 
         generator_processes: list[Process] = []
         prev_proc = None
 
+        pre_wait_procs()
         # Launch each command, chaining stdin/stdout
         try:
             for i, command in enumerate(commands, 1):
@@ -102,12 +99,12 @@ class GenerationStep(MetaMakefileCompileStep):
 
         try:
             # Move tests
-            shutil.move(os.path.join(context.path.sandbox, file_out_name),
-                        os.path.join(context.path.testcases, f"{code_name}{output_ext}"))
+            shutil.move(os.path.join(context.path.sandbox, input_file),
+                        os.path.join(context.path.testcases, input_file))
             # Move extra files
-            for file_extra_out_name in file_extra_out_names:
-                shutil.move(os.path.join(context.path.sandbox, file_extra_out_name),
-                            os.path.join(context.path.testcases, file_extra_out_name))
+            for filename in input_extra_files:
+                shutil.move(os.path.join(context.path.sandbox, filename),
+                            os.path.join(context.path.testcases, filename))
             # Move logs
             for file_err_name in file_err_names:
                 shutil.move(os.path.join(context.path.sandbox, file_err_name),

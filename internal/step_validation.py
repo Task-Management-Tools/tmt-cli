@@ -5,7 +5,7 @@ from pathlib import Path
 from internal.globals import context
 from internal.utils import make_file_extension
 from internal.step_meta_makefile import MetaMakefileCompileStep
-from internal.runner import Process, wait_procs
+from internal.runner import Process, pre_wait_procs, wait_procs
 
 
 class ValidationStep(MetaMakefileCompileStep):
@@ -21,8 +21,7 @@ class ValidationStep(MetaMakefileCompileStep):
     def prepare_sandbox(self):
         context.path.mkdir_sandbox()
 
-    def run_validator(self, commands: list[list[str]], code_name: str,
-                      input_ext: str, extra_input_exts: list[str]) -> bool:
+    def run_validator(self, commands: list[list[str]], code_name: str, extra_input_exts: list[str]) -> bool:
         """
         commands should contain all validators all at once (without piping the input file).
         extra_input_ext specifies a list of input extensions, which are the extra files generated through the generator stage.
@@ -34,7 +33,7 @@ class ValidationStep(MetaMakefileCompileStep):
         """
         # TODO: handle FileNotFoundError and print actual meaningful error in the console.
 
-        input_ext = make_file_extension(input_ext)
+        input_name = context.construct_input_filename(code_name)
         for i in range(len(extra_input_exts)):
             extra_input_exts[i] = make_file_extension(extra_input_exts[i])
 
@@ -55,13 +54,17 @@ class ValidationStep(MetaMakefileCompileStep):
         try:
             for command in enumerate(commands):
                 # Copy input and extra inputs
-                for ext in [input_ext] + extra_input_exts:
-                    shutil.copy(os.path.join(context.path.testcases, code_name + ext),
-                                os.path.join(context.path.sandbox, code_name + ext))
+                shutil.copy(os.path.join(context.path.testcases, input_name),
+                            os.path.join(context.path.sandbox, input_name))
+                for ext in extra_input_exts:
+                    filename = context.construct_test_filename(code_name, ext)
+                    shutil.copy(os.path.join(context.path.testcases, filename),
+                                os.path.join(context.path.sandbox, filename))
 
+                pre_wait_procs()
                 validator = Process(command,
                                     preexec_fn=lambda: os.chdir(context.path.sandbox),
-                                    stdin_redirect=os.path.join(context.path.sandbox, code_name + input_ext),
+                                    stdin_redirect=os.path.join(context.path.sandbox, input_name),
                                     stdout_redirect=sandbox_output_file,
                                     stderr_redirect=sandbox_error_file,
                                     time_limit=self.time_limit,

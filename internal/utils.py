@@ -17,8 +17,8 @@ def format_make_compile_string(stdout: str, stderr: str, returncode: int) -> str
     if returncode != 0:
         return (f"[{ANSI_RED}FAIL{ANSI_RESET}]\n" + 
                 f"{ANSI_YELLOW}exit-code:{ANSI_RESET} {returncode}\n" +
-                f"{ANSI_YELLOW}standatd output:{ANSI_RESET}\n{stdout}\n" +
-                f"{ANSI_YELLOW}standatd error:{ANSI_RESET}\n{stderr}\n")
+                f"{ANSI_YELLOW}standard output:{ANSI_RESET}\n{stdout}\n" +
+                f"{ANSI_YELLOW}standard error:{ANSI_RESET}\n{stderr}\n")
     elif stderr.find("warning") > 0:
         return f"[{ANSI_YELLOW}WARN{ANSI_RESET}]\n"
     else:
@@ -31,7 +31,7 @@ def format_single_compile_string(stderr: str, returncode: int) -> str:
     if returncode != 0:
         return (f"[{ANSI_RED}FAIL{ANSI_RESET}]\n" + 
                 f"{ANSI_YELLOW}exit-code:{ANSI_RESET} {returncode}\n" +
-                f"{ANSI_YELLOW}standatd error:{ANSI_RESET}\n{stderr}\n")
+                f"{ANSI_YELLOW}standard error:{ANSI_RESET}\n{stderr}\n")
     elif stderr.find("warning") > 0:
         return f"[{ANSI_YELLOW}WARN{ANSI_RESET}]\n"
     else:

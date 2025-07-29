@@ -12,6 +12,7 @@ int main(int argc, char *argv[]) {
   int a = opt<int>(1);
   int b = opt<int>(2);
   printf("%d %d\n", a, b);
+  fprintf(stderr, "this is print generator");
 
   return 0;
 }

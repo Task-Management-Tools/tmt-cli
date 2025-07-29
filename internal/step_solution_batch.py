@@ -1,26 +1,27 @@
 import os
 import platform
-import resource
 import shutil
 import signal
 
 from pathlib import Path
 
 from internal.globals import context
-from internal.runner import Process, wait_procs
+from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.utils import make_file_extension
 from internal.step_solution import MetaSolutionStep, EvaluationOutcome, EvaluationResult
 
 # TODO: in this solution step, only one file can be submitted
 class BatchSolutionStep(MetaSolutionStep):
-    def __init__(self, submission_file: str, grader: str | None):
-        
-        super().__init__(executable_name=context.config.problem_name,
-                         memory_limit=context.config.memory_limit)
+    def __init__(self, submission_files: list[str], grader: str | None):
 
+        self.executable_name = context.config.problem_name
         self.time_limit = context.config.time_limit
+        self.memory_limit = context.config.memory_limit
         self.output_limit = context.config.output_limit
-        self.submission_file = submission_file
+    
+        if len(submission_files) != 1:
+            raise ValueError("Batch task only supports single file submission.")
+        self.submission_file = submission_files[0]
         self.grader = grader
 
         self.prepare_interactor = False
@@ -41,7 +42,7 @@ class BatchSolutionStep(MetaSolutionStep):
         # TODO: tell this to the users
         cxx = os.getenv("CXX", "g++")
 
-        return self.compile(cxx, files, compile_flags)
+        return self.compile(cxx, files, compile_flags, self.memory_limit, self.executable_name)
 
     def prepare_sandbox(self):
         context.path.mkdir_sandbox_solution()
@@ -74,6 +75,7 @@ class BatchSolutionStep(MetaSolutionStep):
         try:
             shutil.copy(testcase_input, sandbox_input_file)
 
+            pre_wait_procs()
             solution = Process(os.path.join(context.path.sandbox_solution, self.executable_name),
                                preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
                                stdin_redirect=sandbox_input_file,
@@ -113,9 +115,10 @@ class BatchSolutionStep(MetaSolutionStep):
             exit_signal=solution.exit_signal,
             output_file=sandbox_output_file if store_output is not None else None 
         )
-        if solution.cpu_time > self.time_limit:
+
+        if solution.cpu_time > self.time_limit / 1000:
             result.verdict = EvaluationOutcome.TIMEOUT
-        elif solution.is_timedout:
+        elif solution.wall_clock_time > self.time_limit / 1000:
             result.verdict = EvaluationOutcome.TIMEOUT_WALL
         elif solution.exit_signal == signal.SIGXFSZ:
             result.verdict = EvaluationOutcome.RUNERROR_SIGNAL

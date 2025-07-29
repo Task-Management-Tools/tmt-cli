@@ -1,6 +1,5 @@
 import argparse
 import pathlib
-import subprocess
 import yaml
 import os
 
@@ -13,12 +12,6 @@ from internal.step_solution import EvaluationOutcome
 from internal.step_solution_batch import BatchSolutionStep
 from internal.step_checker_icpc import ICPCCheckerStep
 
-
-def load_config():
-    # use PyYAML to parse the problem.yaml file
-    with open(context.path.tmt_config, 'r') as file:
-        problem_yaml = yaml.safe_load(file)
-    return problem_yaml
 
 def initialize_directory(root_dir: pathlib.Path):
     """Initialize the given directory for tmt tasks."""
@@ -37,13 +30,11 @@ def initialize_directory(root_dir: pathlib.Path):
 def cprint(*args, **kwargs):
     print(*args, **kwargs, end='', flush=True)
 
+
 def generate_testcases():
     """Generate test cases in the given directory."""
 
-    config = load_config()
-
     # Compile generators, validators and solutions
-
     generation_stage = GenerationStep()
     validation_stage = ValidationStep()
     # TODO: change type and model solution path accordin to setting
@@ -96,19 +87,17 @@ def generate_testcases():
                 cprint("gen ")
                 gen_result = generation_stage.run_generator(test.commands,
                                                             test.test_name,
-                                                            config['input_extension'],
                                                             list(testset.extra_file))
                 cprint(format_single_run_string(gen_result))
                 cprint("val ")
                 val_result = validation_stage.run_validator(validations[test.test_name],
                                                             test.test_name,
-                                                            config['input_extension'],
                                                             list(testset.extra_file))
                 cprint(format_single_run_string(val_result))
                 cprint("sol ")
                 sol_result = solution_stage.run_solution(test.test_name,
-                                                         os.path.join(context.path.testcases, 
-                                                                      test.test_name + make_file_extension(config['output_extension'])))
+                                                         os.path.join(context.path.testcases,
+                                                                      context.construct_output_filename(test.test_name)))
                 sol_result = sol_result.verdict == EvaluationOutcome.RUN_SUCCESS
                 cprint(format_single_run_string(sol_result))
                 cprint("\n")
@@ -116,19 +105,12 @@ def generate_testcases():
                 if gen_result and val_result and sol_result:
                     testcases_summary.write(f"{test.test_name}\n")
 
-    print(config)
-    print("Test cases generated successfully.")
-
 
 def invoke_solution(files: list[str]):
+    actual_files = [os.path.join(os.getcwd(), file) for file in files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        # TODO: change this according to the task configuration
-        if len(files) != 1:
-            raise ValueError("Please specify exactly 1 file.")
-
-        solution_step = BatchSolutionStep(submission_file=files[0],
-                                          grader=None)
+        solution_step = BatchSolutionStep(submission_files=actual_files, grader=None)
         checker_step = ICPCCheckerStep()
 
         cprint("Solution\tcompile ")
@@ -164,8 +146,6 @@ def invoke_solution(files: list[str]):
             cprint("\n")
 
 
-
-
 def main():
 
     parser = argparse.ArgumentParser(description="tmt - task management tools")
@@ -182,7 +162,7 @@ def main():
 
     if args.command == "init":
         initialize_directory(pathlib.Path.cwd())
-        return 
+        return
 
     init_tmt_root(str(pathlib.Path(__file__).parent.resolve()))
 

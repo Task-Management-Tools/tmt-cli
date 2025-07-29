@@ -8,7 +8,7 @@ import resource
 
 from pathlib import Path
 
-
+from internal.utils import make_file_extension
 class ProblemDirectoryHelper:
     """
     Helps everything with files and directories.
@@ -207,6 +207,15 @@ class TMTContext:
         self.config: TMTConfig = None
         """Stores configs parsed from the problem package. See the class for more information."""
 
+    def construct_test_filename(self, code_name, extension):
+        return code_name + make_file_extension(extension)
+
+    def construct_input_filename(self, code_name):
+        return self.construct_test_filename(code_name, self.config.input_extension)
+    
+    def construct_output_filename(self, code_name):
+        return self.construct_test_filename(code_name, self.config.output_extension)
+    
 context = TMTContext()
 
 
