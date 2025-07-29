@@ -22,7 +22,7 @@ class Process(subprocess.Popen):
         """
 
         self.time_limit: float = time_limit
-        self.memory_limit: int = memory_limit * 1024  # kbytes to bytes
+        self.memory_limit: int = memory_limit * 1024 * 1024  # mbytes to bytes
         self.output_limit: int = output_limit
 
         self.stdin_redirect = stdin_redirect

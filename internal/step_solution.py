@@ -5,7 +5,7 @@ import subprocess
 from enum import Enum
 from dataclasses import dataclass
 
-from internal.paths import ProblemDirectoryHelper
+from internal.globals import context
 from internal.runner import Process, wait_for_outputs
 
 
@@ -61,23 +61,17 @@ class EvaluationResult:
 
 
 class MetaSolutionStep:
-    def __init__(self, *, 
-                 executable_name: str, problem_dir: str, memory_limit: int,
-                 compile_time_limit: float = 10_000, compile_memory_limit: int = 4 * 1024 * 1024):
+    def __init__(self, *, executable_name: str, memory_limit: int):
         # memory_limit is required because compilation requires setting stack size in MacOS
 
         self.executable_name = executable_name
-        self.working_dir = ProblemDirectoryHelper(problem_dir)
         self.memory_limit = memory_limit
-        self.compile_time_limit = compile_time_limit
-        self.compile_memory_limit = compile_memory_limit
 
         self.prepare_interactor = False
         self.prepare_manager = False
         self.prepare_checker = False
 
     def compile(self, compiler: str, files: list[str], flags: list[str]) -> tuple[str, int]:
-
 
         cxx_flags = os.getenv("CXXFLAGS", "").split()
         cxx_flags += flags
@@ -89,18 +83,17 @@ class MetaSolutionStep:
         cxx_flags += files + ["-o", self.executable_name]
 
         compilation = Process([compiler] + cxx_flags,
-                              preexec_fn=lambda: os.chdir(self.working_dir.sandbox_solution),
+                              preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
-                              time_limit=self.compile_time_limit,
-                              memory_limit=self.compile_memory_limit)
+                              time_limit=context.config.trusted_step_time_limit,
+                              memory_limit=context.config.trusted_step_memory_limit)
 
         _, stderr = wait_for_outputs(compilation)
         return stderr, compilation.status
 
-
     def prepare_sandbox(self):
-        self.working_dir.mkdir_sandbox_solution()
+        context.path.mkdir_sandbox_solution()
 
     def compile_solution(self) -> tuple[str, int]:
         pass
@@ -111,6 +104,9 @@ class MetaSolutionStep:
     def compile_manager(self) -> tuple[str, int]:
         pass
 
-    def run_solution_for_output(self, code_name: str, input_ext: str, output_ext: str) -> EvaluationResult:
-        pass
-
+    def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
+        """
+        Runs solution for input file code_name. If store_output is not None, then move the solution to store_output.
+        Otherwise, keep the output in the sandbox and report the file in EvaluationResult.
+        """
+        raise NotImplementedError

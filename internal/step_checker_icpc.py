@@ -1,38 +1,37 @@
 import os
 import shutil
-import pathlib\
+import pathlib
 
 from internal.utils import make_file_extension
-from internal.paths import ProblemDirectoryHelper
+from internal.globals import context
 from internal.step_checker import CheckerStep
 from internal.runner import Process, wait_procs
 from internal.step_solution import EvaluationOutcome, EvaluationResult
 
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, problem_dir: str, makefile_path: str,
-                 time_limit: float = 10_000, memory_limit: int = 4 * 1024 * 1024):
-        super().__init__(problem_dir=problem_dir,
-                         makefile_path=makefile_path,
-                         time_limit=time_limit,
-                         memory_limit=memory_limit)
+    def __init__(self):
+
+        super().__init__(makefile_path=context.path.makefile_checker,
+                         time_limit=context.config.trusted_step_time_limit,
+                         memory_limit=context.config.trusted_step_memory_limit)
 
     def compile(self) -> tuple[str, str, bool]:
 
-        if self.working_dir.has_checker_directory():
-            compile_result = self.compile_with_make(self.working_dir.checker)
+        if context.path.has_checker_directory():
+            compile_result = self.compile_with_make(context.path.checker)
         else:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead, that is working_dir.sandbox_checker
-            checker_path = pathlib.Path(__file__).parent.resolve() / "checkers/icpc_default_validator.cc"
-            shutil.copy(checker_path, os.path.join(self.working_dir.sandbox_checker))
-            compile_result = self.compile_with_make(self.working_dir.sandbox_checker)
+            checker_path = pathlib.Path(context.path.script_dir) / "internal/checkers/icpc_default_validator.cc"
+            shutil.copy(checker_path, os.path.join(context.path.sandbox_checker))
+            compile_result = self.compile_with_make(context.path.sandbox_checker)
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
         return compile_result
 
     def prepare_sandbox(self):
-        self.working_dir.mkdir_sandbox_checker()
+        context.path.mkdir_sandbox_checker()
 
     def run_checker(self, arguments: list[str],
                     evaluation_record: EvaluationResult, input_file: str, answer_file: str) -> EvaluationResult:
@@ -43,11 +42,11 @@ class ICPCCheckerStep(CheckerStep):
 
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
-        feedback_dir = os.path.join(self.working_dir.sandbox_solution, "feedback_dir")
+        feedback_dir = os.path.join(context.path.sandbox_solution, "feedback_dir")
         if not os.path.isdir(feedback_dir):
             os.mkdir(feedback_dir)
 
-        checker = os.path.join(self.working_dir.sandbox_checker, "checker")
+        checker = os.path.join(context.path.sandbox_checker, "checker")
         # the output validator is invoked via
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.

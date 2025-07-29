@@ -6,23 +6,20 @@ import signal
 
 from pathlib import Path
 
+from internal.globals import context
 from internal.runner import Process, wait_procs
 from internal.utils import make_file_extension
 from internal.step_solution import MetaSolutionStep, EvaluationOutcome, EvaluationResult
 
 # TODO: in this solution step, only one file can be submitted
 class BatchSolutionStep(MetaSolutionStep):
-    def __init__(self, executable_name: str, problem_dir: str, submission_file: str,
-                 time_limit: float, memory_limit: int, output_limit: int,
-                 grader: str | None, compile_time_limit: float = 10_000, compile_memory_limit: float = 4 * 1024 * 1024):
-        super().__init__(executable_name=executable_name,
-                         problem_dir=problem_dir,
-                         memory_limit=memory_limit,
-                         compile_time_limit=compile_time_limit,
-                         compile_memory_limit=compile_memory_limit)
+    def __init__(self, submission_file: str, grader: str | None):
+        
+        super().__init__(executable_name=context.config.problem_name,
+                         memory_limit=context.config.memory_limit)
 
-        self.time_limit = time_limit
-        self.output_limit = (resource.RLIM_INFINITY if output_limit == 'unlimited' else output_limit)
+        self.time_limit = context.config.time_limit
+        self.output_limit = context.config.output_limit
         self.submission_file = submission_file
         self.grader = grader
 
@@ -31,9 +28,9 @@ class BatchSolutionStep(MetaSolutionStep):
         self.prepare_checker = False
 
     def compile_solution(self) -> tuple[str, int]:
-        files = [self.working_dir.replace_with_solution(self.submission_file)]
+        files = [self.submission_file]
         if self.grader:
-            files.append(self.working_dir.replace_with_grader(self.grader))
+            files.append(context.path.replace_with_grader(self.grader))
 
         # TODO: change this set to user specified
         if platform.system() == "Darwin":
@@ -47,17 +44,18 @@ class BatchSolutionStep(MetaSolutionStep):
         return self.compile(cxx, files, compile_flags)
 
     def prepare_sandbox(self):
-        self.working_dir.mkdir_sandbox_solution()
+        context.path.mkdir_sandbox_solution()
 
-    def run_solution(self, code_name: str, input_ext: str, output_ext: str, store_output: bool) -> EvaluationResult:
+
+    def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
         """
         This function only returns FileNotFoundError for execution error.
 
         If store_output is specified, then we will move the output out of the sandbox and store it to the testcases.
         Otherwise, we keep that file inside the sandbox, and we invoke checker to check the file.
         """
-        input_ext = make_file_extension(input_ext)
-        output_ext = make_file_extension(output_ext)
+        input_ext = make_file_extension(context.config.input_extension)
+        output_ext = make_file_extension(context.config.output_extension)
 
         file_in_name = f"{code_name}{input_ext}"
         file_out_name = f"{code_name}{output_ext}"
@@ -66,18 +64,18 @@ class BatchSolutionStep(MetaSolutionStep):
         else:  # We are invoking and testing the solution
             file_err_name = f"{code_name}.invoke.err"
 
-        testcase_input = os.path.join(self.working_dir.testcases, file_in_name)
-        sandbox_input_file = os.path.join(self.working_dir.sandbox_solution, file_in_name)
-        sandbox_output_file = os.path.join(self.working_dir.sandbox_solution, file_out_name)
-        sandbox_error_file = os.path.join(self.working_dir.sandbox_solution, file_err_name)
+        testcase_input = os.path.join(context.path.testcases, file_in_name)
+        sandbox_input_file = os.path.join(context.path.sandbox_solution, file_in_name)
+        sandbox_output_file = os.path.join(context.path.sandbox_solution, file_out_name)
+        sandbox_error_file = os.path.join(context.path.sandbox_solution, file_err_name)
         Path(sandbox_output_file).touch()
         Path(sandbox_error_file).touch()
 
         try:
             shutil.copy(testcase_input, sandbox_input_file)
 
-            solution = Process(os.path.join(self.working_dir.sandbox_solution, self.executable_name),
-                               preexec_fn=lambda: os.chdir(self.working_dir.sandbox_solution),
+            solution = Process(os.path.join(context.path.sandbox_solution, self.executable_name),
+                               preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
                                stdin_redirect=sandbox_input_file,
                                stdout_redirect=sandbox_output_file,
                                stderr_redirect=sandbox_error_file,
@@ -95,16 +93,16 @@ class BatchSolutionStep(MetaSolutionStep):
 
         finally:
             # We have to clean up the testcases anyways
-            self.working_dir.mkdir_testcases()
-            self.working_dir.mkdir_logs()
+            context.path.mkdir_testcases()
+            context.path.mkdir_logs()
 
             # Move output
             if store_output:
                 shutil.move(sandbox_output_file,
-                            os.path.join(self.working_dir.testcases, file_out_name))
+                            os.path.join(context.path.testcases, file_out_name))
             # Move logs
             shutil.move(sandbox_error_file,
-                        os.path.join(self.working_dir.logs, file_err_name))
+                        os.path.join(context.path.logs, file_err_name))
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
@@ -113,7 +111,7 @@ class BatchSolutionStep(MetaSolutionStep):
             execution_memory=solution.max_vss,
             exit_code=solution.exit_code,
             exit_signal=solution.exit_signal,
-            output_file=None if store_output else sandbox_output_file
+            output_file=sandbox_output_file if store_output is not None else None 
         )
         if solution.cpu_time > self.time_limit:
             result.verdict = EvaluationOutcome.TIMEOUT

@@ -4,15 +4,13 @@ import platform
 
 from pathlib import Path
 
-from internal.paths import ProblemDirectoryHelper
 from internal.runner import Process, wait_for_outputs
 
 
 MAKE = "make"
 
 class MetaMakefileCompileStep:
-    def __init__(self, problem_dir: str, makefile_path: str,
-                 time_limit: float = 10_000, memory_limit: int = 4 * 1024 * 1024):
+    def __init__(self, *, makefile_path: str, time_limit: float, memory_limit: int):
         """
         Parameters:
             problem_dir: Absolute path to the problem working directory.
@@ -20,7 +18,6 @@ class MetaMakefileCompileStep:
             time_limit: Validation stage time limit per task (miliseconds, default: 30s).
             memory_limit: Validation stage memory limit per task (kbytes, default: 4 GB).
         """
-        self.working_dir = ProblemDirectoryHelper(problem_dir)
         self.makefile_path = makefile_path
         self.time_limit = time_limit
         self.memory_limit = memory_limit
@@ -42,11 +39,10 @@ class MetaMakefileCompileStep:
                                   memory_limit=self.memory_limit,
                                   env={"CXXFLAGS": cxx_flags} | os.environ)
 
-        stdout, _ = wait_for_outputs(compile_process)
-        # We have to obtain stderr again from files since they are piped out.
+        stdout, stderr = wait_for_outputs(compile_process)
 
+        # We have to obtain stderr again from files if they are piped out.
         logs = sorted(Path(directory).glob('._*.compile.log'))
-        stderr = ""
         for log in logs:
             with log.open('r') as infile:
                 stderr += infile.read()
