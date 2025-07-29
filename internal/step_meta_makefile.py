@@ -5,9 +5,11 @@ import platform
 from pathlib import Path
 
 from internal.runner import Process, wait_for_outputs
+from internal.outcome import CompilationOutcome, CompilationResult
 
 
 MAKE = "make"
+
 
 class MetaMakefileCompileStep:
     def __init__(self, *, makefile_path: str, time_limit: float, memory_limit: int):
@@ -22,7 +24,7 @@ class MetaMakefileCompileStep:
         self.time_limit = time_limit
         self.memory_limit = memory_limit
 
-    def compile_with_make(self, directory) -> bool:
+    def compile_with_make(self, directory) -> CompilationOutcome:
         command = [MAKE, "-C", directory, "-f", self.makefile_path]
 
         cxx_flags = os.getenv("CXXFLAGS", "")
@@ -47,4 +49,9 @@ class MetaMakefileCompileStep:
             with log.open('r') as infile:
                 stderr += infile.read()
 
-        return stdout, stderr, compile_process.status
+        return CompilationResult(verdict=(CompilationOutcome.SUCCESS if compile_process.status == 0 else
+                                          CompilationOutcome.TIMEDOUT if compile_process.is_timedout else
+                                          CompilationOutcome.FAILED),
+                                 standard_output=stdout,
+                                 standard_error=stderr,
+                                 exit_status=compile_process.status)

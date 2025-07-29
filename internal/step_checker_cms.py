@@ -1,5 +1,5 @@
 from internal.step_checker import CheckerStep
-from internal.step_solution import EvaluationOutcome, EvaluationResult
+from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOutcome, CompilationResult
 
 
 class CMSCheckerStep(CheckerStep):
@@ -10,14 +10,14 @@ class CMSCheckerStep(CheckerStep):
                          time_limit=time_limit,
                          memory_limit=memory_limit)
 
-    def compile(self) -> tuple[str, str, bool]:
+    def compile(self) -> CompilationResult:
         
         if self.working_dir.has_checker_directory():
             compile_result = self.compile_with_make(self.working_dir.checker)
         else: 
             # In this case we have no checker directory, therefore, we will run the default checker
             # (the white diff) in sandbox/checker instead, therefore no compilation is required.
-            return "", "", True
+            return CompilationResult(CompilationOutcome.SUCCESS)
 
     def prepare_sandbox(self):
         self.working_dir.mkdir_sandbox()

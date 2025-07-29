@@ -6,7 +6,7 @@ from pathlib import Path
 from internal.globals import context
 from internal.step_meta_makefile import MetaMakefileCompileStep
 from internal.runner import Process, pre_wait_procs, wait_procs
-from internal.utils import make_file_extension
+from internal.outcome import CompilationResult
 
 
 class GenerationStep(MetaMakefileCompileStep):
@@ -16,7 +16,7 @@ class GenerationStep(MetaMakefileCompileStep):
                          time_limit=context.config.trusted_step_time_limit,
                          memory_limit=context.config.trusted_step_memory_limit)
 
-    def compile(self) -> tuple[str, str, bool]:
+    def compile(self) -> CompilationResult:
         return self.compile_with_make(context.path.generator)
 
     def prepare_sandbox(self):

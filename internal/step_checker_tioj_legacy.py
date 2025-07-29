@@ -1,5 +1,5 @@
 from internal.step_checker import CheckerStep
-from internal.step_solution import EvaluationOutcome, EvaluationResult
+from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
 
 class CMSCheckerStep(CheckerStep):
@@ -10,7 +10,7 @@ class CMSCheckerStep(CheckerStep):
                          time_limit=time_limit,
                          memory_limit=memory_limit)
 
-    def compile(self) -> tuple[str, str, bool]:
+    def compile(self) -> CompilationResult:
         
         if self.working_dir.has_checker_directory():
             compile_result = self.compile_with_make(self.working_dir.checker)

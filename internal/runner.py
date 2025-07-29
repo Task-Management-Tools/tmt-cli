@@ -35,7 +35,7 @@ class Process(subprocess.Popen):
         super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
-        self.wall_time_limit: float = time_limit + 1000 # add one second on top of that
+        self.wall_time_limit: float = time_limit + 1000  # add one second on top of that
 
         self.timer = Timer(self.wall_time_limit / 1000, self.safe_kill)
         self.timer.start()
@@ -126,12 +126,14 @@ class Process(subprocess.Popen):
     def is_signaled_exit(self): return os.WIFSIGNALED(self.status) and os.WTERMSIG(self.status) == signal.SIGSEGV
 
     @property
-    def is_timedout(self): return self.poll_time - self.popen_time > self.time_limit
+    def is_timedout(self): return (self.cpu_time > self.time_limit / 1000 or
+                                   self.wall_clock_time > self.time_limit / 1000)
 
 
 def pre_wait_procs() -> None:
 
     signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
+
 
 def wait_procs(procs: list[Process]) -> None:
     """
@@ -159,7 +161,7 @@ def wait_procs(procs: list[Process]) -> None:
         # We should never recieve other singals other than SIGINT (and SIGKILL)
         for process in remaining:
             process.safe_kill()
-        raise exception # this exception should be unhandled, since the user asked that
+        raise exception  # this exception should be unhandled, since the user asked that
     finally:
         signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGCHLD})
 

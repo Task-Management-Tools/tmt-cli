@@ -1,5 +1,6 @@
+from internal.globals import context
 from internal.step_meta_makefile import MetaMakefileCompileStep
-from internal.step_solution import EvaluationResult
+from internal.outcome import EvaluationResult, CompilationResult
 
 
 class CheckerStep(MetaMakefileCompileStep):
@@ -8,12 +9,12 @@ class CheckerStep(MetaMakefileCompileStep):
                          time_limit=time_limit,
                          memory_limit=memory_limit)
 
-    def compile(self) -> tuple[str, str, bool]:
-        pass
+    def compile(self) -> CompilationResult:
+        raise NotImplementedError
 
     def prepare_sandbox(self):
-        self.working_dir.mkdir_sandbox_checker()
+        context.path.mkdir_sandbox_checker()
 
     def run_checker(self, arguments: list[str],
                     evaluation_record: EvaluationResult, input_file: str, answer_file: str) -> EvaluationResult:
-        pass
+        raise NotImplementedError

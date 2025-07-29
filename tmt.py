@@ -1,14 +1,13 @@
 import argparse
 import pathlib
-import yaml
 import os
 
 from internal.recipe_parser import parse_contest_data
-from internal.utils import format_make_compile_string, format_single_compile_string, format_single_run_string, make_file_extension
+from internal.utils import print_compile_string_with_exit, format_single_run_string, make_file_extension
 from internal.globals import init_tmt_root, context
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
-from internal.step_solution import EvaluationOutcome
+from internal.outcome import EvaluationOutcome
 from internal.step_solution_batch import BatchSolutionStep
 from internal.step_checker_icpc import ICPCCheckerStep
 
@@ -35,32 +34,25 @@ def generate_testcases():
     """Generate test cases in the given directory."""
 
     # Compile generators, validators and solutions
-    generation_stage = GenerationStep()
-    validation_stage = ValidationStep()
+    generation_step = GenerationStep()
+    validation_step = ValidationStep()
     # TODO: change type and model solution path accordin to setting
-    solution_stage = BatchSolutionStep(submission_file=context.path.replace_with_solution("sol.cpp"),
+    solution_step = BatchSolutionStep(submission_files=[context.path.replace_with_solution("sol.cpp")],
                                        grader=None)
 
-    cprint("Generator\tcompile ")
-    generation_stage.prepare_sandbox()
-    compile_out, compile_err, compile_exitcode = generation_stage.compile()
-    cprint(format_make_compile_string(compile_out, compile_err, compile_exitcode))
-    if compile_exitcode != 0:
-        exit(compile_exitcode)
+    cprint("Generator  compile ")
+    generation_step.prepare_sandbox()
+    print_compile_string_with_exit(generation_step.compile())
 
-    cprint("Validator\tcompile ")
-    validation_stage.prepare_sandbox()
-    compile_out, compile_err, compile_exitcode = validation_stage.compile()
-    cprint(format_make_compile_string(compile_out, compile_err, compile_exitcode))
-    if compile_exitcode != 0:
-        exit(compile_exitcode)
+    cprint("Validator  compile ")
+    validation_step.prepare_sandbox()
+    print_compile_string_with_exit(validation_step.compile())
 
-    cprint("Solution\tcompile ")
-    solution_stage.prepare_sandbox()
-    compile_err, compile_exitcode = solution_stage.compile_solution()
-    cprint(format_single_compile_string(compile_err, compile_exitcode))
-    if compile_exitcode != 0:
-        exit(compile_exitcode)
+    cprint("Solution   compile ")
+    solution_step.prepare_sandbox()
+    # TODO: this should also compile interactor or manager, if present
+    print_compile_string_with_exit(solution_step.compile_solution())
+
 
     recipe = parse_contest_data(open(context.path.recipe).readlines())
 
@@ -85,17 +77,17 @@ def generate_testcases():
             for test in testset.tests:
                 cprint(f"\t{test.test_name}\t")
                 cprint("gen ")
-                gen_result = generation_stage.run_generator(test.commands,
+                gen_result = generation_step.run_generator(test.commands,
                                                             test.test_name,
                                                             list(testset.extra_file))
                 cprint(format_single_run_string(gen_result))
                 cprint("val ")
-                val_result = validation_stage.run_validator(validations[test.test_name],
+                val_result = validation_step.run_validator(validations[test.test_name],
                                                             test.test_name,
                                                             list(testset.extra_file))
                 cprint(format_single_run_string(val_result))
                 cprint("sol ")
-                sol_result = solution_stage.run_solution(test.test_name,
+                sol_result = solution_step.run_solution(test.test_name,
                                                          os.path.join(context.path.testcases,
                                                                       context.construct_output_filename(test.test_name)))
                 sol_result = sol_result.verdict == EvaluationOutcome.RUN_SUCCESS
@@ -113,19 +105,14 @@ def invoke_solution(files: list[str]):
         solution_step = BatchSolutionStep(submission_files=actual_files, grader=None)
         checker_step = ICPCCheckerStep()
 
-        cprint("Solution\tcompile ")
+        cprint("Solution   compile ")
         solution_step.prepare_sandbox()
-        compile_err, compile_exitcode = solution_step.compile_solution()
-        cprint(format_single_compile_string(compile_err, compile_exitcode))
-        if compile_exitcode != 0:
-            exit(compile_exitcode)
+        print_compile_string_with_exit(solution_step.compile_solution())
 
-        cprint("Checker\tcompile ")
+        cprint("Checker    compile ")
         checker_step.prepare_sandbox()
-        compile_out, compile_err, compile_exitcode = checker_step.compile()
-        cprint(format_make_compile_string(compile_out, compile_err, compile_exitcode))
-        if compile_exitcode != 0:
-            exit(compile_exitcode)
+        # TODO: this should also compile interactor or manager, if present
+        print_compile_string_with_exit(checker_step.compile())
 
     with open(context.path.testcases_summary, "rt") as testcases_summary:
         for test_name in testcases_summary.readlines():

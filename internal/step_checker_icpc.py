@@ -2,11 +2,10 @@ import os
 import shutil
 import pathlib
 
-from internal.utils import make_file_extension
 from internal.globals import context
 from internal.step_checker import CheckerStep
 from internal.runner import Process, pre_wait_procs, wait_procs
-from internal.step_solution import EvaluationOutcome, EvaluationResult
+from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOutcome, CompilationResult
 
 
 class ICPCCheckerStep(CheckerStep):
@@ -16,7 +15,7 @@ class ICPCCheckerStep(CheckerStep):
                          time_limit=context.config.trusted_step_time_limit,
                          memory_limit=context.config.trusted_step_memory_limit)
 
-    def compile(self) -> tuple[str, str, bool]:
+    def compile(self) -> CompilationResult:
 
         if context.path.has_checker_directory():
             compile_result = self.compile_with_make(context.path.checker)

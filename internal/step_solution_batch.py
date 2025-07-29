@@ -8,7 +8,8 @@ from pathlib import Path
 from internal.globals import context
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.utils import make_file_extension
-from internal.step_solution import MetaSolutionStep, EvaluationOutcome, EvaluationResult
+from internal.step_solution import MetaSolutionStep
+from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
 # TODO: in this solution step, only one file can be submitted
 class BatchSolutionStep(MetaSolutionStep):
@@ -28,7 +29,7 @@ class BatchSolutionStep(MetaSolutionStep):
         self.prepare_manager = False
         self.prepare_checker = False
 
-    def compile_solution(self) -> tuple[str, int]:
+    def compile_solution(self) -> CompilationResult:
         files = [self.submission_file]
         if self.grader:
             files.append(context.path.replace_with_grader(self.grader))

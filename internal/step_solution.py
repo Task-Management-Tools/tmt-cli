@@ -3,62 +3,10 @@ import platform
 import subprocess
 
 from pathlib import Path
-from enum import Enum
-from dataclasses import dataclass
 
 from internal.globals import context
 from internal.runner import Process, wait_for_outputs
-
-
-class EvaluationOutcome(Enum):
-    # The submission has run successfully.
-    RUN_SUCCESS = "run-success"
-    # The submission has run successfully and is correct.
-    ACCEPTED = "success"
-    # The submission has run successfully and is partially correct.
-    PARTIAL = "partial"
-    # The submission has run successfully but is not correct (typical sense of WA).
-    WRONG = "wrong"
-    # CMS no-output: not producing the required file
-    NO_FILE = "no-file"
-    # DOMJudge no-output (incorrect and not producing output)
-    NO_OUTPUT = "no-output"
-    # classic TLE
-    TIMEOUT = "timeout"
-    # This is wall-clock exceeded TLE; DOMJudge, CMS, and Codeforces all supports this result.
-    TIMEOUT_WALL = "wall-clock-timeout"
-    # Output limit exceeded. Since DOMJudge actually detects output limit by truncating the stream
-    # instead of TIOJ-style signal detection, we will need separate verdicts.
-    OUTPUT_LIMIT = "output-limit"
-    # Runtime error caused by signal SIGXFSZ. TIOJ treat this as OLE.
-    RUNERROR_OUTPUT = "run-error-output-exceed"
-    # Runtime error caused by signal (FPE, SEGV, etc.) except SIGXFSZ.
-    RUNERROR_SIGNAL = "runtime-error-signal"
-    # Runtime error caused by non-zero exitcode.
-    RUNERROR_EXITCODE = "runtime-error-exitcode"
-    # Manager/Interactor crashed.
-    MANAGER_CRASHED = "manager-crashed"
-    # Manager/Interactor timed out.
-    MANAGER_TIMEOUT = "manager-timeout"
-    # Checker crashed.
-    CHECKER_CRASHED = "checker-crashed"
-    # Checker failed.
-    CHECKER_FAILED = "checker-crashed"
-    # Checker timed-out.
-    CHECKER_TIMEDOUT = "checker-timeout"
-    # Internal error.
-    INTERNAL_ERROR = "internal-error"
-
-
-@dataclass
-class EvaluationResult:
-    verdict: EvaluationOutcome
-    execution_time: float
-    execution_wall_clock_time: float
-    execution_memory: int
-    exit_code: int
-    exit_signal: int
-    output_file: str
+from internal.outcome import EvaluationResult, CompilationResult, CompilationOutcome
 
 
 class MetaSolutionStep:
@@ -69,7 +17,7 @@ class MetaSolutionStep:
         self.prepare_checker = False
 
     def compile(self, compiler: str, files: list[str], flags: list[str],
-                stack_size: int, executable_name: str) -> tuple[str, int]:
+                stack_size: int, executable_name: str) -> CompilationResult:
         """
         Stack size is specified in MB.
         Returns a string as the compilation standard error, and an int as the exit code.
@@ -77,8 +25,9 @@ class MetaSolutionStep:
         """
         for file in files:
             if not Path(file).exists():
-                return f"File {file} could not be found.", -1
-            
+                return CompilationResult(verdict=CompilationOutcome.FAILED,
+                                         standard_error=f"File {file} could not be found.",
+                                         exit_status=-1)
 
         cxx_flags = os.getenv("CXXFLAGS", "").split()
         cxx_flags += flags
@@ -96,20 +45,24 @@ class MetaSolutionStep:
                               time_limit=context.config.trusted_step_time_limit,
                               memory_limit=context.config.trusted_step_memory_limit)
 
-        _, stderr = wait_for_outputs(compilation)
-        print(_, stderr)
-        return stderr, compilation.status == 0
+        stdout, stderr = wait_for_outputs(compilation)
+        return CompilationResult(verdict=(CompilationOutcome.SUCCESS if compilation.status == 0 else
+                                          CompilationOutcome.TIMEDOUT if compilation.is_timedout else
+                                          CompilationOutcome.FAILED),
+                                 standard_output=stdout,
+                                 standard_error=stderr,
+                                 exit_status=compilation.status)
 
     def prepare_sandbox(self):
         context.path.mkdir_sandbox_solution()
 
-    def compile_solution(self) -> tuple[str, int]:
+    def compile_solution(self) -> CompilationResult:
         pass
 
-    def compile_interactor(self) -> tuple[str, int]:
+    def compile_interactor(self) -> CompilationResult:
         pass
 
-    def compile_manager(self) -> tuple[str, int]:
+    def compile_manager(self) -> CompilationResult:
         pass
 
     def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
