@@ -37,6 +37,7 @@ class ICPCCheckerStep(CheckerStep):
 
         # In ICPC mode we do not need to check anything
         if evaluation_record.verdict is not EvaluationOutcome.RUN_SUCCESS:
+            evaluation_record.checker_run = False
             return evaluation_record
 
         # We must create a directory for judge feedbacks
@@ -79,5 +80,6 @@ class ICPCCheckerStep(CheckerStep):
             if os.path.getsize(evaluation_record.output_file) == 0:
                 evaluation_record.verdict = EvaluationOutcome.NO_OUTPUT
 
+        evaluation_record.checker_run = True
         return evaluation_record
         # Do remember to take 42 exit code as sucess and any other as fail (incorrect).

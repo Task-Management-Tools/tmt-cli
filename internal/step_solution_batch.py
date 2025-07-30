@@ -11,15 +11,18 @@ from internal.utils import make_file_extension
 from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
-# TODO: in this solution step, only one file can be submitted
+
+
 class BatchSolutionStep(MetaSolutionStep):
-    def __init__(self, submission_files: list[str], grader: str | None):
+    def __init__(self, *,
+                 time_limit: float, memory_limit: int, output_limit: int,
+                 submission_files: list[str], grader: str | None):
 
         self.executable_name = context.config.problem_name
-        self.time_limit = context.config.time_limit
-        self.memory_limit = context.config.memory_limit
-        self.output_limit = context.config.output_limit
-    
+        self.time_limit = time_limit
+        self.memory_limit = memory_limit
+        self.output_limit = output_limit
+
         if len(submission_files) != 1:
             raise ValueError("Batch task only supports single file submission.")
         self.submission_file = submission_files[0]
@@ -47,7 +50,6 @@ class BatchSolutionStep(MetaSolutionStep):
 
     def prepare_sandbox(self):
         context.path.mkdir_sandbox_solution()
-
 
     def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
         """
@@ -114,16 +116,16 @@ class BatchSolutionStep(MetaSolutionStep):
             execution_memory=solution.max_vss,
             exit_code=solution.exit_code,
             exit_signal=solution.exit_signal,
-            output_file=sandbox_output_file if store_output is not None else None 
+            output_file=sandbox_output_file if store_output is not None else None
         )
 
-        if solution.cpu_time > self.time_limit / 1000:
+        if solution.cpu_time > self.time_limit:
             result.verdict = EvaluationOutcome.TIMEOUT
-        elif solution.wall_clock_time > self.time_limit / 1000:
+        elif solution.wall_clock_time > self.time_limit:
             result.verdict = EvaluationOutcome.TIMEOUT_WALL
         elif solution.exit_signal == signal.SIGXFSZ:
             result.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-        elif solution.exit_signal == signal.SIGXCPU: # this can happen
+        elif solution.exit_signal == signal.SIGXCPU:  # this can happen
             result.verdict = EvaluationOutcome.TIMEOUT
         elif solution.exit_signal != 0:
             result.verdict = EvaluationOutcome.RUNERROR_SIGNAL

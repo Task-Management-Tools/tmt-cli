@@ -10,7 +10,14 @@ from internal.outcome import EvaluationResult, CompilationResult, CompilationOut
 
 
 class MetaSolutionStep:
-    def __init__(self, *, submission_files: list[str], grader: str | None):
+    def __init__(self, *,
+                 time_limit: float, memory_limit: int, output_limit: int, 
+                 submission_files: list[str], grader: str | None):
+        # The reason of why the limit must be passed is because in testcase generation, 
+        # the actual "solution" run might not be the expected solution in contest: they could be 
+        # slower or more precise solution to generate, for example, exact solution or a more close approximation.
+        # This can occur in floating point problems, randomized problems (where the model solution might be slower
+        # because of derandomization), and approximation problems.
 
         self.prepare_interactor = False
         self.prepare_manager = False

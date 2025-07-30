@@ -116,6 +116,22 @@ class ProblemDirectoryHelper:
             elif item.is_dir():
                 shutil.rmtree(item)
 
+    def mkdir_clean_testcases(self):
+        self.mkdir_testcases()
+        for item in Path(self.testcases).iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+
+    def mkdir_clean_logs(self):
+        self.mkdir_logs()
+        for item in Path(self.logs).iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+
     def _is_regular_file(self, path: str):
         if not os.path.exists(path):
             return False
@@ -188,7 +204,7 @@ class ProblemDirectoryHelper:
 class TMTConfig:
     def __init__(self, yaml: dict):
         self.problem_name = yaml["id"]
-        self.time_limit = yaml["time_limit"]
+        self.time_limit = yaml["time_limit"] / 1000.0
         self.memory_limit = yaml["memory_limit"]
         self.output_limit = yaml["output_limit"]
         if self.output_limit == "unlimited":
@@ -196,8 +212,9 @@ class TMTConfig:
         self.input_extension = yaml["input_extension"]
         self.output_extension = yaml["output_extension"]
 
-        self.trusted_step_time_limit = 10_000
+        self.trusted_step_time_limit = 10.0 # second
         self.trusted_step_memory_limit = 4 * 1024 # MB
+        self.trusted_step_output_limit = resource.RLIM_INFINITY
 
 
 class TMTContext:

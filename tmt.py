@@ -3,11 +3,11 @@ import pathlib
 import os
 
 from internal.recipe_parser import parse_contest_data
-from internal.utils import print_compile_string_with_exit, format_single_run_string, make_file_extension
+from internal.utils import print_compile_string_with_exit, format_exec_result, format_checker_result, is_apport_active
 from internal.globals import init_tmt_root, context
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
-from internal.outcome import EvaluationOutcome
+from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
 from internal.step_solution_batch import BatchSolutionStep
 from internal.step_checker_icpc import ICPCCheckerStep
 
@@ -37,8 +37,11 @@ def generate_testcases():
     generation_step = GenerationStep()
     validation_step = ValidationStep()
     # TODO: change type and model solution path accordin to setting
-    solution_step = BatchSolutionStep(submission_files=[context.path.replace_with_solution("sol.cpp")],
-                                       grader=None)
+    solution_step = BatchSolutionStep(time_limit=context.config.trusted_step_time_limit,
+                                      memory_limit=context.config.trusted_step_memory_limit,
+                                      output_limit=context.config.trusted_step_output_limit,
+                                      submission_files=[context.path.replace_with_solution("sol.cpp")],
+                                      grader=None)
 
     cprint("Generator  compile ")
     generation_step.prepare_sandbox()
@@ -52,7 +55,6 @@ def generate_testcases():
     solution_step.prepare_sandbox()
     # TODO: this should also compile interactor or manager, if present
     print_compile_string_with_exit(solution_step.compile_solution())
-
 
     recipe = parse_contest_data(open(context.path.recipe).readlines())
 
@@ -69,40 +71,72 @@ def generate_testcases():
                                 raise ValueError("Validator with pipe is not supported")
                             validations[tests.test_name].append(validator.commands[0])
 
-    context.path.mkdir_testcases()
+    # TODO: in case of update testcases, these should be mkdir instead of mkdir_clean.
+    context.path.mkdir_clean_testcases()
+    context.path.mkdir_clean_logs()
     pathlib.Path(context.path.testcases_summary).touch()
+
+    codename_length = max(map(len, validations.keys())) + 2
 
     with open(context.path.testcases_summary, "wt") as testcases_summary:
         for testset in recipe.testsets.values():
             for test in testset.tests:
-                cprint(f"\t{test.test_name}\t")
-                cprint("gen ")
-                gen_result = generation_step.run_generator(test.commands,
-                                                            test.test_name,
-                                                            list(testset.extra_file))
-                cprint(format_single_run_string(gen_result))
-                cprint("val ")
-                val_result = validation_step.run_validator(validations[test.test_name],
-                                                            test.test_name,
-                                                            list(testset.extra_file))
-                cprint(format_single_run_string(val_result))
-                cprint("sol ")
-                sol_result = solution_step.run_solution(test.test_name,
-                                                         os.path.join(context.path.testcases,
-                                                                      context.construct_output_filename(test.test_name)))
-                sol_result = sol_result.verdict == EvaluationOutcome.RUN_SUCCESS
-                cprint(format_single_run_string(sol_result))
-                cprint("\n")
+                code_name = test.test_name
 
-                if gen_result and val_result and sol_result:
-                    testcases_summary.write(f"{test.test_name}\n")
+                cprint(' ' * 4 + code_name.ljust(codename_length))
+
+                # Run generator
+                cprint("gen ")
+                generator_result = generation_step.run_generator(test.commands,
+                                                                 code_name,
+                                                                 list(testset.extra_file))
+                cprint(format_exec_result(generator_result))
+                generator_internal_log = os.path.join(context.path.logs, f"{code_name}.gen.log")
+                with open(generator_internal_log, "w+") as f:
+                    f.write(generator_result.reason)
+
+                # Run validator
+                cprint("val ")
+                if generator_result.verdict is not ExecutionOutcome.SUCCESS:
+                    validation_result = ExecutionResult(verdict=ExecutionOutcome.SKIPPED)
+                else:
+                    validation_result = validation_step.run_validator(validations[code_name],
+                                                                      code_name,
+                                                                      list(testset.extra_file))
+                cprint(format_exec_result(validation_result))
+                validator_internal_log = os.path.join(context.path.logs, f"{code_name}.val.log")
+                with open(validator_internal_log, "w+") as f:
+                    f.write(validation_result.reason)
+
+                # Run solution
+                cprint("sol ")
+                if validation_result.verdict is not ExecutionOutcome.SUCCESS:
+                    solution_result = ExecutionResult(verdict=ExecutionOutcome.SKIPPED)
+                else:
+                    solution_result = solution_step.run_solution(code_name,
+                                                                 os.path.join(context.path.testcases,
+                                                                              context.construct_output_filename(code_name)))
+                    solution_result = eval_result_to_exec_result(solution_result)
+                cprint(format_exec_result(solution_result))
+                cprint("\n")
+                solution_internal_log = os.path.join(context.path.logs, f"{code_name}.sol.log")
+                with open(solution_internal_log, "w+") as f:
+                    f.write(solution_result.reason)
+
+                # TODO: this should print more meaningful contents, right now it is only the testcases
+                if generator_result and validation_result and solution_result:
+                    testcases_summary.write(f"{code_name}\n")
 
 
 def invoke_solution(files: list[str]):
+
     actual_files = [os.path.join(os.getcwd(), file) for file in files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step = BatchSolutionStep(submission_files=actual_files, grader=None)
+        solution_step = BatchSolutionStep(time_limit=context.config.time_limit,
+                                          memory_limit=context.config.memory_limit,
+                                          output_limit=context.config.output_limit,
+                                          submission_files=actual_files, grader=None)
         checker_step = ICPCCheckerStep()
 
         cprint("Solution   compile ")
@@ -114,23 +148,34 @@ def invoke_solution(files: list[str]):
         # TODO: this should also compile interactor or manager, if present
         print_compile_string_with_exit(checker_step.compile())
 
+    recipe = parse_contest_data(open(context.path.recipe).readlines())
+    all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
     with open(context.path.testcases_summary, "rt") as testcases_summary:
-        for test_name in testcases_summary.readlines():
-            test_name = test_name.strip()
+        available_testcases = [line.strip() for line in testcases_summary.readlines()]
+    unavailable_testcases = [testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
 
-            cprint(f"\t{test_name}\t")
-            cprint("sol ")
-            sol_result = solution_step.run_solution(test_name, False)
-            cprint(format_single_run_string(sol_result.verdict == EvaluationOutcome.RUN_SUCCESS))
-            cprint("check ")
-            # TODO: find actual argument to pass to checker
-            testcase_input = os.path.join(context.path.testcases, test_name + make_file_extension(context.config.input_extension))
-            testcase_answer = os.path.join(context.path.testcases, test_name + make_file_extension(context.config.output_extension))
-            check_result = checker_step.run_checker([], sol_result, testcase_input, testcase_answer)
-            # TODO: this following check is incorrect
-            cprint(format_single_run_string(check_result != EvaluationOutcome.CHECKER_CRASHED))
-            cprint(check_result.verdict)
-            cprint("\n")
+    from internal.utils import ANSI_YELLOW, ANSI_RESET
+    if len(unavailable_testcases):
+        cprint(f"{ANSI_YELLOW}Warning: testcases {', '.join(unavailable_testcases)} were not available.{ANSI_RESET}\n")
+    if is_apport_active():
+        cprint(f"{ANSI_YELLOW}Warning: apport is active. Runtime error caused by signal might be treated as wall-clock limit exceeded due to apport crash collector delay.{ANSI_RESET}\n")
+
+    codename_length = max(map(len, available_testcases)) + 2
+
+    for testcases in available_testcases:
+        cprint(' ' * 4 + testcases.ljust(codename_length))
+        cprint("sol ")
+        sol_result = solution_step.run_solution(testcases, False)
+        cprint(format_exec_result(eval_result_to_exec_result(sol_result)))
+        cprint(f" {sol_result.execution_time:.3f}  ")
+        cprint("check ")
+        # TODO: find actual argument to pass to checker
+        testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcases))
+        testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcases))
+        check_result = checker_step.run_checker([], sol_result, testcase_input, testcase_answer)
+        # TODO: this following check is incorrect, see the actual function body for more information
+        cprint(format_checker_result(check_result))
+        cprint("\n")
 
 
 def main():

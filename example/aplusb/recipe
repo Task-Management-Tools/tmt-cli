@@ -2,18 +2,12 @@
 print 30 11 | swap
 print 30 22 | swap 
 print 47 24
-print 2147483647 1 
-print 2147483647 2147483647
+print 100000000 1 
+print 100000000 100000000
 
 manual 1.in
-
-@testset with-proof
-@extra_file PROOF .proof
-print-with-proof 12 23 ${PROOF}
 
 @subtask full 100
 @description No additional constraints
 @validation validator 
 @include handmade
-@include with-proof
-# return-1

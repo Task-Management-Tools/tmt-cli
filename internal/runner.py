@@ -35,16 +35,16 @@ class Process(subprocess.Popen):
         super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
-        self.wall_time_limit: float = time_limit + 1000  # add one second on top of that
+        self.wall_time_limit: float = time_limit + 1.0  # add one second on top of that
 
-        self.timer = Timer(self.wall_time_limit / 1000, self.safe_kill)
+        self.timer = Timer(self.wall_time_limit, self.safe_kill)
         self.timer.start()
         self.status: int
         self.rusage: resource.struct_rusage
 
     def prepare(self):
         try:
-            cpu_time = int(math.ceil(self.time_limit / 1000)) + 1
+            cpu_time = int(math.ceil(self.time_limit)) + 1
             resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
             resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit, self.output_limit))
@@ -52,6 +52,10 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
             # Stack size same as address space
             resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
+            # We disable core-dump here: this will cause runtime error to take significantly more time, 
+            # and therefore incorrectly treated as wall clock limit exceed. The core dump feature is not
+            # really used anywhere in CP context so it should have no side-effects.
+            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
             if self.stdin_redirect is not None:
                 stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_CREAT)
@@ -126,8 +130,8 @@ class Process(subprocess.Popen):
     def is_signaled_exit(self): return os.WIFSIGNALED(self.status) and os.WTERMSIG(self.status) == signal.SIGSEGV
 
     @property
-    def is_timedout(self): return (self.cpu_time > self.time_limit / 1000 or
-                                   self.wall_clock_time > self.time_limit / 1000)
+    def is_timedout(self): return (self.cpu_time > self.time_limit or
+                                   self.wall_clock_time > self.time_limit)
 
 
 def pre_wait_procs() -> None:

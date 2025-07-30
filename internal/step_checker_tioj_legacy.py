@@ -4,7 +4,7 @@ from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationRes
 
 class CMSCheckerStep(CheckerStep):
     def __init__(self, problem_dir: str, makefile_path: str,
-                 time_limit: float = 10_000, memory_limit: int = 4 * 1024 * 1024):
+                 time_limit: float, memory_limit: int):
         super().__init__(problem_dir=problem_dir,
                          makefile_path=makefile_path,
                          time_limit=time_limit,
