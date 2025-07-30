@@ -58,11 +58,9 @@ class BatchSolutionStep(MetaSolutionStep):
         If store_output is specified, then we will move the output out of the sandbox and store it to the testcases.
         Otherwise, we keep that file inside the sandbox, and we invoke checker to check the file.
         """
-        input_ext = make_file_extension(context.config.input_extension)
-        output_ext = make_file_extension(context.config.output_extension)
 
-        file_in_name = f"{code_name}{input_ext}"
-        file_out_name = f"{code_name}{output_ext}"
+        file_in_name = context.construct_input_filename(code_name)
+        file_out_name = context.construct_output_filename(code_name)
         if store_output:  # We are working with official output
             file_err_name = f"{code_name}.sol.err"
         else:  # We are invoking and testing the solution
@@ -75,10 +73,14 @@ class BatchSolutionStep(MetaSolutionStep):
         Path(sandbox_output_file).touch()
         Path(sandbox_error_file).touch()
 
+        no_output_file = False
+
         try:
             shutil.copy(testcase_input, sandbox_input_file)
 
             pre_wait_procs()
+            # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
+            # currently, for convenience, it is from file but we should support both modes.
             solution = Process(os.path.join(context.path.sandbox_solution, self.executable_name),
                                preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
                                stdin_redirect=sandbox_input_file,
@@ -87,27 +89,30 @@ class BatchSolutionStep(MetaSolutionStep):
                                time_limit=self.time_limit,
                                memory_limit=self.memory_limit,
                                output_limit=self.output_limit)
-
             wait_procs([solution])
 
-            os.unlink(sandbox_input_file)
+            if Path(sandbox_input_file).exists():
+                os.unlink(sandbox_input_file)
 
-        except FileNotFoundError as exception:
-            # We can simply raise, since there will be no processes left
-            raise exception
-
-        finally:
-            # We have to clean up the testcases anyways
+            # Prepare directories (normally the testcases should exist, just in case)
             context.path.mkdir_testcases()
             context.path.mkdir_logs()
 
+            # Move logs
+            Path(sandbox_error_file).touch()
+            shutil.move(sandbox_error_file, os.path.join(context.path.logs, file_err_name))
+
             # Move output
             if store_output:
-                shutil.move(sandbox_output_file,
-                            os.path.join(context.path.testcases, file_out_name))
-            # Move logs
-            shutil.move(sandbox_error_file,
-                        os.path.join(context.path.logs, file_err_name))
+                if Path(sandbox_output_file).exists():
+                    shutil.move(sandbox_output_file, os.path.join(context.path.testcases, file_out_name))
+                else:
+                    no_output_file = True
+                    
+        except FileNotFoundError as exception:
+            # We can simply raise, since there will be no processes left
+            # This should be treated as internal error
+            raise exception
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
@@ -119,7 +124,9 @@ class BatchSolutionStep(MetaSolutionStep):
             output_file=sandbox_output_file if store_output is not None else None
         )
 
-        if solution.cpu_time > self.time_limit:
+        if no_output_file:
+            result.verdict = EvaluationOutcome.NO_FILE
+        elif solution.cpu_time > self.time_limit:
             result.verdict = EvaluationOutcome.TIMEOUT
         elif solution.wall_clock_time > self.time_limit:
             result.verdict = EvaluationOutcome.TIMEOUT_WALL

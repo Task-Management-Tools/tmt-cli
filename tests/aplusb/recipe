@@ -15,6 +15,7 @@ print-with-proof 12 23 ${PROOF}
 non-zero-exit
 signaled-exit
 time-limit
+remove-stdout
 
 
 @subtask full 100

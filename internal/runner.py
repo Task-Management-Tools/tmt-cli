@@ -130,8 +130,13 @@ class Process(subprocess.Popen):
     def is_signaled_exit(self): return os.WIFSIGNALED(self.status) and os.WTERMSIG(self.status) == signal.SIGSEGV
 
     @property
-    def is_timedout(self): return (self.cpu_time > self.time_limit or
-                                   self.wall_clock_time > self.time_limit)
+    def is_cpu_timedout(self): return self.cpu_time > self.time_limit
+    
+    @property
+    def is_wall_clock_timedout(self): return self.wall_clock_time > self.time_limit
+
+    @property
+    def is_timedout(self): return self.is_cpu_timedout or self.is_wall_clock_timedout
 
 
 def pre_wait_procs() -> None:

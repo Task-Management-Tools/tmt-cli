@@ -102,6 +102,7 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
     (For example, when generating answer files.)
     """
     allowed_outcome = [EvaluationOutcome.RUN_SUCCESS,
+                       EvaluationOutcome.NO_FILE,
                        EvaluationOutcome.TIMEOUT,
                        EvaluationOutcome.TIMEOUT_WALL,
                        EvaluationOutcome.RUNERROR_OUTPUT,
@@ -118,6 +119,7 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
         reason = ("Output limit reached" if eval_res.verdict is EvaluationOutcome.RUNERROR_OUTPUT else
                   f"Solution crashed with signal {eval_res.exit_signal}" if eval_res.verdict is EvaluationOutcome.RUNERROR_SIGNAL else
                   f"Solution exited with non-zero exit code {eval_res.exit_code}" if eval_res.verdict is EvaluationOutcome.RUNERROR_EXITCODE else
+                  f"Solution did not produce required file" if eval_res.verdict is  EvaluationOutcome.NO_FILE else
                   f"Unknown error {eval_res}")
         return ExecutionResult(verdict=ExecutionOutcome.CRASHED,
                                reason=reason)
