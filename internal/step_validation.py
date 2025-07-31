@@ -70,6 +70,13 @@ class ValidationStep(MetaMakefileCompileStep):
                                         memory_limit=self.memory_limit)
 
                     wait_procs([validator])
+
+                    # Clean up files
+                    os.unlink(os.path.join(context.path.sandbox, input_name))
+                    for ext in extra_input_exts:
+                        filename = context.construct_test_filename(code_name, ext)
+                        os.unlink(os.path.join(context.path.sandbox, filename))
+
                     if validator.is_timedout:
                         return ExecutionResult(ExecutionOutcome.TIMEDOUT,
                                                f"Validator command {command} timed-out (time limit: {self.time_limit}).\n"

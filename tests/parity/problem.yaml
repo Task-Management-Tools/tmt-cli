@@ -1,0 +1,17 @@
+title: Parity
+id: parity
+description: Parity
+time_limit: 1000 # ms
+memory_limit: 1024 # MiB
+output_limit: unlimited
+input_extension: in
+output_extension: ans
+
+solution_compilation: default
+solution_execution: 
+  type: default
+output_validation:
+  type: default
+
+input_validation: default
+answer_generation: solution

@@ -1,7 +1,7 @@
 #include "testlib.h"
 #include <string>
 
-const int MAXC = 1e9;
+const int MAXC = 2'000'000'000;
 
 int main(int argc, char **argv) {
   registerValidation(argc, argv);

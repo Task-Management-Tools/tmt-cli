@@ -78,7 +78,8 @@ def format_checker_result(result: EvaluationResult) -> str:
     # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
     def format(checker_color: str, checker_status: str, content_color: str):
         return (f"[{checker_color}{checker_status}{ANSI_RESET}]" + ' ' * (6 - len(checker_status)) +
-                f"{content_color}{result.verdict.value}{ANSI_RESET}")
+                f"{content_color}{result.verdict.value}{ANSI_RESET}" + ' ' * 2 + 
+                result.checker_reason)
 
     group_accepted = [EvaluationOutcome.ACCEPTED]
     group_partial = [EvaluationOutcome.PARTIAL]

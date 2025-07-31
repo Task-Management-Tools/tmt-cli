@@ -127,7 +127,7 @@ class Process(subprocess.Popen):
     def exit_code(self): return os.WEXITSTATUS(self.status) if os.WIFEXITED(self.status) else 0
 
     @property
-    def is_signaled_exit(self): return os.WIFSIGNALED(self.status) and os.WTERMSIG(self.status) == signal.SIGSEGV
+    def is_signaled_exit(self): return os.WIFSIGNALED(self.status)
 
     @property
     def is_cpu_timedout(self): return self.cpu_time > self.time_limit

@@ -6,9 +6,9 @@ class EvaluationOutcome(Enum):
     # The submission has run successfully.
     RUN_SUCCESS = "Solution ran successfully"
     # The submission has run successfully and is correct.
-    ACCEPTED = "Accepted"
+    ACCEPTED = "Correct"
     # The submission has run successfully and is partially correct.
-    PARTIAL = "Partially Accepted"
+    PARTIAL = "Partially Correct"
     # The submission has run successfully but is not correct (typical sense of WA).
     WRONG = "Wrong Answer"
     # CMS no-output: not producing the required file
@@ -18,26 +18,26 @@ class EvaluationOutcome(Enum):
     # classic TLE
     TIMEOUT = "Time Limit Exceeded"
     # This is wall-clock exceeded TLE; DOMJudge, CMS, and Codeforces all supports this result.
-    TIMEOUT_WALL = "Time Limit Exceeded (wall clock limit exceeded)"
+    TIMEOUT_WALL = "Time Limit Exceeded (wall clock)"
     # Output limit exceeded. Since DOMJudge actually detects output limit by truncating the stream
     # instead of TIOJ-style signal detection, we will need separate verdicts.
     OUTPUT_LIMIT = "Output Limit Exceeded"
     # Runtime error caused by signal SIGXFSZ. TIOJ treat this as OLE.
-    RUNERROR_OUTPUT = "Runtime Error (SIGXFSZ, output limit exceeded)"
+    RUNERROR_OUTPUT = "Runtime Error (output limit exceeded)"
     # Runtime error caused by signal (FPE, SEGV, etc.) except SIGXFSZ.
-    RUNERROR_SIGNAL = "Runtime Error (killed by a signal)"
+    RUNERROR_SIGNAL = "Runtime Error (signaled)"
     # Runtime error caused by non-zero exitcode.
     RUNERROR_EXITCODE = "Runtime Error (non-zero exit code)"
     # Manager/Interactor crashed.
     MANAGER_CRASHED = "Judge Error: Manager Crashed"
     # Manager/Interactor timed out.
-    MANAGER_TIMEOUT = "Judge Error: Manager Time Limit Exceeded"
+    MANAGER_TIMEOUT = "Judge Error: Manager Timed-out"
     # Checker crashed (this is checker exited by signaled).
     CHECKER_CRASHED = "Judge Error: Checker Crashed"
     # Checker failed (this is checker exit with non-zero return code).
     CHECKER_FAILED = "Judge Error: Checker Failed"
     # Checker timed-out.
-    CHECKER_TIMEDOUT = "Judge Error: Checker Time Limit Exceeded"
+    CHECKER_TIMEDOUT = "Judge Error: Checker Timed-out"
     # Internal error.
     INTERNAL_ERROR = "Internal Error"
 
@@ -53,6 +53,7 @@ class EvaluationResult:
     output_file: str
 
     checker_run: bool = False
+    checker_reason: str = ""
 
 
 class CompilationOutcome(Enum):

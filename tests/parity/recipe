@@ -1,0 +1,8 @@
+@testset handmade
+manual one.in
+manual two.in
+manual long.in
+
+@subtask full 100
+@description No additional constraints
+@include handmade

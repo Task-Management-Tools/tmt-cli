@@ -1,0 +1,13 @@
+# TMT will produce .exe for compiled files, and .log for compilation log
+*.exe
+*.log
+
+# Logs and sandbox should not be included
+logs/
+sandbox/
+
+# Testcases can be generated, so by default they should not be present.
+testcases/
+
+# Checker compilation output should also be ignored.
+checker/checker
