@@ -175,14 +175,14 @@ def wait_procs(procs: list[Process]) -> None:
         signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGCHLD})
 
 
-def wait_for_outputs(proc: Process) -> list[int]:
+def wait_for_outputs(proc: Process) -> tuple[str, str]:
     """
     Wait for the conclusion of the processes in the list, avoiding
     starving for input and output.
 
     procs: a list of processes as returned by Popen.
 
-    return: a list of return codes.
+    return: stdout and stderr outputs.
 
     This function is modified from cms-dev:cms/grading/Sandbox.py#L66.
     """
@@ -192,18 +192,23 @@ def wait_for_outputs(proc: Process) -> list[int]:
     # Read stdout and stderr to the end without having to block
     # because of insufficient buffering (and without allocating too
     # much memory). Unix specific.
-    while proc.wait4() is None:
-        to_read = ([proc.stdout] if proc.stdout and not proc.stdout.closed else [] +
-                   [proc.stderr] if proc.stderr and not proc.stderr.closed else [])
-        if len(to_read) == 0:
-            break
-        available_read = select.select(to_read, [], [], 1.0)[0]
-        for file in available_read:
-            content = file.read(8 * 1024)
-            if type(content) is bytes:
-                content = content.decode()
-            if file is proc.stdout:
-                stdout += content
-            else:
-                stderr += content
+    try:
+        while proc.wait4() is None:
+            to_read = ([proc.stdout] if proc.stdout and not proc.stdout.closed else [] +
+                    [proc.stderr] if proc.stderr and not proc.stderr.closed else [])
+            if len(to_read) == 0:
+                break
+            available_read = select.select(to_read, [], [], 1.0)[0]
+            for file in available_read:
+                content = file.read(8 * 1024)
+                if type(content) is bytes:
+                    content = content.decode()
+                if file is proc.stdout:
+                    stdout += content
+                else:
+                    stderr += content
+    except KeyboardInterrupt:
+        proc.safe_kill()
+        raise
+    
     return stdout, stderr

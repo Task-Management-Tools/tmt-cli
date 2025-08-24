@@ -204,17 +204,20 @@ class ProblemDirectoryHelper:
 class TMTConfig:
     def __init__(self, yaml: dict):
         self.problem_name = yaml["id"]
-        self.time_limit = yaml["time_limit"] / 1000.0
-        self.memory_limit = yaml["memory_limit"]
-        self.output_limit = yaml["output_limit"]
-        if self.output_limit == "unlimited":
-            self.output_limit = resource.RLIM_INFINITY
+        self.time_limit_sec = yaml["time_limit"] / 1000.0
+        self.memory_limit_mib = yaml["memory_limit"]
+        self.output_limit_mib = yaml["output_limit"]
+        if self.output_limit_mib == "unlimited":
+            self.output_limit_mib = resource.RLIM_INFINITY
         self.input_extension = yaml["input_extension"]
         self.output_extension = yaml["output_extension"]
 
-        self.trusted_step_time_limit = 10.0 # second
-        self.trusted_step_memory_limit = 4 * 1024 # MB
-        self.trusted_step_output_limit = resource.RLIM_INFINITY
+        self.trusted_compile_time_limit_sec = 36.0 # 1 minute
+        self.trusted_compile_memory_limit_mib = resource.RLIM_INFINITY
+
+        self.trusted_step_time_limit_sec = 10.0
+        self.trusted_step_memory_limit_mib = 4 * 1024
+        self.trusted_step_output_limit_mib = resource.RLIM_INFINITY
 
 
 class TMTContext:

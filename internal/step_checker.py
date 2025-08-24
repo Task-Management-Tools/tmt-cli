@@ -1,13 +1,10 @@
 from internal.globals import context
-from internal.step_meta_makefile import MetaMakefileCompileStep
 from internal.outcome import EvaluationResult, CompilationResult
 
 
-class CheckerStep(MetaMakefileCompileStep):
-    def __init__(self, *, makefile_path: str, time_limit: float, memory_limit: int):
-        super().__init__(makefile_path=makefile_path,
-                         time_limit=time_limit,
-                         memory_limit=memory_limit)
+class CheckerStep():
+    def __init__(self):
+        pass
 
     def compile(self) -> CompilationResult:
         raise NotImplementedError

@@ -49,8 +49,8 @@ class MetaSolutionStep:
                               preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
-                              time_limit=context.config.trusted_step_time_limit,
-                              memory_limit=context.config.trusted_step_memory_limit)
+                              time_limit=context.config.trusted_step_time_limit_sec,
+                              memory_limit=context.config.trusted_step_memory_limit_mib)
 
         stdout, stderr = wait_for_outputs(compilation)
         return CompilationResult(verdict=(CompilationOutcome.SUCCESS if compilation.status == 0 else

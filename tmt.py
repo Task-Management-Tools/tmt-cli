@@ -34,12 +34,12 @@ def generate_testcases():
     """Generate test cases in the given directory."""
 
     # Compile generators, validators and solutions
-    generation_step = GenerationStep()
-    validation_step = ValidationStep()
+    generation_step = GenerationStep(context)
+    validation_step = ValidationStep(context)
     # TODO: change type and model solution path accordin to setting
-    solution_step = BatchSolutionStep(time_limit=context.config.trusted_step_time_limit,
-                                      memory_limit=context.config.trusted_step_memory_limit,
-                                      output_limit=context.config.trusted_step_output_limit,
+    solution_step = BatchSolutionStep(time_limit=context.config.trusted_step_time_limit_sec,
+                                      memory_limit=context.config.trusted_step_memory_limit_mib,
+                                      output_limit=context.config.trusted_step_output_limit_mib,
                                       submission_files=[context.path.replace_with_solution("sol.cpp")],
                                       grader=None)
 
@@ -133,11 +133,11 @@ def invoke_solution(files: list[str]):
     actual_files = [os.path.join(os.getcwd(), file) for file in files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step = BatchSolutionStep(time_limit=context.config.time_limit,
-                                          memory_limit=context.config.memory_limit,
-                                          output_limit=context.config.output_limit,
+        solution_step = BatchSolutionStep(time_limit=context.config.time_limit_sec,
+                                          memory_limit=context.config.memory_limit_mib,
+                                          output_limit=context.config.output_limit_mib,
                                           submission_files=actual_files, grader=None)
-        checker_step = ICPCCheckerStep()
+        checker_step = ICPCCheckerStep(context)
 
         cprint("Solution   compile ")
         solution_step.prepare_sandbox()
