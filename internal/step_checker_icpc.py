@@ -2,7 +2,7 @@ import os
 import shutil
 import pathlib
 
-from internal.globals import TMTContext
+from internal.context import TMTContext
 from internal.step_checker import CheckerStep
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
@@ -11,7 +11,7 @@ from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOut
 
 class ICPCCheckerStep(CheckerStep):
     def __init__(self, context: TMTContext):
-        self.context = context
+        super().__init__(context)
         self.limits = context.config # shorthand
 
     def compile(self) -> CompilationResult:

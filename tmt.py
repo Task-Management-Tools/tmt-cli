@@ -4,7 +4,7 @@ import os
 
 from internal.recipe_parser import parse_contest_data
 from internal.utils import print_compile_string_with_exit, format_exec_result, format_checker_result, is_apport_active
-from internal.globals import init_tmt_root, context
+from internal.context import init_tmt_root, TMTContext
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
 from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
@@ -30,18 +30,18 @@ def cprint(*args, **kwargs):
     print(*args, **kwargs, end='', flush=True)
 
 
-def generate_testcases():
+def generate_testcases(context: TMTContext):
     """Generate test cases in the given directory."""
 
     # Compile generators, validators and solutions
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
     # TODO: change type and model solution path accordin to setting
-    solution_step = BatchSolutionStep(time_limit=context.config.trusted_step_time_limit_sec,
+    solution_step = BatchSolutionStep(context=context,
+                                      time_limit=context.config.trusted_step_time_limit_sec,
                                       memory_limit=context.config.trusted_step_memory_limit_mib,
                                       output_limit=context.config.trusted_step_output_limit_mib,
-                                      submission_files=[context.path.replace_with_solution("sol.cpp")],
-                                      grader=None)
+                                      submission_files=[context.path.replace_with_solution("sol.cpp")])
 
     cprint("Generator  compile ")
     generation_step.prepare_sandbox()
@@ -128,15 +128,16 @@ def generate_testcases():
                     testcases_summary.write(f"{code_name}\n")
 
 
-def invoke_solution(files: list[str]):
+def invoke_solution(context: TMTContext, files: list[str]):
 
     actual_files = [os.path.join(os.getcwd(), file) for file in files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step = BatchSolutionStep(time_limit=context.config.time_limit_sec,
+        solution_step = BatchSolutionStep(context=context,
+                                          time_limit=context.config.time_limit_sec,
                                           memory_limit=context.config.memory_limit_mib,
                                           output_limit=context.config.output_limit_mib,
-                                          submission_files=actual_files, grader=None)
+                                          submission_files=actual_files)
         checker_step = ICPCCheckerStep(context)
 
         cprint("Solution   compile ")
@@ -196,12 +197,12 @@ def main():
         initialize_directory(pathlib.Path.cwd())
         return
 
-    init_tmt_root(str(pathlib.Path(__file__).parent.resolve()))
+    context = init_tmt_root(str(pathlib.Path(__file__).parent.resolve()))
 
     if args.command == "gen":
-        generate_testcases()
+        generate_testcases(context)
     elif args.command == "invoke":
-        invoke_solution(remaining)
+        invoke_solution(context, remaining)
     elif args.command == "clean":
         # clean_testcases(root_dir)
         raise NotImplementedError(

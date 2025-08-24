@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from internal.globals import TMTContext
+from internal.context import TMTContext
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcome

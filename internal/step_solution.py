@@ -4,64 +4,24 @@ import subprocess
 
 from pathlib import Path
 
-from internal.globals import context
+from internal.context import TMTContext
 from internal.runner import Process, wait_for_outputs
 from internal.outcome import EvaluationResult, CompilationResult, CompilationOutcome
 
 
 class MetaSolutionStep:
-    def __init__(self, *,
-                 time_limit: float, memory_limit: int, output_limit: int, 
-                 submission_files: list[str], grader: str | None):
+    def __init__(self):
+        # TODO: the following passage does not make sense since I don't know how to setup virtual ctor properly
+        
         # The reason of why the limits must be passed is because in testcase generation, the actual
         # "solution" run might not be the expected solution in contest: they could be slower or 
         # more precise solution to generate, for example, exact solution or a closer approximation.
         # This can occur in floating point problems, randomized problems (where the model solution 
         # might be slower because of derandomization), and approximation problems.
-
-        self.prepare_interactor = False
-        self.prepare_manager = False
-        self.prepare_checker = False
-
-    def compile(self, compiler: str, files: list[str], flags: list[str],
-                stack_size: int, executable_name: str) -> CompilationResult:
-        """
-        Stack size is specified in MB.
-        Returns a string as the compilation standard error, and an int as the exit code.
-        The integer will be -1 if one of the files does not exist.
-        """
-        for file in files:
-            if not Path(file).exists():
-                return CompilationResult(verdict=CompilationOutcome.FAILED,
-                                         standard_error=f"File {file} could not be found.",
-                                         exit_status=-1)
-
-        cxx_flags = os.getenv("CXXFLAGS", "").split()
-        cxx_flags += flags
-
-        # On MacOS, this has to be set during compile time
-        if platform.system() == "Darwin":
-            cxx_flags += f" -Wl,--stack,{stack_size * 1024 * 1024}"
-
-        cxx_flags += files + ["-o", executable_name]
-
-        compilation = Process([compiler] + cxx_flags,
-                              preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE,
-                              time_limit=context.config.trusted_step_time_limit_sec,
-                              memory_limit=context.config.trusted_step_memory_limit_mib)
-
-        stdout, stderr = wait_for_outputs(compilation)
-        return CompilationResult(verdict=(CompilationOutcome.SUCCESS if compilation.status == 0 else
-                                          CompilationOutcome.TIMEDOUT if compilation.is_timedout else
-                                          CompilationOutcome.FAILED),
-                                 standard_output=stdout,
-                                 standard_error=stderr,
-                                 exit_status=compilation.status)
+        pass
 
     def prepare_sandbox(self):
-        context.path.mkdir_sandbox_solution()
+        pass
 
     def compile_solution(self) -> CompilationResult:
         pass

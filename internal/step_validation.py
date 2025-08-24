@@ -2,7 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-from internal.globals import TMTContext
+from internal.context import TMTContext
 from internal.utils import make_file_extension
 from internal.compilation_makefile import compile_with_make
 from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcome

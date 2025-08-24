@@ -236,25 +236,25 @@ class TMTContext:
     def construct_output_filename(self, code_name):
         return self.construct_test_filename(code_name, self.config.output_extension)
     
-context = TMTContext()
 
-
-def _load_config():
+def _load_config(context: TMTContext):
     # use PyYAML to parse the problem.yaml file
     with open(context.path.tmt_config, 'r') as file:
         problem_yaml = yaml.safe_load(file)
         context.config = TMTConfig(problem_yaml)
 
 
-def init_tmt_root(script_root: str) -> pathlib.Path:
+def init_tmt_root(script_root: str) -> TMTContext:
     """Initialize the root directory of tmt tasks."""
+
+    context = TMTContext()
 
     tmt_root = pathlib.Path.cwd()
     while tmt_root != tmt_root.parent:
         if (tmt_root / ProblemDirectoryHelper.PROBLEM_YAML).exists():
             context.path = ProblemDirectoryHelper(str(tmt_root), script_root)
-            _load_config()
-            return tmt_root
+            _load_config(context)
+            return context
         tmt_root = tmt_root.parent
 
     raise FileNotFoundError(2,

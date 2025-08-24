@@ -5,20 +5,21 @@ import signal
 
 from pathlib import Path
 
-from internal.globals import context
+from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
-from internal.utils import make_file_extension
+from internal.compilation_cpp_single import compile_cpp_single
 from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
 
 
 class BatchSolutionStep(MetaSolutionStep):
-    def __init__(self, *,
+    def __init__(self, *, context: TMTContext,
                  time_limit: float, memory_limit: int, output_limit: int,
-                 submission_files: list[str], grader: str | None):
+                 submission_files: list[str]):
+        self.context = context
 
-        self.executable_name = context.config.problem_name
+        self.executable_name = self.context.config.problem_name
         self.time_limit = time_limit
         self.memory_limit = memory_limit
         self.output_limit = output_limit
@@ -26,16 +27,15 @@ class BatchSolutionStep(MetaSolutionStep):
         if len(submission_files) != 1:
             raise ValueError("Batch task only supports single file submission.")
         self.submission_file = submission_files[0]
-        self.grader = grader
+        self.grader = None # TODO: infer from config file (context)
 
-        self.prepare_interactor = False
-        self.prepare_manager = False
-        self.prepare_checker = False
+    def prepare_sandbox(self):
+        self.context.path.mkdir_sandbox_solution()
 
     def compile_solution(self) -> CompilationResult:
         files = [self.submission_file]
-        if self.grader:
-            files.append(context.path.replace_with_grader(self.grader))
+        if self.grader is not None:
+            files.append(self.context.path.replace_with_grader(self.grader))
 
         # TODO: change this set to user specified
         if platform.system() == "Darwin":
@@ -43,13 +43,15 @@ class BatchSolutionStep(MetaSolutionStep):
         else:
             compile_flags = ["-std=gnu++20", "-O2", "-pipe", "-static", "-s"]
 
-        # TODO: tell this to the users
-        cxx = os.getenv("CXX", "g++")
-
-        return self.compile(cxx, files, compile_flags, self.memory_limit, self.executable_name)
-
-    def prepare_sandbox(self):
-        context.path.mkdir_sandbox_solution()
+        return compile_cpp_single(working_dir=self.context.path.sandbox_solution,
+                                  files=files, 
+                                  flags=compile_flags, 
+                                  # these parameters are intended trusted step time limit instead of compile limit, 
+                                  # since they will occur on judge, so they should have more restrictive limits
+                                  compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
+                                  compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
+                                  executable_stack_size_mib=self.memory_limit,
+                                  executable_name=self.executable_name)
 
     def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
         """
@@ -59,17 +61,17 @@ class BatchSolutionStep(MetaSolutionStep):
         Otherwise, we keep that file inside the sandbox, and we invoke checker to check the file.
         """
 
-        file_in_name = context.construct_input_filename(code_name)
-        file_out_name = context.construct_output_filename(code_name)
+        file_in_name = self.context.construct_input_filename(code_name)
+        file_out_name = self.context.construct_output_filename(code_name)
         if store_output:  # We are working with official output
             file_err_name = f"{code_name}.sol.err"
         else:  # We are invoking and testing the solution
             file_err_name = f"{code_name}.invoke.err"
 
-        testcase_input = os.path.join(context.path.testcases, file_in_name)
-        sandbox_input_file = os.path.join(context.path.sandbox_solution, file_in_name)
-        sandbox_output_file = os.path.join(context.path.sandbox_solution, file_out_name)
-        sandbox_error_file = os.path.join(context.path.sandbox_solution, file_err_name)
+        testcase_input = os.path.join(self.context.path.testcases, file_in_name)
+        sandbox_input_file = os.path.join(self.context.path.sandbox_solution, file_in_name)
+        sandbox_output_file = os.path.join(self.context.path.sandbox_solution, file_out_name)
+        sandbox_error_file = os.path.join(self.context.path.sandbox_solution, file_err_name)
         Path(sandbox_output_file).touch()
         Path(sandbox_error_file).touch()
 
@@ -81,8 +83,8 @@ class BatchSolutionStep(MetaSolutionStep):
             pre_wait_procs()
             # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
             # currently, for convenience, it is from file but we should support both modes.
-            solution = Process(os.path.join(context.path.sandbox_solution, self.executable_name),
-                               preexec_fn=lambda: os.chdir(context.path.sandbox_solution),
+            solution = Process(os.path.join(self.context.path.sandbox_solution, self.executable_name),
+                               preexec_fn=lambda: os.chdir(self.context.path.sandbox_solution),
                                stdin_redirect=sandbox_input_file,
                                stdout_redirect=sandbox_output_file,
                                stderr_redirect=sandbox_error_file,
@@ -95,17 +97,17 @@ class BatchSolutionStep(MetaSolutionStep):
                 os.unlink(sandbox_input_file)
 
             # Prepare directories (normally the testcases should exist, just in case)
-            context.path.mkdir_testcases()
-            context.path.mkdir_logs()
+            self.context.path.mkdir_testcases()
+            self.context.path.mkdir_logs()
 
             # Move logs
             Path(sandbox_error_file).touch()
-            shutil.move(sandbox_error_file, os.path.join(context.path.logs, file_err_name))
+            shutil.move(sandbox_error_file, os.path.join(self.context.path.logs, file_err_name))
 
             # Move output
             if store_output:
                 if Path(sandbox_output_file).exists():
-                    shutil.move(sandbox_output_file, os.path.join(context.path.testcases, file_out_name))
+                    shutil.move(sandbox_output_file, os.path.join(self.context.path.testcases, file_out_name))
                 else:
                     no_output_file = True
                     
