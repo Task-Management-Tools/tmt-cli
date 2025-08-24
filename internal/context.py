@@ -5,10 +5,14 @@ import errno
 import shutil
 import yaml
 import resource
+import re
+
 
 from pathlib import Path
 
 from internal.utils import make_file_extension
+
+
 class ProblemDirectoryHelper:
     """
     Helps everything with files and directories.
@@ -202,17 +206,37 @@ class ProblemDirectoryHelper:
 
 
 class TMTConfig:
+    @classmethod
+    def parse_bytes_to_mib(cls, field_name: str, input: str) -> int:
+        match = re.fullmatch(r"(\d+)\s*(G|GB|GiB|M|MB|MiB)", input)
+        if match is None:
+            raise ValueError(f"{field_name} \"{match}\" is invalid.")
+        if match.group(2).startswith('G'):
+            return int(match.group(1)) * 1024
+        else:
+            return int(match.group(1))
+
     def __init__(self, yaml: dict):
         self.problem_name = yaml["id"]
-        self.time_limit_sec = yaml["time_limit"] / 1000.0
-        self.memory_limit_mib = yaml["memory_limit"]
-        self.output_limit_mib = yaml["output_limit"]
-        if self.output_limit_mib == "unlimited":
+
+        # TODO: document this
+        time_limit_match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", yaml["time_limit"])
+        if time_limit_match is None:
+            raise ValueError(f"Time limit \"{yaml["time_limit"]}\" is invalid.")
+        if time_limit_match.group(2) == "ms":
+            self.time_limit_sec = float(time_limit_match.group(1)) / 1000.0
+        else:
+            self.time_limit_sec = float(time_limit_match.group(1))
+
+        self.memory_limit_mib = self.parse_bytes_to_mib("Memory limit", yaml["memory_limit"])
+        if yaml["output_limit"] == "unlimited":
             self.output_limit_mib = resource.RLIM_INFINITY
+        else:
+            self.output_limit_mib = self.parse_bytes_to_mib("Output limit", yaml["output_limit"])
         self.input_extension = yaml["input_extension"]
         self.output_extension = yaml["output_extension"]
 
-        self.trusted_compile_time_limit_sec = 36.0 # 1 minute
+        self.trusted_compile_time_limit_sec = 36.0  # 1 minute
         self.trusted_compile_memory_limit_mib = resource.RLIM_INFINITY
 
         self.trusted_step_time_limit_sec = 10.0
@@ -232,10 +256,10 @@ class TMTContext:
 
     def construct_input_filename(self, code_name):
         return self.construct_test_filename(code_name, self.config.input_extension)
-    
+
     def construct_output_filename(self, code_name):
         return self.construct_test_filename(code_name, self.config.output_extension)
-    
+
 
 def _load_config(context: TMTContext):
     # use PyYAML to parse the problem.yaml file

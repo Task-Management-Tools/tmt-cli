@@ -1,8 +1,8 @@
 title: A + B
 id: aplusb
 description: A + B Problem
-time_limit: 1000 # ms
-memory_limit: 1024 # MiB
+time_limit: 1000 ms
+memory_limit: 1 G
 output_limit: unlimited
 input_extension: in
 output_extension: out
