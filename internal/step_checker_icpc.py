@@ -62,7 +62,7 @@ class ICPCCheckerStep(CheckerStep):
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
 
-        pre_wait_procs()
+        sigset = pre_wait_procs()
         checker_process = Process([checker, input_file, answer_file, feedback_dir] + arguments,
                                   stdin_redirect=evaluation_record.output_file,
                                   stdout=None,
@@ -70,7 +70,7 @@ class ICPCCheckerStep(CheckerStep):
                                   time_limit=self.limits.trusted_step_time_limit_sec,
                                   memory_limit=self.limits.trusted_step_memory_limit_mib,
                                   output_limit=self.limits.trusted_step_output_limit_mib)
-        wait_procs([checker_process])
+        wait_procs([checker_process], sigset)
 
         # the interesting files in the directory are:
         #  - nextpass.in: the input for the next pass, the checker must succeed to run the next pass

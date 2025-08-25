@@ -4,7 +4,7 @@ import platform
 
 from pathlib import Path
 
-from internal.runner import Process, wait_for_outputs, pre_wait_procs
+from internal.runner import Process, wait_for_outputs
 from internal.outcome import CompilationOutcome, CompilationResult
 
 

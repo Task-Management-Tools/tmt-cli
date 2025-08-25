@@ -35,8 +35,6 @@ class ValidationStep:
         This function should not raise any error except for the internal logic failed.
         """
 
-        # TODO: handle FileNotFoundError and print actual meaningful error in the console.
-
         input_name = self.context.construct_input_filename(code_name)
         expected_exitcode = 42 if self.context.config.judge is JudgeConvention.ICPC else 0
 
@@ -66,7 +64,7 @@ class ValidationStep:
                         shutil.copy(os.path.join(self.context.path.testcases, filename),
                                     os.path.join(self.context.path.sandbox, filename))
 
-                    pre_wait_procs()
+                    sigset = pre_wait_procs()
                     validator = Process(command,
                                         preexec_fn=lambda: os.chdir(self.context.path.sandbox),
                                         stdin_redirect=os.path.join(self.context.path.sandbox, input_name),
@@ -75,7 +73,7 @@ class ValidationStep:
                                         time_limit=self.limits.trusted_step_time_limit_sec,
                                         memory_limit=self.limits.trusted_step_memory_limit_mib)
 
-                    wait_procs([validator])
+                    wait_procs([validator], sigset)
 
                     # Clean up files
                     os.unlink(os.path.join(self.context.path.sandbox, input_name))

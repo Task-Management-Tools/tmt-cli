@@ -52,7 +52,7 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
             # Stack size same as address space
             resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
-            # We disable core-dump here: this will cause runtime error to take significantly more time, 
+            # We disable core-dump here: this will cause runtime error to take significantly more time,
             # and therefore incorrectly treated as wall clock limit exceed. The core dump feature is not
             # really used anywhere in CP context so it should have no side-effects.
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
@@ -133,7 +133,7 @@ class Process(subprocess.Popen):
 
     @property
     def is_cpu_timedout(self): return self.cpu_time > self.time_limit
-    
+
     @property
     def is_wall_clock_timedout(self): return self.wall_clock_time > self.time_limit
 
@@ -141,21 +141,16 @@ class Process(subprocess.Popen):
     def is_timedout(self): return self.is_cpu_timedout or self.is_wall_clock_timedout
 
 
-def pre_wait_procs() -> None:
+def pre_wait_procs() -> set:
+    return signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
 
-    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
 
-def pre_exec_procs() -> None:
-
-    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
-
-def wait_procs(procs: list[Process]) -> None:
+def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
     """
     Wait until all processes either terminate or meet their deadlines.
-    This process muse be used with pre_wait_procs() to block child with too early terminations.
+    This procedures assumes SIGCHILD is blocked before any creation of child processes.
     """
     # Block SIGCHLD so we can wait for it explicitly
-    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
     remaining = procs.copy()
     try:
         while remaining:
@@ -177,7 +172,8 @@ def wait_procs(procs: list[Process]) -> None:
             process.safe_kill()
         raise exception  # this exception should be unhandled, since the user asked that
     finally:
-        signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGCHLD})
+        # restore sigmask
+        signal.pthread_sigmask(signal.SIG_SETMASK, pre_wait_proc_set)
 
 
 def wait_for_outputs(proc: Process) -> tuple[str, str]:
@@ -200,7 +196,7 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
     try:
         while proc.wait4() is None:
             to_read = ([proc.stdout] if proc.stdout and not proc.stdout.closed else [] +
-                    [proc.stderr] if proc.stderr and not proc.stderr.closed else [])
+                       [proc.stderr] if proc.stderr and not proc.stderr.closed else [])
             if len(to_read) == 0:
                 break
             available_read = select.select(to_read, [], [], 1.0)[0]
@@ -215,5 +211,5 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
     except KeyboardInterrupt:
         proc.safe_kill()
         raise
-    
+
     return stdout, stderr

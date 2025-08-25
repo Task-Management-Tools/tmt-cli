@@ -62,7 +62,7 @@ class GenerationStep:
             generator_processes: list[Process] = []
             prev_proc = None
 
-            pre_wait_procs()
+            sigset = pre_wait_procs()
             # Launch each command, chaining stdin/stdout
             try:
                 for i, command in enumerate(commands, 1):
@@ -103,7 +103,7 @@ class GenerationStep:
                 raise exception
 
             generator_processes[-1].stdout.close()
-            wait_procs(generator_processes)
+            wait_procs(generator_processes, sigset)
 
             # Move tests
             shutil.move(os.path.join(self.context.path.sandbox, input_file),

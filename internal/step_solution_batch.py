@@ -70,7 +70,7 @@ class BatchSolutionStep(MetaSolutionStep):
         try:
             shutil.copy(testcase_input, sandbox_input_file)
 
-            pre_wait_procs()
+            sigset = pre_wait_procs()
             # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
             # currently, for convenience, it is from file but we should support both modes.
             solution = Process(os.path.join(self.context.path.sandbox_solution, self.executable_name),
@@ -81,7 +81,7 @@ class BatchSolutionStep(MetaSolutionStep):
                                time_limit=self.time_limit_sec,
                                memory_limit=self.memory_limit_mib,
                                output_limit=self.output_limit_mib)
-            wait_procs([solution])
+            wait_procs([solution], sigset)
 
             if Path(sandbox_input_file).exists():
                 os.unlink(sandbox_input_file)

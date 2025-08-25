@@ -97,7 +97,7 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
             if not os.path.isdir(feedback_dir):
                 os.mkdir(feedback_dir)
 
-            pre_wait_procs()
+            sigset = pre_wait_procs()
             
             def solution_preexec_fn():
                 os.chdir(self.context.path.sandbox_solution)
@@ -127,7 +127,7 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
             solution.stdin.close()
             solution.stdout.close()
 
-            wait_procs([solution, interactor])
+            wait_procs([solution, interactor], sigset)
 
             if Path(sandbox_checker_input_file).exists():
                 os.unlink(sandbox_checker_input_file)
