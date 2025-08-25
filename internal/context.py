@@ -56,6 +56,12 @@ class TMTConfig:
             self.solution_step = InteractiveICPCSolutionStep
         else:
             raise ValueError(yaml["output_validation"]["type"] + " is not a valid output validation mode")
+        
+        if yaml["answer_generation"]["type"] == "solution":
+            self.model_solution_path = yaml["answer_generation"]["file"]
+        else: # TODO: support "generator" mode
+            raise ValueError(yaml["answer_generation"]["type"] + " is not a valid answer generation mode")
+
 
         self.trusted_compile_time_limit_sec = 60.0  # 1 minute
         self.trusted_compile_memory_limit_mib = resource.RLIM_INFINITY

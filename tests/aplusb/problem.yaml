@@ -14,5 +14,7 @@ output_validation:
   type: default
 
 input_validation: default
-answer_generation: solution
+answer_generation: 
+  type: solution
+  file: sol.cpp
 judge_convention: icpc

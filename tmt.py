@@ -38,9 +38,10 @@ def generate_testcases(context: TMTContext):
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
     # TODO: change type and model solution path accordin to setting
+    model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
     solution_step = context.config.solution_step(context=context,
                                                  is_trusted=True,
-                                                 submission_files=[context.path.replace_with_solution("sol.cpp")])
+                                                 submission_files=[model_solution_full_path])
 
     formatter.print("Generator   compile ")
     generation_step.prepare_sandbox()
