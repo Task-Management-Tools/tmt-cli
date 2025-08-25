@@ -262,6 +262,17 @@ class Subtask:
             raise ValueError(f"Independent testset is not set for subtask '{self.subtask_name}'")
         self.independent_testset.add_test(command_sequence)
 
+    def add_extrafile(self, extension: str):
+        """
+        Add an extra file for self.independent_testset.
+
+        Args:
+            extension (str): Extra file extension, should start with a dot (.)
+        """
+        if self.independent_testset is None:
+            raise ValueError(f"Independent testset is not set for subtask '{self.subtask_name}'")
+        self.independent_testset.extra_file.add(extension)
+
 
 class ContestData:
     """
@@ -388,7 +399,7 @@ class ParserContext:
             name (str): Constant name
             value: Constant value
         """
-        if self.has_constant(name):
+        if self.has_constant(name) and self.constants[name] != value:
             raise ValueError(f"Redefinition on constant {name}")
         self.constants[name] = value
     
@@ -617,9 +628,12 @@ class ExtrafileHandler(CommandHandler):
     def handle(self, parts: List[str]):
         self.validate_args(parts, 2, 2)
         
-        if self.context.current_context != "testset":
-            raise ValueError("@extra_file can only be used within testset context")
-       
+        if self.context.current_context not in ("testset", "subtask"):
+            raise ValueError("@extra_file can only be used within testset or subtask context")
+
+        if self.context.current_context == "subtask" and self.context.current_object.independent_testset is None:
+            self.context.current_object.set_independent_testset(self.context) 
+            
         self.context.current_object.add_extrafile(parts[2])
         self.context.set_constant(parts[1], '_tmt_internal_testcase_name' + parts[2])
 
@@ -755,7 +769,8 @@ gen --N=${SMALL_N} seed=1 | make_extreme
 # validator2 is written by a tester
 
 @subtask s1 20
-extra --N=5 seed=1
+@extra_file NOTE .note
+extra --N=5 --note=${NOTE} seed=1
 @description $N \\leq ${SMALL_N}$
 @include t1
 @include edge_case
