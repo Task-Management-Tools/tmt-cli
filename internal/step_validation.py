@@ -2,8 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-from internal.context import TMTContext
-from internal.utils import make_file_extension
+from internal.context import TMTContext, JudgeConvention
 from internal.compilation_makefile import compile_with_make
 from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcome
 from internal.runner import Process, pre_wait_procs, wait_procs
@@ -12,7 +11,7 @@ from internal.runner import Process, pre_wait_procs, wait_procs
 class ValidationStep:
     def __init__(self, context: TMTContext):
         self.context = context
-        self.limits = context.config # for short hand reference
+        self.limits = context.config  # for short hand reference
 
     def compile(self) -> CompilationResult:
         return compile_with_make(directory=self.context.path.validator,
@@ -35,6 +34,7 @@ class ValidationStep:
         # TODO: handle FileNotFoundError and print actual meaningful error in the console.
 
         input_name = self.context.construct_input_filename(code_name)
+        expected_exitcode = 42 if self.context.config.judge is JudgeConvention.ICPC else 0
 
         try:
             # preprocess, could raise FileNotFound error in case validator does not exist
@@ -88,7 +88,7 @@ class ValidationStep:
                                                f"Validator command {command} aborted with signal (exit signal: {validator.exit_signal}).\n"
                                                "This could be out-of-memory crash, see trusted step memory limit for more information.")
 
-                    elif validator.status != 0:
+                    elif validator.exit_code != expected_exitcode:
                         valid = False
                         failed_command = command
                         break
@@ -111,7 +111,15 @@ class ValidationStep:
             if valid:
                 return ExecutionResult(ExecutionOutcome.SUCCESS)
             else:
-                return ExecutionResult(ExecutionOutcome.FAILED, f"Validation failed on validation command {failed_command}.")
+                failed_command[0] = os.path.basename(failed_command[0])
+                with open(os.path.join(self.context.path.logs, file_err_name), 'r') as f:
+                    lines = f.readlines()
+                    lastline = lines[-1].rstrip('\n') if lines else None
+                if lastline is None:
+                    return ExecutionResult(ExecutionOutcome.FAILED, f"Validation failed on validation command `{' '.join(failed_command)}'."
+                                           f" (expecting exitcode {expected_exitcode})")
+                else:
+                    return ExecutionResult(ExecutionOutcome.FAILED, lastline)
 
         except FileNotFoundError as err:
             return ExecutionResult(ExecutionOutcome.CRASHED,

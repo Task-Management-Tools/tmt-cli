@@ -10,5 +10,5 @@ int main(int argc, char **argv) {
   inf.readInt(1, MAXC, "b");
   inf.readEoln();
   inf.readEof();
-  // exit(42);
+  exit(42);
 }

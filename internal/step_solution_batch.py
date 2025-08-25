@@ -138,7 +138,7 @@ class BatchSolutionStep(MetaSolutionStep):
             result.verdict = EvaluationOutcome.TIMEOUT
         elif solution.exit_signal != 0:
             result.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            result.checker_reason = f"Execution killed by signal {signal.strsignal(solution.exit_signal)}"
+            result.checker_reason = f"Execution killed by signal ({signal.strsignal(solution.exit_signal)})"
         elif solution.exit_code != 0:
             result.verdict = EvaluationOutcome.RUNERROR_EXITCODE
             result.checker_reason = f"Execution exited with exit code {solution.exit_code}"

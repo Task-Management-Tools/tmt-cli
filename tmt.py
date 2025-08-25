@@ -88,12 +88,14 @@ def generate_testcases(context: TMTContext):
                 formatter.print(' ' * 4)
                 formatter.print_fixed_width(code_name, width=codename_length)
 
+                reason = ""
                 # Run generator
                 formatter.print("gen ")
                 generator_result = generation_step.run_generator(test.commands,
                                                                  code_name,
                                                                  list(testset.extra_file))
                 formatter.print_exec_result(generator_result)
+                reason = generator_result.reason
                 generator_internal_log = os.path.join(context.path.logs, f"{code_name}.gen.log")
                 with open(generator_internal_log, "w+") as f:
                     f.write(generator_result.reason)
@@ -106,6 +108,7 @@ def generate_testcases(context: TMTContext):
                     validation_result = validation_step.run_validator(validations[code_name],
                                                                       code_name,
                                                                       list(testset.extra_file))
+                    reason = validation_result.reason
                 formatter.print_exec_result(validation_result)
                 validator_internal_log = os.path.join(context.path.logs, f"{code_name}.val.log")
                 with open(validator_internal_log, "w+") as f:
@@ -120,11 +123,17 @@ def generate_testcases(context: TMTContext):
                                                                  os.path.join(context.path.testcases,
                                                                               context.construct_output_filename(code_name)))
                     solution_result = eval_result_to_exec_result(solution_result)
+                    reason = solution_result.reason
                 formatter.print_exec_result(solution_result)
                 solution_internal_log = os.path.join(context.path.logs, f"{code_name}.sol.log")
                 with open(solution_internal_log, "w+") as f:
                     f.write(solution_result.reason)
 
+
+                # TODO: make it a CLI argument
+                if True:
+                    reason = reason.replace('\n', ' ')
+                    formatter.print_reason(reason)
                 formatter.print(endl=True)
 
                 # TODO: this should print more meaningful contents, right now it is only the testcases
@@ -162,7 +171,7 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
     if len(unavailable_testcases):
         formatter.print(formatter.ANSI_YELLOW, 
-                        "Warning: testcases ", ', '.join(unavailable_testcases), "were not available.",
+                        "Warning: testcases ", ', '.join(unavailable_testcases), " were not available.",
                         formatter.ANSI_RESET, endl=True)
     if is_apport_active():
         formatter.print(formatter.ANSI_YELLOW,

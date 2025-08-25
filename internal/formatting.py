@@ -38,14 +38,14 @@ class Formatter:
             self.cursor = (self.cursor + num) % self.terminal_width
 
     def print(self, *args, endl=False) -> None:
-        # TODO: do we support endline?
+        # TODO: do we support endline in text?
         for arg in args:
             if not isinstance(arg, self.AnsiSequence):
                 self.advance_cursor(len(str(arg)))
 
         if endl:
             self.cursor = 0
-        print(*args, sep="", end=('\n' if endl else ""))
+        print(*args, sep="", flush=True, end=('\n' if endl else ""))
 
     def print_fixed_width(self, *args, width: int, endl=False) -> None:
         total_length = 0
@@ -57,7 +57,7 @@ class Formatter:
 
         if endl:
             self.cursor = 0
-        print(*args, pad, sep="", end=('\n' if endl else ""))
+        print(*args, pad, flush=True, sep="", end=('\n' if endl else ""))
 
     def print_compile_string(self, result: CompilationResult) -> None:
         """
@@ -65,7 +65,7 @@ class Formatter:
         """
         if result.verdict not in [CompilationOutcome.SUCCESS, CompilationOutcome.SKIPPED]:
             self.print('[', self.ANSI_RED, "FAIL", self.ANSI_RESET, ']', endl=True)
-            self.print(self.ANSI_YELLOW, "exit-code: ", self.ANSI_RESET, result.exit_status)
+            self.print(self.ANSI_YELLOW, "exit-code: ", self.ANSI_RESET, result.exit_status, endl=True)
             if result.standard_output.strip() != "":
                 self.print(self.ANSI_YELLOW, "standard output:", self.ANSI_RESET, endl=True)
                 self.print(result.standard_output, endl=True)
@@ -88,7 +88,7 @@ class Formatter:
         if result.verdict not in [CompilationOutcome.SUCCESS, CompilationOutcome.SKIPPED]:
             exit(1)
 
-    def print_exec_result(self, result: ExecutionResult) -> str:
+    def print_exec_result(self, result: ExecutionResult) -> None:
         """
         Formats the execution output.
         """
@@ -110,6 +110,19 @@ class Formatter:
         else:
             raise ValueError(f"Unexpected ExecutionOutcome {result.verdict}")
 
+    def print_reason(self, reason: str):
+        # TODO: the following terminal width threshold should be configurable via global settings 
+        if self.terminal_width is not None and self.terminal_width >= 96:
+            buffer = reason
+            cursor_position = self.cursor
+            while len(buffer):
+                self.print_fixed_width(width=cursor_position - self.cursor)
+                remain_width = self.terminal_width - self.cursor
+                self.print(buffer[:remain_width])
+                buffer = buffer[remain_width:]
+        else:
+            self.print(reason)
+
     def print_checker_result(self, result: EvaluationResult, print_reason: bool = False) -> str:
         """
         Formats the execution output.
@@ -120,17 +133,7 @@ class Formatter:
             self.print_fixed_width('[', checker_color, checker_status, self.ANSI_RESET, ']', width=8)
             self.print_fixed_width(content_color, result.verdict.value, self.ANSI_RESET, ' ', width=16)
             if print_reason:
-                # TODO: the following terminal width threshold should be configurable via global settings 
-                if self.terminal_width is not None and self.terminal_width >= 96:
-                    buffer = result.checker_reason
-                    cursor_position = self.cursor
-                    while len(buffer):
-                        self.print_fixed_width(width=cursor_position - self.cursor)
-                        remain_width = self.terminal_width - self.cursor
-                        self.print(buffer[:remain_width])
-                        buffer = buffer[remain_width:]
-                else:
-                    self.print(result.checker_reason)
+                self.print_reason(result.checker_reason)
 
         group_accepted = [EvaluationOutcome.ACCEPTED]
         group_partial = [EvaluationOutcome.PARTIAL]

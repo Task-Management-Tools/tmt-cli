@@ -15,3 +15,4 @@ output_validation:
 
 input_validation: default
 answer_generation: solution
+judge_convention: icpc

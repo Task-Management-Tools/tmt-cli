@@ -12,7 +12,7 @@ from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcom
 class GenerationStep:
     def __init__(self, context: TMTContext):
         self.context = context
-        self.limits = context.config # for short hand reference
+        self.limits = context.config  # for short hand reference
 
     def compile(self) -> CompilationResult:
         return compile_with_make(makefile_path=self.context.path.makefile_normal,
@@ -116,16 +116,26 @@ class GenerationStep:
 
             for process in generator_processes:
                 if process.is_timedout:
+                    for command in commands:
+                        command[0] = os.path.basename(command[0])
+                    full_command = " | ".join([' '.join(command) for command in commands])
                     return ExecutionResult(ExecutionOutcome.TIMEDOUT,
-                                           f"Generator command {commands} timed-out (time consumed: {process.wall_clock_time}).\n"
+                                           f"Generator command `{full_command}' timed-out (time consumed: {process.wall_clock_time:3f}).\n"
                                            "If this is expected, consider raising trusted step time limit.")
                 if process.status != 0:
-                    return ExecutionResult(ExecutionOutcome.CRASHED,
-                                           f"Generator command {process.args} crashed (exit status: {process.status}).\n"
-                                            "This could be out-of-memory crash, see trusted step memory limit for more information.")
+                    command = process.args
+                    command[0] = os.path.basename(command[0])
+                    if process.is_signaled_exit:
+                        return ExecutionResult(ExecutionOutcome.CRASHED,
+                                               f"Generator command `{' '.join(command)}' crashed (killed by signal {process.exit_signal}).\n"
+                                               "This could be out-of-memory crash, see trusted step memory limit for more information.")
+                    else:
+                        return ExecutionResult(ExecutionOutcome.CRASHED,
+                                               f"Generator command `{' '.join(command)}' crashed (exit status {process.exit_code}).\n"
+                                               "This could be out-of-memory crash, see trusted step memory limit for more information.")
 
         except FileNotFoundError as err:
-            return ExecutionResult(ExecutionOutcome.CRASHED,
-                                    f"File {err.filename} not found: {err.strerror}")
+            return ExecutionResult(ExecutionOutcome.FAILED,
+                                   f"File {err.filename} not found: {err.strerror}")
 
         return ExecutionResult(ExecutionOutcome.SUCCESS)
