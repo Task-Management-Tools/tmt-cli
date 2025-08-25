@@ -2,28 +2,35 @@ import os
 import shutil
 import pathlib
 
-from internal.context import TMTContext
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from internal.context import TMTContext
 from internal.step_checker import CheckerStep
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
-from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOutcome, CompilationResult
+from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, context: TMTContext):
+    def __init__(self, context: 'TMTContext'):
         super().__init__(context)
         self.limits = context.config # shorthand
 
     def compile(self) -> CompilationResult:
 
         if self.context.path.has_checker_directory():
-            compile_result = compile_with_make(self.context.path.checker)
+            compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
+                                               directory=self.context.path.checker,
+                                               compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
+                                               compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,
+                                               executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
             shutil.copy(os.path.join(self.context.path.checker, "checker"), self.context.path.sandbox_checker)
         else:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
             checker_path = pathlib.Path(self.context.path.script_dir) / "internal/checkers/icpc_default_validator.cc"
             shutil.copy(checker_path, self.context.path.sandbox_checker)
+            
             compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
                                                directory=self.context.path.sandbox_checker,
                                                compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,

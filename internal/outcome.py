@@ -102,25 +102,25 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
     Maps EvaluationResult to ExecutionResult, whenwhether output is correct is not relavant here.
     (For example, when generating answer files.)
     """
-    allowed_outcome = [EvaluationOutcome.RUN_SUCCESS,
-                       EvaluationOutcome.NO_FILE,
-                       EvaluationOutcome.TIMEOUT,
-                       EvaluationOutcome.TIMEOUT_WALL,
-                       EvaluationOutcome.RUNERROR_OUTPUT,
-                       EvaluationOutcome.RUNERROR_SIGNAL,
-                       EvaluationOutcome.RUNERROR_EXITCODE]
-    if eval_res.verdict not in allowed_outcome:
-        raise ValueError(f"Expect verdict to be one of {allowed_outcome}, found {eval_res.verdict}")
 
-    if eval_res.verdict is EvaluationOutcome.RUN_SUCCESS:
-        return ExecutionResult(verdict=ExecutionOutcome.SUCCESS)
-    elif eval_res.verdict is EvaluationOutcome.TIMEOUT or eval_res.verdict is EvaluationOutcome.TIMEOUT_WALL:
-        return ExecutionResult(verdict=ExecutionOutcome.TIMEDOUT)
+    group_accepted = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.ACCEPTED]
+    group_wrong_answer = [EvaluationOutcome.PARTIAL, EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
+    group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
+    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, EvaluationOutcome.RUNERROR_EXITCODE]
+    group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
+                            EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
+                            EvaluationOutcome.INTERNAL_ERROR]
+
+
+    if eval_res.verdict in group_accepted:
+        return ExecutionResult(verdict=ExecutionOutcome.SUCCESS, reason=eval_res.checker_reason)
+    elif eval_res.verdict in group_wrong_answer:
+        return ExecutionResult(verdict=ExecutionOutcome.FAILED, reason=eval_res.checker_reason)
+    elif eval_res.verdict in group_timeout:
+        return ExecutionResult(verdict=ExecutionOutcome.TIMEDOUT, reason=eval_res.checker_reason)
+    elif eval_res.verdict in group_runtime_error:
+        return ExecutionResult(verdict=ExecutionOutcome.CRASHED, reason=eval_res.checker_reason)
+    elif eval_res.verdict in group_judge_error:
+        return ExecutionResult(verdict=ExecutionOutcome.FAILED, reason=eval_res.checker_reason)
     else:
-        reason = ("Output limit reached" if eval_res.verdict is EvaluationOutcome.RUNERROR_OUTPUT else
-                  f"Solution crashed with signal {eval_res.exit_signal}" if eval_res.verdict is EvaluationOutcome.RUNERROR_SIGNAL else
-                  f"Solution exited with non-zero exit code {eval_res.exit_code}" if eval_res.verdict is EvaluationOutcome.RUNERROR_EXITCODE else
-                  f"Solution did not produce required file" if eval_res.verdict is  EvaluationOutcome.NO_FILE else
-                  f"Unknown error {eval_res}")
-        return ExecutionResult(verdict=ExecutionOutcome.CRASHED,
-                               reason=reason)
+        raise ValueError(f"Unexpected verdict when running solution: {eval_res.verdict}")

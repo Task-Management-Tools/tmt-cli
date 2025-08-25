@@ -72,6 +72,7 @@ class Process(subprocess.Popen):
 
             if self._preexec_fn is not None:
                 self._preexec_fn()
+
         except Exception as e:
             traceback.print_exc()
             raise e
@@ -143,6 +144,9 @@ def pre_wait_procs() -> None:
 
     signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
 
+def pre_exec_procs() -> None:
+
+    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
 
 def wait_procs(procs: list[Process]) -> None:
     """

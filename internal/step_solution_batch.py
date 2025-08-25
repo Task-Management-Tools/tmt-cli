@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import platform
 import shutil
@@ -5,7 +7,9 @@ import signal
 
 from pathlib import Path
 
-from internal.context import TMTContext
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.step_solution import MetaSolutionStep
@@ -28,6 +32,8 @@ class BatchSolutionStep(MetaSolutionStep):
             raise ValueError("Batch task only supports single file submission.")
         self.submission_file = submission_files[0]
         self.grader = None # TODO: infer from config file (context)
+        
+        self.has_interactor = False
 
     def prepare_sandbox(self):
         self.context.path.mkdir_sandbox_solution()

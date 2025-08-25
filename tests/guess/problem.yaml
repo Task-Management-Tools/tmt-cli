@@ -1,0 +1,18 @@
+title: Guess
+id: guess
+description: Guess
+time_limit: 1000 ms
+memory_limit: 1 G
+output_limit: unlimited
+input_extension: in
+output_extension: out
+
+solution_compilation: default
+solution_execution: 
+  type: default
+output_validation:
+  type: interactive
+
+input_validation: default
+answer_generation: solution
+judge_convention: icpc

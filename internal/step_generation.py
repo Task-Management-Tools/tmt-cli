@@ -3,14 +3,17 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from internal.context import TMTContext
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from internal.context import TMTContext
+
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcome
 
 
 class GenerationStep:
-    def __init__(self, context: TMTContext):
+    def __init__(self, context: 'TMTContext'):
         self.context = context
         self.limits = context.config  # for short hand reference
 

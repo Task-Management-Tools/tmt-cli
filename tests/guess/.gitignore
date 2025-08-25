@@ -1,0 +1,5 @@
+testcases/
+logs/
+sandbox/
+*.exe
+checker/checker

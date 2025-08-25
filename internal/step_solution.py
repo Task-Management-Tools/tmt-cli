@@ -1,12 +1,4 @@
-import os
-import platform
-import subprocess
-
-from pathlib import Path
-
-from internal.context import TMTContext
-from internal.runner import Process, wait_for_outputs
-from internal.outcome import EvaluationResult, CompilationResult, CompilationOutcome
+from internal.outcome import EvaluationResult, CompilationResult
 
 
 class MetaSolutionStep:

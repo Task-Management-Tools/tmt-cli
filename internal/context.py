@@ -7,6 +7,8 @@ from enum import Enum
 
 from internal.utils import make_file_extension
 from internal.paths import ProblemDirectoryHelper
+from internal.step_solution_batch import BatchSolutionStep
+from internal.step_solution_interactive_icpc import InteractiveICPCSolutionStep
 
 
 class JudgeConvention(Enum):
@@ -47,6 +49,13 @@ class TMTConfig:
         self.output_extension = yaml["output_extension"]
 
         self.judge = JudgeConvention(yaml["judge_convention"])
+
+        if yaml["output_validation"]["type"] == "default":
+            self.solution_step = BatchSolutionStep
+        elif yaml["output_validation"]["type"] == "interactive":
+            self.solution_step = InteractiveICPCSolutionStep
+        else:
+            raise ValueError(yaml["output_validation"]["type"] + " is not a valid output validation mode")
 
         self.trusted_compile_time_limit_sec = 60.0  # 1 minute
         self.trusted_compile_memory_limit_mib = resource.RLIM_INFINITY

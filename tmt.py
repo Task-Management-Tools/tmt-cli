@@ -9,7 +9,6 @@ from internal.context import init_tmt_root, TMTContext
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
 from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
-from internal.step_solution_batch import BatchSolutionStep
 from internal.step_checker_icpc import ICPCCheckerStep
 
 
@@ -39,24 +38,28 @@ def generate_testcases(context: TMTContext):
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
     # TODO: change type and model solution path accordin to setting
-    solution_step = BatchSolutionStep(context=context,
-                                      time_limit=context.config.trusted_step_time_limit_sec,
-                                      memory_limit=context.config.trusted_step_memory_limit_mib,
-                                      output_limit=context.config.trusted_step_output_limit_mib,
-                                      submission_files=[context.path.replace_with_solution("sol.cpp")])
+    solution_step = context.config.solution_step(context=context,
+                                                 time_limit=context.config.trusted_step_time_limit_sec,
+                                                 memory_limit=context.config.trusted_step_memory_limit_mib,
+                                                 output_limit=context.config.trusted_step_output_limit_mib,
+                                                 submission_files=[context.path.replace_with_solution("sol.cpp")])
 
-    formatter.print("Generator  compile ")
+    formatter.print("Generator   compile ")
     generation_step.prepare_sandbox()
     formatter.print_compile_string_with_exit(generation_step.compile())
 
-    formatter.print("Validator  compile ")
+    formatter.print("Validator   compile ")
     validation_step.prepare_sandbox()
     formatter.print_compile_string_with_exit(validation_step.compile())
 
-    formatter.print("Solution   compile ")
+    formatter.print("Solution    compile ")
     solution_step.prepare_sandbox()
     # TODO: this should also compile interactor or manager, if present
     formatter.print_compile_string_with_exit(solution_step.compile_solution())
+    
+    if solution_step.has_interactor:
+        formatter.print("Interactor  compile ")
+        formatter.print_compile_string_with_exit(solution_step.compile_interactor())
 
     recipe = parse_contest_data(open(context.path.recipe).readlines())
 
@@ -129,7 +132,6 @@ def generate_testcases(context: TMTContext):
                 with open(solution_internal_log, "w+") as f:
                     f.write(solution_result.reason)
 
-
                 # TODO: make it a CLI argument
                 if True:
                     reason = reason.replace('\n', ' ')
@@ -147,11 +149,11 @@ def invoke_solution(context: TMTContext, files: list[str]):
     actual_files = [os.path.join(os.getcwd(), file) for file in files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step = BatchSolutionStep(context=context,
-                                          time_limit=context.config.time_limit_sec,
-                                          memory_limit=context.config.memory_limit_mib,
-                                          output_limit=context.config.output_limit_mib,
-                                          submission_files=actual_files)
+        solution_step = context.config.solution_step(context=context,
+                                                     time_limit=context.config.time_limit_sec,
+                                                     memory_limit=context.config.memory_limit_mib,
+                                                     output_limit=context.config.output_limit_mib,
+                                                     submission_files=actual_files)
         checker_step = ICPCCheckerStep(context)
 
         formatter.print("Solution   compile ")
@@ -170,13 +172,14 @@ def invoke_solution(context: TMTContext, files: list[str]):
     unavailable_testcases = [testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
 
     if len(unavailable_testcases):
-        formatter.print(formatter.ANSI_YELLOW, 
+        formatter.print(formatter.ANSI_YELLOW,
                         "Warning: testcases ", ', '.join(unavailable_testcases), " were not available.",
                         formatter.ANSI_RESET, endl=True)
     if is_apport_active():
-        formatter.print(formatter.ANSI_YELLOW,
-                        "Warning: apport is active. Runtime error caused by signal might be treated as wall-clock limit exceeded due to apport crash collector delay.",
-                        formatter.ANSI_RESET, endl=True)
+        formatter.print(
+            formatter.ANSI_YELLOW,
+            "Warning: apport is active. Runtime error caused by signal might be treated as wall-clock limit exceeded due to apport crash collector delay.",
+            formatter.ANSI_RESET, endl=True)
 
     codename_length = max(map(len, available_testcases)) + 2
 
