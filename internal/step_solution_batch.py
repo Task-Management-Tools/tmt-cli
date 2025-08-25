@@ -16,47 +16,31 @@ from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
 
-
 class BatchSolutionStep(MetaSolutionStep):
-    def __init__(self, *, context: TMTContext,
-                 time_limit: float, memory_limit: int, output_limit: int,
-                 submission_files: list[str]):
-        self.context = context
+    def __init__(self, *, context: 'TMTContext', is_trusted, submission_files: list[str]):
+        super().__init__(context=context,
+                         is_trusted=is_trusted,
+                         submission_files=submission_files)
 
-        self.executable_name = self.context.config.problem_name
-        self.time_limit = time_limit
-        self.memory_limit = memory_limit
-        self.output_limit = output_limit
-
-        if len(submission_files) != 1:
+        if len(self.submission_files) != 1:
             raise ValueError("Batch task only supports single file submission.")
-        self.submission_file = submission_files[0]
-        self.grader = None # TODO: infer from config file (context)
-        
-        self.has_interactor = False
-
+    
     def prepare_sandbox(self):
         self.context.path.mkdir_sandbox_solution()
 
     def compile_solution(self) -> CompilationResult:
-        files = [self.submission_file]
+        files = self.submission_files
         if self.grader is not None:
             files.append(self.context.path.replace_with_grader(self.grader))
 
-        # TODO: change this set to user specified
-        if platform.system() == "Darwin":
-            compile_flags = ["-std=gnu++20", "-O2", "-pipe", "-s"]
-        else:
-            compile_flags = ["-std=gnu++20", "-O2", "-pipe", "-static", "-s"]
-
         return compile_cpp_single(working_dir=self.context.path.sandbox_solution,
-                                  files=files, 
-                                  flags=compile_flags, 
-                                  # these parameters are intended trusted step time limit instead of compile limit, 
+                                  files=files,
+                                  flags=None,
+                                  # these parameters are intended trusted step time limit instead of compile limit,
                                   # since they will occur on judge, so they should have more restrictive limits
                                   compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
                                   compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-                                  executable_stack_size_mib=self.memory_limit,
+                                  executable_stack_size_mib=self.memory_limit_mib,
                                   executable_name=self.executable_name)
 
     def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
@@ -94,9 +78,9 @@ class BatchSolutionStep(MetaSolutionStep):
                                stdin_redirect=sandbox_input_file,
                                stdout_redirect=sandbox_output_file,
                                stderr_redirect=sandbox_error_file,
-                               time_limit=self.time_limit,
-                               memory_limit=self.memory_limit,
-                               output_limit=self.output_limit)
+                               time_limit=self.time_limit_sec,
+                               memory_limit=self.memory_limit_mib,
+                               output_limit=self.output_limit_mib)
             wait_procs([solution])
 
             if Path(sandbox_input_file).exists():
@@ -116,7 +100,7 @@ class BatchSolutionStep(MetaSolutionStep):
                     shutil.move(sandbox_output_file, os.path.join(self.context.path.testcases, file_out_name))
                 else:
                     no_output_file = True
-                    
+
         except FileNotFoundError as exception:
             # We can simply raise, since there will be no processes left
             # This should be treated as internal error
@@ -134,19 +118,7 @@ class BatchSolutionStep(MetaSolutionStep):
 
         if no_output_file:
             result.verdict = EvaluationOutcome.NO_FILE
-        elif solution.cpu_time > self.time_limit:
-            result.verdict = EvaluationOutcome.TIMEOUT
-        elif solution.wall_clock_time > self.time_limit:
-            result.verdict = EvaluationOutcome.TIMEOUT_WALL
-        elif solution.exit_signal == signal.SIGXFSZ:
-            result.verdict = EvaluationOutcome.OUTPUT_LIMIT
-        elif solution.exit_signal == signal.SIGXCPU:  # this can happen
-            result.verdict = EvaluationOutcome.TIMEOUT
-        elif solution.exit_signal != 0:
-            result.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            result.checker_reason = f"Execution killed by signal ({signal.strsignal(solution.exit_signal)})"
-        elif solution.exit_code != 0:
-            result.verdict = EvaluationOutcome.RUNERROR_EXITCODE
-            result.checker_reason = f"Execution exited with exit code {solution.exit_code}"
+        elif self.is_solution_abormal_exit(solution, result):
+            pass
 
         return result

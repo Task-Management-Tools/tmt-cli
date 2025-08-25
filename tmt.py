@@ -39,9 +39,7 @@ def generate_testcases(context: TMTContext):
     validation_step = ValidationStep(context)
     # TODO: change type and model solution path accordin to setting
     solution_step = context.config.solution_step(context=context,
-                                                 time_limit=context.config.trusted_step_time_limit_sec,
-                                                 memory_limit=context.config.trusted_step_memory_limit_mib,
-                                                 output_limit=context.config.trusted_step_output_limit_mib,
+                                                 is_trusted=True,
                                                  submission_files=[context.path.replace_with_solution("sol.cpp")])
 
     formatter.print("Generator   compile ")
@@ -54,12 +52,15 @@ def generate_testcases(context: TMTContext):
 
     formatter.print("Solution    compile ")
     solution_step.prepare_sandbox()
-    # TODO: this should also compile interactor or manager, if present
     formatter.print_compile_string_with_exit(solution_step.compile_solution())
     
-    if solution_step.has_interactor:
+    if solution_step.has_interactor():
         formatter.print("Interactor  compile ")
         formatter.print_compile_string_with_exit(solution_step.compile_interactor())
+    
+    if solution_step.has_manager():
+        formatter.print("Manager     compile ")
+        formatter.print_compile_string_with_exit(solution_step.compile_manager())
 
     recipe = parse_contest_data(open(context.path.recipe).readlines())
 
@@ -150,20 +151,26 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
     if pathlib.Path(context.path.testcases_summary).exists():
         solution_step = context.config.solution_step(context=context,
-                                                     time_limit=context.config.time_limit_sec,
-                                                     memory_limit=context.config.memory_limit_mib,
-                                                     output_limit=context.config.output_limit_mib,
+                                                     is_trusted=False,
                                                      submission_files=actual_files)
         checker_step = ICPCCheckerStep(context)
 
-        formatter.print("Solution   compile ")
+        formatter.print("Solution    compile ")
         solution_step.prepare_sandbox()
         formatter.print_compile_string_with_exit(solution_step.compile_solution())
 
-        formatter.print("Checker    compile ")
-        checker_step.prepare_sandbox()
-        # TODO: this should also compile interactor or manager, if present
-        formatter.print_compile_string_with_exit(checker_step.compile())
+        if solution_step.has_interactor():
+            formatter.print("Interactor  compile ")
+            formatter.print_compile_string_with_exit(solution_step.compile_interactor())
+    
+        if solution_step.has_manager():
+            formatter.print("Manager     compile ")
+            formatter.print_compile_string_with_exit(solution_step.compile_manager())
+
+        if not solution_step.skip_checker():
+            formatter.print("Checker     compile ")
+            checker_step.prepare_sandbox()
+            formatter.print_compile_string_with_exit(checker_step.compile())
 
     recipe = parse_contest_data(open(context.path.recipe).readlines())
     all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
@@ -191,13 +198,17 @@ def invoke_solution(context: TMTContext, files: list[str]):
         sol_result = solution_step.run_solution(testcases, False)
         formatter.print_exec_result(eval_result_to_exec_result(sol_result))
         formatter.print(f" {sol_result.execution_time:.3f}  ")
-        formatter.print("check ")
-        # TODO: find actual argument to pass to checker
-        testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcases))
-        testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcases))
-        check_result = checker_step.run_checker([], sol_result, testcase_input, testcase_answer)
+
+        if not solution_step.skip_checker():
+            formatter.print("check ")
+            # TODO: find actual argument to pass to checker
+            testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcases))
+            testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcases))
+            sol_result = checker_step.run_checker([], sol_result, testcase_input, testcase_answer)
+            formatter.print_checker_status(sol_result)
+
         # TODO: Change print_reason into a CLI argument
-        formatter.print_checker_result(check_result, print_reason=True)
+        formatter.print_checker_verdict(sol_result, print_reason=True)
         formatter.print(endl=True)
 
 

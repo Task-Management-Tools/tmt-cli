@@ -18,6 +18,13 @@ def compile_cpp_single(*, working_dir: str, files: list[str], flags: list[str],
     Returns a string as the compilation standard error, and an int as the exit code.
     The integer will be -1 if one of the files does not exist.
     """
+    if flags is None:
+        # TODO: change this set to user specified
+        if platform.system() == "Darwin":
+            flags = ["-std=gnu++20", "-O2", "-pipe", "-s"]
+        else:
+            flags = ["-std=gnu++20", "-O2", "-pipe", "-static", "-s"]
+
     for file in files:
         if not Path(file).exists():
             return CompilationResult(verdict=CompilationOutcome.FAILED,

@@ -84,7 +84,6 @@ class ICPCCheckerStep(CheckerStep):
             with open(checker_feedback_file, "r") as f:
                 evaluation_record.checker_reason = f.readline().strip()
 
-        # TODO: actually support these things
         if checker_process.is_timedout:
             evaluation_record.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
         elif checker_process.is_signaled_exit:
@@ -97,4 +96,3 @@ class ICPCCheckerStep(CheckerStep):
                 evaluation_record.verdict = EvaluationOutcome.NO_OUTPUT
 
         return evaluation_record
-        # Do remember to take 42 exit code as sucess and any other as fail (incorrect).

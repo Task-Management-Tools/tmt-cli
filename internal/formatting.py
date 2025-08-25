@@ -123,14 +123,46 @@ class Formatter:
         else:
             self.print(reason)
 
-    def print_checker_result(self, result: EvaluationResult, print_reason: bool = False) -> str:
+    def print_checker_status(self, result: EvaluationResult) -> str:
         """
-        Formats the execution output.
+        Formats the execution short status (the one with surrounded by square brackets).
         """
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
-        def print_result(checker_color: str, checker_status: str, content_color: str):
+        def print_result(checker_color: str, checker_status: str):
             self.print_fixed_width('[', checker_color, checker_status, self.ANSI_RESET, ']', width=8)
+
+        group_accepted = [EvaluationOutcome.ACCEPTED]
+        group_partial = [EvaluationOutcome.PARTIAL]
+        group_wrong_answer = [EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
+        group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
+        group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, EvaluationOutcome.RUNERROR_EXITCODE]
+        group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
+                             EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
+                             EvaluationOutcome.INTERNAL_ERROR]
+
+        if result.verdict in group_accepted:
+            return print_result(self.ANSI_GREEN, "OK")
+        elif result.verdict in group_partial:
+            return print_result(self.ANSI_GREEN, "OK")
+        elif result.verdict in group_wrong_answer:
+            return print_result(self.ANSI_GREEN, "OK")
+        elif result.verdict in group_timeout:
+            return print_result(self.ANSI_GREY, "SKIP")
+        elif result.verdict in group_runtime_error:
+            return print_result(self.ANSI_GREY, "SKIP")
+        elif result.verdict in group_judge_error:
+            return print_result(self.ANSI_RED_BG, "FAIL")
+        else:
+            raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
+
+    def print_checker_verdict(self, result: EvaluationResult, print_reason: bool = False) -> str:
+        """
+        Formats the execution verdict and reason.
+        """
+        # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
+
+        def print_result(content_color: str):
             self.print_fixed_width(content_color, result.verdict.value, self.ANSI_RESET, ' ', width=16)
             if print_reason:
                 self.print_reason(result.checker_reason)
@@ -145,16 +177,16 @@ class Formatter:
                              EvaluationOutcome.INTERNAL_ERROR]
 
         if result.verdict in group_accepted:
-            return print_result(self.ANSI_GREEN, "OK", self.ANSI_GREEN)
+            return print_result(self.ANSI_GREEN)
         elif result.verdict in group_partial:
-            return print_result(self.ANSI_GREEN, "OK", self.ANSI_YELLOW)
+            return print_result(self.ANSI_YELLOW)
         elif result.verdict in group_wrong_answer:
-            return print_result(self.ANSI_GREEN, "OK", self.ANSI_RED)
+            return print_result(self.ANSI_RED)
         elif result.verdict in group_timeout:
-            return print_result(self.ANSI_GREY, "SKIP", self.ANSI_BLUE)
+            return print_result(self.ANSI_BLUE)
         elif result.verdict in group_runtime_error:
-            return print_result(self.ANSI_GREY, "SKIP", self.ANSI_PURPLE)
+            return print_result(self.ANSI_PURPLE)
         elif result.verdict in group_judge_error:
-            return print_result(self.ANSI_RED_BG, "FAIL", self.ANSI_RED)
+            return print_result(self.ANSI_RED)
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")

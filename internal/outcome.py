@@ -103,8 +103,8 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
     (For example, when generating answer files.)
     """
 
-    group_accepted = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.ACCEPTED]
-    group_wrong_answer = [EvaluationOutcome.PARTIAL, EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
+    group_accepted = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.ACCEPTED, 
+                      EvaluationOutcome.PARTIAL, EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
     group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
     group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, EvaluationOutcome.RUNERROR_EXITCODE]
     group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
@@ -114,8 +114,6 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
 
     if eval_res.verdict in group_accepted:
         return ExecutionResult(verdict=ExecutionOutcome.SUCCESS, reason=eval_res.checker_reason)
-    elif eval_res.verdict in group_wrong_answer:
-        return ExecutionResult(verdict=ExecutionOutcome.FAILED, reason=eval_res.checker_reason)
     elif eval_res.verdict in group_timeout:
         return ExecutionResult(verdict=ExecutionOutcome.TIMEDOUT, reason=eval_res.checker_reason)
     elif eval_res.verdict in group_runtime_error:

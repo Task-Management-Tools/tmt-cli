@@ -20,43 +20,37 @@ from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOut
 class InteractiveICPCSolutionStep(MetaSolutionStep):
     """Implements ICPC interactive problem evaluation."""
 
-    def __init__(self, *, context: 'TMTContext',
-                 time_limit: float, memory_limit: int, output_limit: int,
-                 submission_files: list[str]):
-        self.context = context
-
-        self.executable_name = self.context.config.problem_name
-        self.time_limit = time_limit
-        self.memory_limit = memory_limit
-        self.output_limit = output_limit
+    def __init__(self, *, context: 'TMTContext', is_trusted, submission_files: list[str]):
+        super().__init__(context=context,
+                         is_trusted=is_trusted,
+                         submission_files=submission_files)
 
         if len(submission_files) != 1:
             raise ValueError("ICPC-style interactive task only supports single file submission.")
-        self.submission_file = submission_files[0]
 
-        self.has_interactor = True
+    @classmethod
+    def has_interactor(cls):
+        return True
+
+    @classmethod
+    def skip_checker(cls):
+        return True
 
     def prepare_sandbox(self):
         self.context.path.mkdir_sandbox_solution()
         self.context.path.mkdir_sandbox_checker()
 
     def compile_solution(self) -> CompilationResult:
-        files = [self.submission_file]
-
-        # TODO: change this set to user specified
-        if platform.system() == "Darwin":
-            compile_flags = ["-std=gnu++20", "-O2", "-pipe", "-s"]
-        else:
-            compile_flags = ["-std=gnu++20", "-O2", "-pipe", "-static", "-s"]
+        files = self.submission_files
 
         return compile_cpp_single(working_dir=self.context.path.sandbox_solution,
                                   files=files,
-                                  flags=compile_flags,
+                                  flags=None,
                                   # these parameters are intended trusted step time limit instead of compile limit,
                                   # since they will occur on judge, so they should have more restrictive limits
                                   compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
                                   compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-                                  executable_stack_size_mib=self.memory_limit,
+                                  executable_stack_size_mib=self.memory_limit_mib,
                                   executable_name=self.executable_name)
 
     def compile_interactor(self) -> CompilationResult:
@@ -99,36 +93,40 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
             else:
                 Path(sandbox_checker_answer_file).touch()
 
-
             feedback_dir = os.path.join(self.context.path.sandbox_solution, "feedback_dir") + os.sep
             if not os.path.isdir(feedback_dir):
                 os.mkdir(feedback_dir)
 
             pre_wait_procs()
-            old_handler = signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+            
+            def solution_preexec_fn():
+                os.chdir(self.context.path.sandbox_solution)
+                signal.signal(signal.SIGPIPE, signal.SIG_IGN)
             solution = Process(os.path.join(self.context.path.sandbox_solution, self.executable_name),
-                               preexec_fn=lambda: os.chdir(self.context.path.sandbox_solution),
+                               preexec_fn=solution_preexec_fn,
                                stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE,
                                stderr_redirect=sandbox_solution_err_file,
-                               time_limit=self.time_limit,
-                               memory_limit=self.memory_limit,
-                               output_limit=self.output_limit)
+                               time_limit=self.time_limit_sec,
+                               memory_limit=self.memory_limit_mib,
+                               output_limit=self.output_limit_mib)
 
+            def interactor_preexec_fn():
+                os.chdir(self.context.path.sandbox_checker)
+                signal.signal(signal.SIGPIPE, signal.SIG_IGN)
             interactor = Process([os.path.join(self.context.path.sandbox_checker, "checker"),
                                   sandbox_checker_input_file, sandbox_checker_answer_file, feedback_dir],
-                                 preexec_fn=lambda: os.chdir(self.context.path.sandbox_checker),
+                                 preexec_fn=interactor_preexec_fn,
                                  stdin=solution.stdout,
                                  stdout=solution.stdin,
                                  stderr_redirect=sandbox_checker_err_file,
-                                 time_limit=max(self.time_limit, self.context.config.trusted_step_time_limit_sec) + 1,
+                                 time_limit=max(self.time_limit_sec, self.context.config.trusted_step_time_limit_sec) + 1,
                                  memory_limit=self.context.config.trusted_step_memory_limit_mib,
                                  output_limit=self.context.config.trusted_step_output_limit_mib)
 
             solution.stdin.close()
             solution.stdout.close()
 
-            signal.signal(signal.SIGPIPE, old_handler)
             wait_procs([solution, interactor])
 
             if Path(sandbox_checker_input_file).exists():
@@ -149,7 +147,8 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
             # Move output
             if store_output:
                 dummy_output_file = os.path.join(self.context.path.testcases, file_out_name)
-                with open(dummy_output_file, "w+b"): pass # Truncate the file
+                with open(dummy_output_file, "w+b"):
+                    pass  # Truncate the file
 
         except FileNotFoundError as exception:
             # We can simply raise, since there will be no processes left
@@ -172,20 +171,8 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
         elif interactor.is_signaled_exit:
             result.verdict = EvaluationOutcome.CHECKER_CRASHED
         # else, we check if solution executed successfully
-        elif solution.cpu_time > self.time_limit:
-            result.verdict = EvaluationOutcome.TIMEOUT
-        elif solution.wall_clock_time > self.time_limit:
-            result.verdict = EvaluationOutcome.TIMEOUT_WALL
-        elif solution.exit_signal == signal.SIGXFSZ:
-            result.verdict = EvaluationOutcome.OUTPUT_LIMIT
-        elif solution.exit_signal == signal.SIGXCPU:  # this can happen
-            result.verdict = EvaluationOutcome.TIMEOUT
-        elif solution.exit_signal != 0:
-            result.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            result.checker_reason = f"Execution killed by signal ({signal.strsignal(solution.exit_signal)})"
-        elif solution.exit_code != 0:
-            result.verdict = EvaluationOutcome.RUNERROR_EXITCODE
-            result.checker_reason = f"Execution exited with exit code {solution.exit_code}"
+        elif self.is_solution_abormal_exit(solution, result):
+            pass
         # Noe, we can check if solution is actually correct
         elif interactor.exit_code == 42:
             result.verdict = EvaluationOutcome.ACCEPTED

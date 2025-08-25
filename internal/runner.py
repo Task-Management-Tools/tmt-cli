@@ -88,6 +88,7 @@ class Process(subprocess.Popen):
                 # self.wait4()
             except ChildProcessError:
                 pass
+        self.timer.cancel()
 
     def wait4(self) -> int:
         if self.returncode is None:
