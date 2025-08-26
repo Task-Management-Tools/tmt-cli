@@ -14,7 +14,7 @@ class MetaSolutionStep(metaclass=ABCMeta):
     def __init__(self, *,  context: 'TMTContext', is_trusted: bool, submission_files: list[str]):
         self.context = context
 
-        self.executable_name = self.context.config.problem_name
+        self.executable_name = self.context.config.short_name
         if is_trusted:
             self.time_limit_sec = self.context.config.trusted_step_time_limit_sec
             self.memory_limit_mib = self.context.config.trusted_step_memory_limit_mib

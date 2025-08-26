@@ -6,16 +6,15 @@ import subprocess
 
 from pathlib import Path
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
-
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_makefile import compile_with_make
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOutcome, CompilationResult
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from internal.context import TMTContext
 
 class InteractiveICPCSolutionStep(MetaSolutionStep):
     """Implements ICPC interactive problem evaluation."""

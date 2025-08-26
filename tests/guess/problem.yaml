@@ -1,20 +1,18 @@
 title: Guess
-id: guess
-description: Guess
+short_name: guess
+short_name: Guess a number between 1 and 1024
+
 time_limit: 1000 ms
 memory_limit: 1 G
 output_limit: unlimited
 input_extension: in
 output_extension: out
 
-solution_compilation: default
-solution_execution: 
-  type: default
-output_validation:
-  type: interactive
+judge_convention: icpc
 
+problem_type: interactive
+solution_compilation: default
 input_validation: default
 answer_generation: 
   type: solution
-  file: sol.cpp
-judge_convention: icpc
+  filename: sol.cpp

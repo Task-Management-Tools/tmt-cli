@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 import os
-import platform
 import shutil
-import signal
 
 from pathlib import Path
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from internal.context import TMTContext
 
 class BatchSolutionStep(MetaSolutionStep):
     def __init__(self, *, context: 'TMTContext', is_trusted, submission_files: list[str]):

@@ -2,9 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
+from internal.context import TMTContext
     
 from internal.context import JudgeConvention
 from internal.compilation_makefile import compile_with_make

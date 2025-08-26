@@ -1,7 +1,5 @@
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
+from internal.context import TMTContext
 from internal.outcome import EvaluationResult, CompilationResult
 
 

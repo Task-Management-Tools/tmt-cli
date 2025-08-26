@@ -39,9 +39,9 @@ def generate_testcases(context: TMTContext):
     validation_step = ValidationStep(context)
     # TODO: change type and model solution path accordin to setting
     model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
-    solution_step = context.config.solution_step(context=context,
-                                                 is_trusted=True,
-                                                 submission_files=[model_solution_full_path])
+    solution_step = context.config.get_solution_step()(context=context,
+                                                       is_trusted=True,
+                                                       submission_files=[model_solution_full_path])
 
     formatter.print("Generator   compile ")
     generation_step.prepare_sandbox()
@@ -54,11 +54,11 @@ def generate_testcases(context: TMTContext):
     formatter.print("Solution    compile ")
     solution_step.prepare_sandbox()
     formatter.print_compile_string_with_exit(solution_step.compile_solution())
-    
+
     if solution_step.has_interactor():
         formatter.print("Interactor  compile ")
         formatter.print_compile_string_with_exit(solution_step.compile_interactor())
-    
+
     if solution_step.has_manager():
         formatter.print("Manager     compile ")
         formatter.print_compile_string_with_exit(solution_step.compile_manager())
@@ -151,9 +151,9 @@ def invoke_solution(context: TMTContext, files: list[str]):
     actual_files = [os.path.join(os.getcwd(), file) for file in files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step = context.config.solution_step(context=context,
-                                                     is_trusted=False,
-                                                     submission_files=actual_files)
+        solution_step = context.config.get_solution_step()(context=context,
+                                                           is_trusted=False,
+                                                           submission_files=actual_files)
         checker_step = ICPCCheckerStep(context)
 
         formatter.print("Solution    compile ")
@@ -163,7 +163,7 @@ def invoke_solution(context: TMTContext, files: list[str]):
         if solution_step.has_interactor():
             formatter.print("Interactor  compile ")
             formatter.print_compile_string_with_exit(solution_step.compile_interactor())
-    
+
         if solution_step.has_manager():
             formatter.print("Manager     compile ")
             formatter.print_compile_string_with_exit(solution_step.compile_manager())
@@ -198,7 +198,7 @@ def invoke_solution(context: TMTContext, files: list[str]):
         formatter.print("sol ")
         sol_result = solution_step.run_solution(testcases, False)
         formatter.print_exec_result(eval_result_to_exec_result(sol_result))
-        formatter.print(f"{sol_result.solution_cpu_time_sec:6.3f} s / {sol_result.solution_max_memory_kib / 1024 :5.4g} MiB  ")
+        formatter.print(f"{sol_result.solution_cpu_time_sec:6.3f} s / {sol_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
 
         if not solution_step.skip_checker():
             formatter.print("check ")

@@ -2,9 +2,7 @@ import os
 import shutil
 import pathlib
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
+from internal.context import TMTContext
 from internal.step_checker import CheckerStep
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs

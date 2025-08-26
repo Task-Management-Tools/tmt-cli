@@ -1,20 +1,20 @@
-title: A + B
-id: aplusb
+title: A + B Problem
+short_name: aplusb
 description: A + B Problem
+
 time_limit: 1000 ms
 memory_limit: 1 G
 output_limit: unlimited
 input_extension: in
 output_extension: out
 
+judge_convention: icpc
+
+problem_type: batch
 solution_compilation: default
-solution_execution: 
-  type: default
+input_validation: default
 output_validation:
   type: default
-
-input_validation: default
 answer_generation: 
   type: solution
-  file: sol.cpp
-judge_convention: icpc
+  filename: sol.cpp
