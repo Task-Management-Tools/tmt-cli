@@ -5,7 +5,7 @@ import os
 from internal.recipe_parser import parse_contest_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
-from internal.context import init_tmt_root, TMTContext
+from internal.context import CheckerType, init_tmt_root, TMTContext
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
 from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
@@ -138,7 +138,7 @@ def generate_testcases(context: TMTContext):
                 if True:
                     reason = reason.replace('\n', ' ')
                     formatter.print_reason(reason)
-                formatter.print(endl=True)
+                formatter.println()
 
                 # TODO: this should print more meaningful contents, right now it is only the testcases
                 if generator_result and validation_result and solution_result:
@@ -172,6 +172,10 @@ def invoke_solution(context: TMTContext, files: list[str]):
             formatter.print("Checker     compile ")
             checker_step.prepare_sandbox()
             formatter.print_compile_string_with_exit(checker_step.compile())
+            if context.path.has_checker_directory() and context.config.checker_type is CheckerType.DEFAULT:
+                formatter.println(formatter.ANSI_YELLOW, 
+                                  "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.", 
+                                  formatter.ANSI_RESET)
 
     recipe = parse_contest_data(open(context.path.recipe).readlines())
     all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
@@ -180,14 +184,14 @@ def invoke_solution(context: TMTContext, files: list[str]):
     unavailable_testcases = [testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
 
     if len(unavailable_testcases):
-        formatter.print(formatter.ANSI_YELLOW,
+        formatter.println(formatter.ANSI_YELLOW,
                         "Warning: testcases ", ', '.join(unavailable_testcases), " were not available.",
-                        formatter.ANSI_RESET, endl=True)
+                        formatter.ANSI_RESET)
     if is_apport_active():
-        formatter.print(
+        formatter.println(
             formatter.ANSI_YELLOW,
             "Warning: apport is active. Runtime error caused by signal might be treated as wall-clock limit exceeded due to apport crash collector delay.",
-            formatter.ANSI_RESET, endl=True)
+            formatter.ANSI_RESET)
 
     codename_length = max(map(len, available_testcases)) + 2
 
@@ -205,12 +209,13 @@ def invoke_solution(context: TMTContext, files: list[str]):
             # TODO: find actual argument to pass to checker
             testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcases))
             testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcases))
-            sol_result = checker_step.run_checker([], sol_result, testcase_input, testcase_answer)
+            # TODO
+            sol_result = checker_step.run_checker(context.config.checker_arguments, sol_result, testcase_input, testcase_answer)
             formatter.print_checker_status(sol_result)
 
         # TODO: Change print_reason into a CLI argument
         formatter.print_checker_verdict(sol_result, print_reason=True)
-        formatter.print(endl=True)
+        formatter.println()
 
 
 def main():

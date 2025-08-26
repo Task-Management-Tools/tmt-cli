@@ -47,17 +47,17 @@ class Formatter:
             self.cursor = 0
         print(*args, sep="", flush=True, end=('\n' if endl else ""))
 
+    def println(self, *args) -> None:
+        self.print(*args, endl=True)
+
     def print_fixed_width(self, *args, width: int, endl=False) -> None:
         total_length = 0
         for arg in args:
             if not isinstance(arg, self.AnsiSequence):
                 total_length += len(str(arg))
         pad = ' ' * max(0, width - total_length)
-        self.advance_cursor(max(width, total_length))
 
-        if endl:
-            self.cursor = 0
-        print(*args, pad, flush=True, sep="", end=('\n' if endl else ""))
+        self.print(*args, pad, endl=endl)
 
     def print_compile_string(self, result: CompilationResult) -> None:
         """

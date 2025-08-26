@@ -1,6 +1,6 @@
-title: Parity
-short_name: parity
-description: Print a number with the same parity.
+title: Float Compare
+short_name: floatcmp
+description: Print the same real numbers.
 
 time_limit: 1000 ms
 memory_limit: 1 G
@@ -14,8 +14,8 @@ problem_type: batch
 solution_compilation: default
 input_validation: default
 output_validation:
-  type: custom
-  filename: checker.cpp
+  type: default
+  arguments: float_tolerance 1e-6
 answer_generation: 
   type: solution
   filename: sol.cpp

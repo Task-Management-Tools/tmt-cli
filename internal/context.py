@@ -113,7 +113,7 @@ class TMTConfig:
             self.checker_type = CheckerType(yaml["output_validation"]["type"])
             if self.checker_type is CheckerType.CUSTOM:
                 self.checker_filename = yaml["output_validation"]["filename"]
-            self.checker_arguments = yaml["output_validation"].get("arguments", "")
+            self.checker_arguments = yaml["output_validation"].get("arguments", "").split()
             self.check_forced_output = bool(yaml["output_validation"].get("arguments", True))
         else:
             if "output_validation" in yaml:

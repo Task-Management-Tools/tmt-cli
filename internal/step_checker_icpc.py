@@ -2,7 +2,7 @@ import os
 import shutil
 import pathlib
 
-from internal.context import TMTContext
+from internal.context import CheckerType, TMTContext
 from internal.step_checker import CheckerStep
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
@@ -16,14 +16,19 @@ class ICPCCheckerStep(CheckerStep):
 
     def compile(self) -> CompilationResult:
 
-        if self.context.path.has_checker_directory():
+        common_kwargs = {
+            "compiler": self.context.compiler,
+            "compile_flags": self.context.compile_flags,
+            "compile_time_limit_sec": self.limits.trusted_compile_time_limit_sec,
+            "compile_memory_limit_mib": self.limits.trusted_compile_memory_limit_mib,
+            "executable_stack_size_mib": self.limits.trusted_step_memory_limit_mib
+        }
+        if self.context.config.checker_type is CheckerType.CUSTOM:
+            if not self.context.path.has_checker_directory():
+                raise FileNotFoundError("Directory checker is not present.")
             compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
                                                directory=self.context.path.checker,
-                                               compiler=self.context.compiler,
-                                               compile_flags=self.context.compile_flags,
-                                               compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
-                                               compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,
-                                               executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+                                               **common_kwargs)
             shutil.copy(os.path.join(self.context.path.checker, "checker"), self.context.path.sandbox_checker)
         else:
             # In this case we have no checker directory, therefore, we will build the default checker
@@ -32,12 +37,8 @@ class ICPCCheckerStep(CheckerStep):
             shutil.copy(checker_path, self.context.path.sandbox_checker)
 
             compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
-                                               compiler=self.context.compiler,
-                                               compile_flags=self.context.compile_flags,
                                                directory=self.context.path.sandbox_checker,
-                                               compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
-                                               compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,
-                                               executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+                                               **common_kwargs)
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
         return compile_result
