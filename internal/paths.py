@@ -14,20 +14,6 @@ class ProblemDirectoryHelper:
     MAKEFILE_CHECKER = "internal/CheckerMakefile"
 
     PROBLEM_YAML = "problem.yaml"
-    RECIPE = "recipe"
-
-    VALIDATOR_PATH = "validator"
-    GENERATOR_PATH = "generator"
-    GENERATOR_MANUAL_PATH = "generator/manual"
-    SOLUTIONS_PATH = "solutions"
-    CHECKER_PATH = "checker"
-    TESTCASES_PATH = "testcases"
-    TESTCASES_SUMMARY_PATH = "testcases/summary"
-    GRADERS_PATH = "graders"
-    SANDBOX_PATH = "sandbox"
-    SANDBOX_SOLUTION_PATH = "sandbox/solution"
-    SANDBOX_CHECKER_PATH = "sandbox/checker"
-    LOGS_PATH = "logs"
 
     def __init__(self, problem_dir: str, script_dir: str):
         self.problem_dir = problem_dir
@@ -35,98 +21,70 @@ class ProblemDirectoryHelper:
 
     # Subdirectories
 
-    @property
-    def validator(self): return os.path.join(self.problem_dir, self.VALIDATOR_PATH)
+    def _problem_path_property(*name):
+        def combine_path(self: 'ProblemDirectoryHelper'):
+            return os.path.join(self.problem_dir, *name)
+        return property(combine_path)
+    
+    def _extend_path_property(base: property, *name):
+        return property(lambda self: os.path.join(base.fget(self), *name))
+    
 
-    @property
-    def generator(self): return os.path.join(self.problem_dir, self.GENERATOR_PATH)
+    validator = _problem_path_property("validator")
 
-    @property
-    def generator_manuals(self): return os.path.join(self.problem_dir, self.GENERATOR_MANUAL_PATH)
+    generator = _problem_path_property("generator")
+    generator_manuals = _extend_path_property(generator, "manual")
 
-    @property
-    def solutions(self): return os.path.join(self.problem_dir, self.SOLUTIONS_PATH)
+    solutions = _problem_path_property("solutions")
 
-    @property
-    def checker(self): return os.path.join(self.problem_dir, self.CHECKER_PATH)
+    checker = _problem_path_property("checker")
 
-    @property
-    def testcases(self): return os.path.join(self.problem_dir, self.TESTCASES_PATH)
+    testcases = _problem_path_property("testcases")
+    testcases_summary = _extend_path_property(testcases, "summary")
 
-    @property
-    def sandbox(self): return os.path.join(self.problem_dir, self.SANDBOX_PATH)
+    sandbox = _problem_path_property("sandbox")
+    sandbox_generation = _extend_path_property(sandbox, "generation")
+    sandbox_validation = _extend_path_property(sandbox, "validation")
+    sandbox_solution = _extend_path_property(sandbox, "solution")
+    sandbox_checker = _extend_path_property(sandbox, "checker")
+    sandbox_manager = _extend_path_property(sandbox, "manager")
 
-    @property
-    def sandbox_solution(self): return os.path.join(self.problem_dir, self.SANDBOX_SOLUTION_PATH)
-
-    @property
-    def sandbox_checker(self): return os.path.join(self.problem_dir, self.SANDBOX_CHECKER_PATH)
-
-    @property
-    def logs(self): return os.path.join(self.problem_dir, self.LOGS_PATH)
+    logs = _problem_path_property("logs")
+    logs_generation = _extend_path_property(logs, "generation")
+    logs_invocation = _extend_path_property(logs, "invocation")
 
     # Important files
+    tmt_config = _problem_path_property("problem.yaml")
+    tmt_recipe = _problem_path_property("recipe")
 
-    @property
-    def tmt_config(self): return os.path.join(self.problem_dir, self.PROBLEM_YAML)
+    def _internal_path_property(*name):
+        def combine_path(self: 'ProblemDirectoryHelper'):
+            return os.path.join(self.script_dir, *name)
+        return property(combine_path)
+    
+    makefile_normal = _internal_path_property("internal", "Makefile")
+    makefile_checker = _internal_path_property("internal", "CheckerMakefile")
 
-    @property
-    def makefile_normal(self): return os.path.join(self.script_dir, self.MAKEFILE_NORMAL)
+    def clean_testcases(self):
+        if os.path.exists(self.testcases):
+            shutil.rmtree(self.testcases)
 
-    @property
-    def makefile_checker(self): return os.path.join(self.script_dir, self.MAKEFILE_CHECKER)
+    def clean_logs(self):
+        if os.path.exists(self.logs):
+            shutil.rmtree(self.logs)
 
-    @property
-    def testcases_summary(self): return os.path.join(self.problem_dir, self.TESTCASES_SUMMARY_PATH)
+    def empty_directory(self, path: str):
+        """Empties a directory."""
 
-    @property
-    def recipe(self): return os.path.join(self.problem_dir, self.RECIPE)
-
-    def mkdir_testcases(self):
-        if not os.path.isdir(self.testcases):
-            os.mkdir(self.testcases)
-
-    def mkdir_sandbox(self):
-        if not os.path.isdir(self.sandbox):
-            os.mkdir(self.sandbox)
-
-    def mkdir_sandbox_solution(self):
-        self.mkdir_sandbox()
-        if not os.path.isdir(self.sandbox_solution):
-            os.mkdir(self.sandbox_solution)
-
-    def mkdir_sandbox_checker(self):
-        self.mkdir_sandbox()
-        if not os.path.isdir(self.sandbox_checker):
-            os.mkdir(self.sandbox_checker)
-
-    def mkdir_logs(self):
-        if not os.path.isdir(self.logs):
-            os.mkdir(self.logs)
-
-    def clear_sandbox(self):
-        self.mkdir_sandbox()
-        for item in Path(self.sandbox).iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
-
-    def mkdir_clean_testcases(self):
-        self.mkdir_testcases()
-        for item in Path(self.testcases).iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
-
-    def mkdir_clean_logs(self):
-        self.mkdir_logs()
-        for item in Path(self.logs).iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
+        if not os.path.exists(path) or not os.path.isdir(path):
+            raise ValueError(f"{path} is not a directory")
+        
+        for filename in os.listdir(path):
+            file_path = os.path.join(path, filename)
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
 
     def _is_regular_file(self, path: str):
         if not os.path.exists(path):

@@ -11,18 +11,23 @@ if TYPE_CHECKING:
 
 
 class MetaSolutionStep(metaclass=ABCMeta):
-    def __init__(self, *,  context: 'TMTContext', is_trusted: bool, submission_files: list[str]):
+    def __init__(self, *,  context: 'TMTContext', is_generation: bool, submission_files: list[str]):
         self.context = context
 
         self.executable_name = self.context.config.short_name
-        if is_trusted:
+        # TODO: if is_generation, moves the output (and remove save_output in run_solution method)
+        if is_generation:
             self.time_limit_sec = self.context.config.trusted_step_time_limit_sec
             self.memory_limit_mib = self.context.config.trusted_step_memory_limit_mib
             self.output_limit_mib = self.context.config.trusted_step_output_limit_mib
+            self.is_generation = True
+            self.log_directory = context.path.logs_generation
         else:
             self.time_limit_sec = self.context.config.time_limit_sec
             self.memory_limit_mib = self.context.config.memory_limit_mib
             self.output_limit_mib = self.context.config.output_limit_mib
+            self.is_generation = False
+            self.log_directory = context.path.logs_invocation
 
         self.submission_files = submission_files
         self.grader = None  # TODO: infer from config file (context)
@@ -54,9 +59,10 @@ class MetaSolutionStep(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
+    def run_solution(self, code_name: str) -> EvaluationResult:
         """
-        Runs solution for input file code_name. If store_output is not None, then move the solution to store_output.
+        Runs solution for input file code_name. 
+        If is_generation is True, then stores the output to testcase.
         Otherwise, keep the output in the sandbox and report the file in EvaluationResult.
         """
         raise NotImplementedError

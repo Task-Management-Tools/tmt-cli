@@ -44,7 +44,7 @@ class ICPCCheckerStep(CheckerStep):
         return compile_result
 
     def prepare_sandbox(self):
-        self.context.path.mkdir_sandbox_checker()
+        super().prepare_sandbox()
 
     def run_checker(self, arguments: list[str],
                     evaluation_record: EvaluationResult, input_file: str, answer_file: str) -> EvaluationResult:

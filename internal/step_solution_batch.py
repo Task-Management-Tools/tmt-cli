@@ -15,23 +15,23 @@ if TYPE_CHECKING:
     from internal.context import TMTContext
 
 class BatchSolutionStep(MetaSolutionStep):
-    def __init__(self, *, context: 'TMTContext', is_trusted, submission_files: list[str]):
+    def __init__(self, *, context: 'TMTContext', is_generation: bool, submission_files: list[str]):
         super().__init__(context=context,
-                         is_trusted=is_trusted,
+                         is_generation=is_generation,
                          submission_files=submission_files)
 
         if len(self.submission_files) != 1:
             raise ValueError("Batch task only supports single file submission.")
     
     def prepare_sandbox(self):
-        self.context.path.mkdir_sandbox_solution()
+        os.makedirs(self.context.path.sandbox_solution, exist_ok=True)
 
     def compile_solution(self) -> CompilationResult:
         files = self.submission_files
         if self.grader is not None:
             files.append(self.context.path.replace_with_grader(self.grader))
 
-        return compile_cpp_single(working_dir=self.context.path.sandbox_solution,
+        comp_result = compile_cpp_single(working_dir=self.context.path.sandbox_solution,
                                   files=files,
                                   compiler=self.context.compiler,
                                   compile_flags=self.context.compile_flags,
@@ -41,28 +41,27 @@ class BatchSolutionStep(MetaSolutionStep):
                                   compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
                                   executable_stack_size_mib=self.memory_limit_mib,
                                   executable_name=self.executable_name)
+        os.makedirs(self.log_directory, exist_ok=True)
+        with open(os.path.join(self.log_directory, "solution.compile.out"), "w+") as f:
+            f.write(comp_result.standard_output)
+        with open(os.path.join(self.log_directory, "solution.compile.err"), "w+") as f:
+            f.write(comp_result.standard_error)
+        return comp_result
 
-    def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
+    def run_solution(self, code_name: str) -> EvaluationResult:
         """
         This function only returns FileNotFoundError for execution error.
-
-        If store_output is specified, then we will move the output out of the sandbox and store it to the testcases.
-        Otherwise, we keep that file inside the sandbox, and we invoke checker to check the file.
         """
+        os.makedirs(self.log_directory, exist_ok=True)
 
         file_in_name = self.context.construct_input_filename(code_name)
         file_out_name = self.context.construct_output_filename(code_name)
-        if store_output:  # We are working with official output
-            file_err_name = f"{code_name}.sol.err"
-        else:  # We are invoking and testing the solution
-            file_err_name = f"{code_name}.invoke.err"
+        file_err_name = f"{code_name}.sol.err"
 
         testcase_input = os.path.join(self.context.path.testcases, file_in_name)
         sandbox_input_file = os.path.join(self.context.path.sandbox_solution, file_in_name)
         sandbox_output_file = os.path.join(self.context.path.sandbox_solution, file_out_name)
         sandbox_error_file = os.path.join(self.context.path.sandbox_solution, file_err_name)
-        Path(sandbox_output_file).touch()
-        Path(sandbox_error_file).touch()
 
         no_output_file = False
 
@@ -85,16 +84,12 @@ class BatchSolutionStep(MetaSolutionStep):
             if Path(sandbox_input_file).exists():
                 os.unlink(sandbox_input_file)
 
-            # Prepare directories (normally the testcases should exist, just in case)
-            self.context.path.mkdir_testcases()
-            self.context.path.mkdir_logs()
-
             # Move logs
             Path(sandbox_error_file).touch()
-            shutil.move(sandbox_error_file, os.path.join(self.context.path.logs, file_err_name))
+            shutil.move(sandbox_error_file, os.path.join(self.log_directory, file_err_name))
 
             # Move output
-            if store_output:
+            if self.is_generation:
                 if Path(sandbox_output_file).exists():
                     shutil.move(sandbox_output_file, os.path.join(self.context.path.testcases, file_out_name))
                 else:
@@ -107,7 +102,7 @@ class BatchSolutionStep(MetaSolutionStep):
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
-            output_file=sandbox_output_file if store_output is not None else None
+            output_file=sandbox_output_file if not self.is_generation else None
         )
         result.fill_from_solution_process(solution)
 

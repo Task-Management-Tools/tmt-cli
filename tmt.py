@@ -40,7 +40,7 @@ def generate_testcases(context: TMTContext):
     # TODO: change type and model solution path accordin to setting
     model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
     solution_step = context.config.get_solution_step()(context=context,
-                                                       is_trusted=True,
+                                                       is_generation=True,
                                                        submission_files=[model_solution_full_path])
 
     formatter.print("Generator   compile ")
@@ -63,7 +63,7 @@ def generate_testcases(context: TMTContext):
         formatter.print("Manager     compile ")
         formatter.print_compile_string_with_exit(solution_step.compile_manager())
 
-    recipe = parse_contest_data(open(context.path.recipe).readlines())
+    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
 
     # TODO: it is better to do this in recipe_parser.py but I fear not to touch the humongous multiclass structure
     # so I temporarily write it here
@@ -79,8 +79,10 @@ def generate_testcases(context: TMTContext):
                             validations[tests.test_name].append(validator.commands[0])
 
     # TODO: in case of update testcases, these should be mkdir instead of mkdir_clean.
-    context.path.mkdir_clean_testcases()
-    context.path.mkdir_clean_logs()
+    context.path.clean_testcases()
+    context.path.clean_logs()
+    os.makedirs(context.path.testcases)
+    os.makedirs(context.path.logs)
     pathlib.Path(context.path.testcases_summary).touch()
 
     codename_length = max(map(len, validations.keys())) + 2
@@ -101,8 +103,7 @@ def generate_testcases(context: TMTContext):
                                                                  list(testset.extra_file))
                 formatter.print_exec_result(generator_result)
                 reason = generator_result.reason
-                generator_internal_log = os.path.join(context.path.logs, f"{code_name}.gen.log")
-                with open(generator_internal_log, "w+") as f:
+                with open(os.path.join(context.path.logs_generation, f"{code_name}.gen.log"), "w+") as f:
                     f.write(generator_result.reason)
 
                 # Run validator
@@ -115,8 +116,7 @@ def generate_testcases(context: TMTContext):
                                                                       list(testset.extra_file))
                     reason = validation_result.reason
                 formatter.print_exec_result(validation_result)
-                validator_internal_log = os.path.join(context.path.logs, f"{code_name}.val.log")
-                with open(validator_internal_log, "w+") as f:
+                with open(os.path.join(context.path.logs_generation, f"{code_name}.val.log"), "w+") as f:
                     f.write(validation_result.reason)
 
                 # Run solution
@@ -124,14 +124,11 @@ def generate_testcases(context: TMTContext):
                 if validation_result.verdict is not ExecutionOutcome.SUCCESS:
                     solution_result = ExecutionResult(verdict=ExecutionOutcome.SKIPPED)
                 else:
-                    solution_result = solution_step.run_solution(code_name,
-                                                                 os.path.join(context.path.testcases,
-                                                                              context.construct_output_filename(code_name)))
+                    solution_result = solution_step.run_solution(code_name)
                     solution_result = eval_result_to_exec_result(solution_result)
                     reason = solution_result.reason
                 formatter.print_exec_result(solution_result)
-                solution_internal_log = os.path.join(context.path.logs, f"{code_name}.sol.log")
-                with open(solution_internal_log, "w+") as f:
+                with open(os.path.join(context.path.logs_generation, f"{code_name}.sol.log"), "w+") as f:
                     f.write(solution_result.reason)
 
                 # TODO: make it a CLI argument
@@ -152,7 +149,7 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
     if pathlib.Path(context.path.testcases_summary).exists():
         solution_step = context.config.get_solution_step()(context=context,
-                                                           is_trusted=False,
+                                                           is_generation=False,
                                                            submission_files=actual_files)
         checker_step = ICPCCheckerStep(context)
 
@@ -177,7 +174,7 @@ def invoke_solution(context: TMTContext, files: list[str]):
                                   "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.", 
                                   formatter.ANSI_RESET)
 
-    recipe = parse_contest_data(open(context.path.recipe).readlines())
+    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
     all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
     with open(context.path.testcases_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
@@ -195,27 +192,32 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
     codename_length = max(map(len, available_testcases)) + 2
 
-    for testcases in available_testcases:
+    for testcase in available_testcases:
         formatter.print(' ' * 4)
-        formatter.print_fixed_width(testcases, width=codename_length)
+        formatter.print_fixed_width(testcase, width=codename_length)
 
         formatter.print("sol ")
-        sol_result = solution_step.run_solution(testcases, False)
-        formatter.print_exec_result(eval_result_to_exec_result(sol_result))
-        formatter.print(f"{sol_result.solution_cpu_time_sec:6.3f} s / {sol_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
+        solution_result = solution_step.run_solution(testcase)
+        formatter.print_exec_result(eval_result_to_exec_result(solution_result))
+        formatter.print(f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
+        with open(os.path.join(context.path.logs_invocation, f"{testcase}.sol.log"), "w+") as f:
+            f.write(solution_result.checker_reason)
 
         if not solution_step.skip_checker():
             formatter.print("check ")
             # TODO: find actual argument to pass to checker
-            testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcases))
-            testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcases))
+            testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcase))
+            testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcase))
             # TODO
-            sol_result = checker_step.run_checker(context.config.checker_arguments, sol_result, testcase_input, testcase_answer)
-            formatter.print_checker_status(sol_result)
+            solution_result = checker_step.run_checker(context.config.checker_arguments, solution_result, testcase_input, testcase_answer)
+            formatter.print_checker_status(solution_result)
 
         # TODO: Change print_reason into a CLI argument
-        formatter.print_checker_verdict(sol_result, print_reason=True)
+        formatter.print_checker_verdict(solution_result, print_reason=True)
         formatter.println()
+
+        if solution_result.output_file is not None:
+            os.unlink(solution_result.output_file)
 
 
 def main():

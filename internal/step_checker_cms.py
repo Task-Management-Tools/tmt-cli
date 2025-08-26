@@ -20,7 +20,7 @@ class CMSCheckerStep(CheckerStep):
             return CompilationResult(CompilationOutcome.SUCCESS)
 
     def prepare_sandbox(self):
-        self.working_dir.mkdir_sandbox()
+        super().prepare_sandbox()
 
     def run_checker(self, arguments: list[str],
                     evaluation_record: EvaluationResult, input_file: str, answer_file: str) -> EvaluationResult:

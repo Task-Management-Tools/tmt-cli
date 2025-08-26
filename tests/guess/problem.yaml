@@ -1,6 +1,6 @@
 title: Guess
 short_name: guess
-short_name: Guess a number between 1 and 1024
+description: Guess a number between 1 and 1024
 
 time_limit: 1000 ms
 memory_limit: 1 G

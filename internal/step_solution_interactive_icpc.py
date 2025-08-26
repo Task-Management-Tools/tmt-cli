@@ -16,12 +16,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from internal.context import TMTContext
 
+
 class InteractiveICPCSolutionStep(MetaSolutionStep):
     """Implements ICPC interactive problem evaluation."""
 
-    def __init__(self, *, context: 'TMTContext', is_trusted, submission_files: list[str]):
+    def __init__(self, *, context: 'TMTContext', is_generation: bool, submission_files: list[str]):
         super().__init__(context=context,
-                         is_trusted=is_trusted,
+                         is_generation=is_generation,
                          submission_files=submission_files)
 
         if len(submission_files) != 1:
@@ -36,49 +37,60 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
         return True
 
     def prepare_sandbox(self):
-        self.context.path.mkdir_sandbox_solution()
-        self.context.path.mkdir_sandbox_checker()
+        os.makedirs(self.context.path.sandbox_solution, exist_ok=True)
+        os.makedirs(self.context.path.sandbox_checker, exist_ok=True)
 
     def compile_solution(self) -> CompilationResult:
         files = self.submission_files
 
-        return compile_cpp_single(working_dir=self.context.path.sandbox_solution,
-                                  files=files,
-                                  compiler=self.context.compiler,
-                                  compile_flags=self.context.compile_flags,
-                                  # these parameters are intended trusted step time limit instead of compile limit,
-                                  # since they will occur on judge, so they should have more restrictive limits
-                                  compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
-                                  compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-                                  executable_stack_size_mib=self.memory_limit_mib,
-                                  executable_name=self.executable_name)
+        comp_result = compile_cpp_single(working_dir=self.context.path.sandbox_solution,
+                                         files=files,
+                                         compiler=self.context.compiler,
+                                         compile_flags=self.context.compile_flags,
+                                         # these parameters are intended trusted step time limit instead of compile limit,
+                                         # since they will occur on judge, so they should have more restrictive limits
+                                         compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
+                                         compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
+                                         executable_stack_size_mib=self.memory_limit_mib,
+                                         executable_name=self.executable_name)
+        os.makedirs(self.log_directory, exist_ok=True)
+        with open(os.path.join(self.log_directory, "solution.compile.out"), "w+") as f:
+            f.write(comp_result.standard_output)
+        with open(os.path.join(self.log_directory, "solution.compile.err"), "w+") as f:
+            f.write(comp_result.standard_error)
+        return comp_result
 
     def compile_interactor(self) -> CompilationResult:
         if self.context.path.has_checker_directory():
-            compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
-                                               directory=self.context.path.checker,
-                                               compiler=self.context.compiler,
-                                               compile_flags=self.context.compile_flags,
-                                               compile_time_limit_sec=self.context.config.trusted_compile_time_limit_sec,
-                                               compile_memory_limit_mib=self.context.config.trusted_compile_memory_limit_mib,
-                                               executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib)
+            comp_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
+                                            directory=self.context.path.checker,
+                                            compiler=self.context.compiler,
+                                            compile_flags=self.context.compile_flags,
+                                            compile_time_limit_sec=self.context.config.trusted_compile_time_limit_sec,
+                                            compile_memory_limit_mib=self.context.config.trusted_compile_memory_limit_mib,
+                                            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib)
+
             shutil.copy(os.path.join(self.context.path.checker, "checker"), self.context.path.sandbox_checker)
-            return compile_result
+
+            os.makedirs(self.log_directory, exist_ok=True)
+            with open(os.path.join(self.log_directory, "interactor.compile.out"), "w+") as f:
+                f.write(comp_result.standard_output)
+            with open(os.path.join(self.log_directory, "interactor.compile.err"), "w+") as f:
+                f.write(comp_result.standard_error)
+            return comp_result
         return CompilationResult(CompilationOutcome.FAILED, "`checker' directory not found.")
 
-    def run_solution(self, code_name: str, store_output: None | str) -> EvaluationResult:
+    def run_solution(self, code_name: str) -> EvaluationResult:
         """
         This function only returns FileNotFoundError for execution error.
 
         If store_output is specified, then we create an empty file as dummy output file.
         """
+        os.makedirs(self.log_directory, exist_ok=True)
 
         file_in_name = self.context.construct_input_filename(code_name)
         file_out_name = self.context.construct_output_filename(code_name)
-        if store_output:  # We are working with official output
-            file_sol_err_name = f"{code_name}.sol.err"
-        else:  # We are invoking and testing the solution
-            file_sol_err_name = f"{code_name}.invoke.err"
+        file_sol_err_name = f"{code_name}.sol.err"
         file_checker_err_name = f"{code_name}.checker.err"
 
         testcase_input = os.path.join(self.context.path.testcases, file_in_name)
@@ -86,21 +98,24 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
         sandbox_checker_input_file = os.path.join(self.context.path.sandbox_checker, file_in_name)
         sandbox_checker_answer_file = os.path.join(self.context.path.sandbox_checker, file_out_name)
         sandbox_checker_err_file = os.path.join(self.context.path.sandbox_checker, file_checker_err_name)
+        sandbox_checker_feedback_dir = os.path.join(self.context.path.sandbox_checker, "feedback_dir") + os.sep
         sandbox_solution_err_file = os.path.join(self.context.path.sandbox_solution, file_sol_err_name)
 
+        # Create dummy output
+        if self.is_generation:
+            with open(testcase_answer, "w+b"):
+                pass  # Truncate the file
+        
         try:
             shutil.copy(testcase_input, sandbox_checker_input_file)
-            if Path(testcase_answer).exists():
-                shutil.copy(testcase_answer, sandbox_checker_answer_file)
-            else:
-                Path(sandbox_checker_answer_file).touch()
+            shutil.copy(testcase_answer, sandbox_checker_answer_file)
 
-            feedback_dir = os.path.join(self.context.path.sandbox_solution, "feedback_dir") + os.sep
-            if not os.path.isdir(feedback_dir):
-                os.mkdir(feedback_dir)
+            if not os.path.isdir(sandbox_checker_feedback_dir):
+                os.mkdir(sandbox_checker_feedback_dir)
+            self.context.path.empty_directory(sandbox_checker_feedback_dir)
 
             sigset = pre_wait_procs()
-            
+
             def solution_preexec_fn():
                 os.chdir(self.context.path.sandbox_solution)
                 signal.signal(signal.SIGPIPE, signal.SIG_IGN)
@@ -117,12 +132,12 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
                 os.chdir(self.context.path.sandbox_checker)
                 signal.signal(signal.SIGPIPE, signal.SIG_IGN)
             interactor = Process([os.path.join(self.context.path.sandbox_checker, "checker"),
-                                  sandbox_checker_input_file, sandbox_checker_answer_file, feedback_dir],
+                                  sandbox_checker_input_file, sandbox_checker_answer_file, sandbox_checker_feedback_dir],
                                  preexec_fn=interactor_preexec_fn,
                                  stdin=solution.stdout,
                                  stdout=solution.stdin,
                                  stderr_redirect=sandbox_checker_err_file,
-                                 time_limit_sec=max(self.time_limit_sec, self.context.config.trusted_step_time_limit_sec) + 1,
+                                 time_limit_sec=max(self.time_limit_sec * 2, self.context.config.trusted_step_time_limit_sec) + 1,
                                  memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
                                  output_limit_mib=self.context.config.trusted_step_output_limit_mib)
 
@@ -136,21 +151,17 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
             if Path(sandbox_checker_answer_file).exists():
                 os.unlink(sandbox_checker_answer_file)
 
-            # Prepare directories (normally the testcases should exist, just in case)
-            self.context.path.mkdir_testcases()
-            self.context.path.mkdir_logs()
-
             # Move logs
             Path(sandbox_checker_err_file).touch()
-            shutil.move(sandbox_checker_err_file, os.path.join(self.context.path.logs, file_checker_err_name))
+            shutil.move(sandbox_checker_err_file, os.path.join(self.log_directory, file_checker_err_name))
             Path(sandbox_solution_err_file).touch()
-            shutil.move(sandbox_solution_err_file, os.path.join(self.context.path.logs, file_sol_err_name))
+            shutil.move(sandbox_solution_err_file, os.path.join(self.log_directory, file_sol_err_name))
 
-            # Move output
-            if store_output:
-                dummy_output_file = os.path.join(self.context.path.testcases, file_out_name)
-                with open(dummy_output_file, "w+b"):
-                    pass  # Truncate the file
+            checker_feedback_logs = os.path.join(self.log_directory, f"{code_name}.checker.feedback")
+            if os.path.isdir(checker_feedback_logs):
+                shutil.rmtree(checker_feedback_logs)
+            shutil.copytree(sandbox_checker_feedback_dir, os.path.join(self.log_directory, f"{code_name}.checker.feedback"))
+
 
         except FileNotFoundError as exception:
             # We can simply raise, since there will be no processes left
@@ -178,11 +189,11 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
             result.verdict = EvaluationOutcome.WRONG
 
             # See ICPCCheckerStep.
-            checker_feedback_file = Path(feedback_dir) / "judgemessage.txt"
+            checker_feedback_file = Path(sandbox_checker_feedback_dir) / "judgemessage.txt"
             if checker_feedback_file.is_file():
                 with open(checker_feedback_file, "r") as f:
                     result.checker_reason = f.readline().strip()
 
-        shutil.rmtree(feedback_dir)
+        shutil.rmtree(sandbox_checker_feedback_dir)
 
         return result

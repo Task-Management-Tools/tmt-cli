@@ -15,7 +15,7 @@ def compile_with_make(*, makefile_path: str, directory: str,
                       compiler: str,
                       compile_flags: list[str],
                       compile_time_limit_sec: float, compile_memory_limit_mib: int,
-                      executable_stack_size_mib: int) -> CompilationOutcome:
+                      executable_stack_size_mib: int) -> CompilationResult:
     command = [MAKE, "-C", directory, "-f", makefile_path]
 
     # On MacOS, this has to be set during compile time
