@@ -35,8 +35,8 @@ def compile_cpp_single(*, working_dir: str, files: list[str],
                           preexec_fn=lambda: os.chdir(working_dir),
                           stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE,
-                          time_limit=compile_time_limit_sec,
-                          memory_limit=compile_memory_limit_mib)
+                          time_limit_sec=compile_time_limit_sec,
+                          memory_limit_mib=compile_memory_limit_mib)
 
     stdout, stderr = wait_for_outputs(compilation)
     return CompilationResult(verdict=(CompilationOutcome.SUCCESS if compilation.status == 0 else

@@ -72,8 +72,8 @@ class ValidationStep:
                                         stdin_redirect=os.path.join(self.context.path.sandbox, input_name),
                                         stdout_redirect=sandbox_output_file,
                                         stderr_redirect=sandbox_error_file,
-                                        time_limit=self.limits.trusted_step_time_limit_sec,
-                                        memory_limit=self.limits.trusted_step_memory_limit_mib)
+                                        time_limit_sec=self.limits.trusted_step_time_limit_sec,
+                                        memory_limit_mib=self.limits.trusted_step_memory_limit_mib)
 
                     wait_procs([validator], sigset)
 
@@ -85,7 +85,7 @@ class ValidationStep:
 
                     if validator.is_timedout:
                         return ExecutionResult(ExecutionOutcome.TIMEDOUT,
-                                               f"Validator command {command} timed-out (time consumed: {validator.wall_clock_time}).\n"
+                                               f"Validator command {command} timed-out (time consumed: {validator.wall_clock_time_sec}).\n"
                                                "If this is expected, consider raising trusted step time limit.")
                     if validator.is_signaled_exit:
                         return ExecutionResult(ExecutionOutcome.CRASHED,

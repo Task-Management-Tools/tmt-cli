@@ -110,9 +110,9 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
                                stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE,
                                stderr_redirect=sandbox_solution_err_file,
-                               time_limit=self.time_limit_sec,
-                               memory_limit=self.memory_limit_mib,
-                               output_limit=self.output_limit_mib)
+                               time_limit_sec=self.time_limit_sec,
+                               memory_limit_mib=self.memory_limit_mib,
+                               output_limit_mib=self.output_limit_mib)
 
             def interactor_preexec_fn():
                 os.chdir(self.context.path.sandbox_checker)
@@ -123,9 +123,9 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
                                  stdin=solution.stdout,
                                  stdout=solution.stdin,
                                  stderr_redirect=sandbox_checker_err_file,
-                                 time_limit=max(self.time_limit_sec, self.context.config.trusted_step_time_limit_sec) + 1,
-                                 memory_limit=self.context.config.trusted_step_memory_limit_mib,
-                                 output_limit=self.context.config.trusted_step_output_limit_mib)
+                                 time_limit_sec=max(self.time_limit_sec, self.context.config.trusted_step_time_limit_sec) + 1,
+                                 memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
+                                 output_limit_mib=self.context.config.trusted_step_output_limit_mib)
 
             solution.stdin.close()
             solution.stdout.close()
@@ -160,13 +160,9 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
-            execution_time=solution.cpu_time,
-            execution_wall_clock_time=solution.wall_clock_time,
-            execution_memory=solution.max_vss,
-            exit_code=solution.exit_code,
-            exit_signal=solution.exit_signal,
             output_file=None
         )
+        result.fill_from_solution_process(solution)
 
         # First, we check if the interactor crashed
         if interactor.is_timedout:

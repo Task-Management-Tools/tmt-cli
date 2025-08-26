@@ -198,7 +198,7 @@ def invoke_solution(context: TMTContext, files: list[str]):
         formatter.print("sol ")
         sol_result = solution_step.run_solution(testcases, False)
         formatter.print_exec_result(eval_result_to_exec_result(sol_result))
-        formatter.print(f" {sol_result.execution_time:.3f}  ")
+        formatter.print(f"{sol_result.solution_cpu_time_sec:6.3f} s / {sol_result.solution_max_memory_kib / 1024 :5.4g} MiB  ")
 
         if not solution_step.skip_checker():
             formatter.print("check ")

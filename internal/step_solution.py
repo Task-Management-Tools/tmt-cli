@@ -63,9 +63,11 @@ class MetaSolutionStep(metaclass=ABCMeta):
 
     def is_solution_abormal_exit(self, process: Process, eval_res: EvaluationResult) -> bool:
 
-        if process.cpu_time > self.time_limit_sec:
+        if process.max_rss_kib > self.memory_limit_mib * 1024:
+            eval_res.verdict = EvaluationOutcome.RUNERROR_MEMORY
+        if process.cpu_time_sec > self.time_limit_sec:
             eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif process.wall_clock_time > self.time_limit_sec:
+        elif process.wall_clock_time_sec > self.time_limit_sec:
             eval_res.verdict = EvaluationOutcome.TIMEOUT_WALL
         elif process.exit_signal == signal.SIGXFSZ:
             eval_res.verdict = EvaluationOutcome.OUTPUT_LIMIT

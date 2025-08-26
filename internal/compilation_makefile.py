@@ -25,8 +25,8 @@ def compile_with_make(*, makefile_path: str, directory: str,
     compile_process = Process(command,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
-                              time_limit=compile_time_limit_sec,
-                              memory_limit=compile_memory_limit_mib,
+                              time_limit_sec=compile_time_limit_sec,
+                              memory_limit_mib=compile_memory_limit_mib,
                               env={"CXX": compiler, "CXXFLAGS": ' '.join(compile_flags)} | os.environ)
     stdout, stderr = wait_for_outputs(compile_process)
 

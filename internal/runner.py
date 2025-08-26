@@ -14,16 +14,19 @@ class Process(subprocess.Popen):
     Extending subprocess.Popen.
     """
 
-    def __init__(self, *args, time_limit: float, memory_limit: int, output_limit: int = resource.RLIM_INFINITY,
+    def __init__(self, *args, time_limit_sec: float, memory_limit_mib: int, output_limit_mib: int = resource.RLIM_INFINITY,
                  stdin_redirect=None, stdout_redirect=None, stderr_redirect=None, **kwargs):
         """
-        @params time_limit: Generation stage time limit per task (miliseconds).
-        @params time_limit: Generation stage memory limit per task (kbytes).
+        Simple but unsafe process sandbox for running programs and tracking time and memory usage.
         """
 
-        self.time_limit: float = time_limit
-        self.memory_limit: int = memory_limit * 1024 * 1024  # mbytes to bytes
-        self.output_limit: int = output_limit
+        self.time_limit_sec: float = time_limit_sec
+
+        # MiB to bytes
+        self.memory_limit_bytes: int = (resource.RLIM_INFINITY if memory_limit_mib == resource.RLIM_INFINITY else
+                                        memory_limit_mib * 1024 * 1024)  
+        self.output_limit_bytes: int = (resource.RLIM_INFINITY if output_limit_mib == resource.RLIM_INFINITY else
+                                        output_limit_mib * 1024 * 1024)
 
         self.stdin_redirect = stdin_redirect
         self.stdout_redirect = stdout_redirect
@@ -35,28 +38,33 @@ class Process(subprocess.Popen):
         super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
-        self.wall_time_limit: float = time_limit + 1.0  # add one second on top of that
+        self.wall_time_limit_sec: float = time_limit_sec + 1.0  # add one second on top of that
 
-        self.timer = Timer(self.wall_time_limit, self.safe_kill)
+        self.timer = Timer(self.wall_time_limit_sec, self.safe_kill)
         self.timer.start()
         self.status: int
         self.rusage: resource.struct_rusage
 
     def prepare(self):
         try:
-            cpu_time = int(math.ceil(self.time_limit)) + 1
+            cpu_time = int(math.ceil(self.time_limit_sec)) + 1
             resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
-            resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit, self.output_limit))
-            # TODO
-            # Address space (virtual memory) limit
-            # resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
+            resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit_bytes, self.output_limit_bytes))
+            
             # Stack size same as address space
-            # resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
+            stack_hard_limit = resource.getrlimit(resource.RLIMIT_STACK)[1]
+            if self.memory_limit_bytes == resource.RLIM_INFINITY:
+                resource.setrlimit(resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit))
+            else:
+                # take max of current hard limit and stack limit
+                if stack_hard_limit == resource.RLIM_INFINITY or stack_hard_limit >= self.memory_limit_bytes:
+                    stack_hard_limit = self.memory_limit_bytes
+                resource.setrlimit(resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit))
 
-            # We disable core-dump here: this will cause runtime error to take significantly more time,
+            # Disable core-dump: this will cause runtime error to take significantly more time,
             # and therefore incorrectly treated as wall clock limit exceed. The core dump feature is not
-            # really used anywhere in CP context so it should have no side-effects.
+            # really used anywhere so it should have no side-effects.
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
             if self.stdin_redirect is not None:
@@ -105,24 +113,18 @@ class Process(subprocess.Popen):
         return self.returncode
 
     @property
-    def get_deadline(self) -> float: return self.popen_time + self.wall_time_limit
+    def cpu_time_sec(self) -> float: return self.rusage.ru_utime + self.rusage.ru_stime
 
     @property
-    def cpu_time(self) -> float: return self.rusage.ru_utime + self.rusage.ru_stime
-    """This is in seconds."""
+    def wall_clock_time_sec(self) -> float: return self.poll_time - self.popen_time
 
+    # This is RSS (which is what we acutally want)
     @property
-    def wall_clock_time(self) -> float: return self.poll_time - self.popen_time
-    """This is in seconds."""
+    def max_rss_kib(self) -> int: return self.rusage.ru_maxrss
 
-    # This is RSS and not VSS (which is what we acutally want)
-    # VSS is still restricted, but still required for TIOJ judge.
+    # We cannot know with this type of execution, so return -1 instead
     @property
-    def max_rss(self) -> int: return self.rusage.ru_maxrss
-
-    # We cannot know with this type of execution, so return 0 instead
-    @property
-    def max_vss(self) -> int: return 0
+    def max_vss_bytes(self) -> int: return -1
 
     @property
     def exit_signal(self): return os.WTERMSIG(self.status) if os.WIFSIGNALED(self.status) else 0
@@ -134,10 +136,10 @@ class Process(subprocess.Popen):
     def is_signaled_exit(self): return os.WIFSIGNALED(self.status)
 
     @property
-    def is_cpu_timedout(self): return self.cpu_time > self.time_limit
+    def is_cpu_timedout(self): return self.cpu_time_sec > self.time_limit_sec
 
     @property
-    def is_wall_clock_timedout(self): return self.wall_clock_time > self.time_limit
+    def is_wall_clock_timedout(self): return self.wall_clock_time_sec > self.time_limit_sec
 
     @property
     def is_timedout(self): return self.is_cpu_timedout or self.is_wall_clock_timedout

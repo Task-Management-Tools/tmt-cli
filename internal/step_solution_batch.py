@@ -79,9 +79,9 @@ class BatchSolutionStep(MetaSolutionStep):
                                stdin_redirect=sandbox_input_file,
                                stdout_redirect=sandbox_output_file,
                                stderr_redirect=sandbox_error_file,
-                               time_limit=self.time_limit_sec,
-                               memory_limit=self.memory_limit_mib,
-                               output_limit=self.output_limit_mib)
+                               time_limit_sec=self.time_limit_sec,
+                               memory_limit_mib=self.memory_limit_mib,
+                               output_limit_mib=self.output_limit_mib)
             wait_procs([solution], sigset)
 
             if Path(sandbox_input_file).exists():
@@ -109,13 +109,9 @@ class BatchSolutionStep(MetaSolutionStep):
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
-            execution_time=solution.cpu_time,
-            execution_wall_clock_time=solution.wall_clock_time,
-            execution_memory=solution.max_vss,
-            exit_code=solution.exit_code,
-            exit_signal=solution.exit_signal,
             output_file=sandbox_output_file if store_output is not None else None
         )
+        result.fill_from_solution_process(solution)
 
         if no_output_file:
             result.verdict = EvaluationOutcome.NO_FILE

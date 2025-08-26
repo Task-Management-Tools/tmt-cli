@@ -14,7 +14,7 @@ from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationRes
 class ICPCCheckerStep(CheckerStep):
     def __init__(self, context: 'TMTContext'):
         super().__init__(context)
-        self.limits = context.config # shorthand
+        self.limits = context.config  # shorthand
 
     def compile(self) -> CompilationResult:
 
@@ -32,8 +32,10 @@ class ICPCCheckerStep(CheckerStep):
             # in sandbox/checker instead
             checker_path = pathlib.Path(self.context.path.script_dir) / "internal/checkers/icpc_default_validator.cc"
             shutil.copy(checker_path, self.context.path.sandbox_checker)
-            
+
             compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
+                                               compiler=self.context.compiler,
+                                               compile_flags=self.context.compile_flags,
                                                directory=self.context.path.sandbox_checker,
                                                compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
                                                compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,
@@ -69,9 +71,9 @@ class ICPCCheckerStep(CheckerStep):
                                   stdin_redirect=evaluation_record.output_file,
                                   stdout=None,
                                   stderr=None,
-                                  time_limit=self.limits.trusted_step_time_limit_sec,
-                                  memory_limit=self.limits.trusted_step_memory_limit_mib,
-                                  output_limit=self.limits.trusted_step_output_limit_mib)
+                                  time_limit_sec=self.limits.trusted_step_time_limit_sec,
+                                  memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
+                                  output_limit_mib=self.limits.trusted_step_output_limit_mib)
         wait_procs([checker_process], sigset)
 
         # the interesting files in the directory are:

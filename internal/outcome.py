@@ -1,6 +1,8 @@
 from enum import Enum
 from dataclasses import dataclass
 
+from internal.runner import Process
+
 
 class EvaluationOutcome(Enum):
     # The submission has run successfully.
@@ -27,6 +29,8 @@ class EvaluationOutcome(Enum):
     # Runtime error caused by signal (FPE, SEGV, etc.) except SIGXFSZ.
     RUNERROR_SIGNAL = "Runtime Error (signaled)"
     # Runtime error caused by non-zero exitcode.
+    RUNERROR_MEMORY = "Runtime Error (memory limit exceeded)"
+    # Runtime error caused by memory limit exceeded; this verdict only exists since we support MLE detection without cgroup.
     RUNERROR_EXITCODE = "Runtime Error (non-zero exit code)"
     # Manager/Interactor crashed.
     MANAGER_CRASHED = "Judge Error: Manager Crashed"
@@ -44,16 +48,27 @@ class EvaluationOutcome(Enum):
 
 @dataclass
 class EvaluationResult:
-    verdict: EvaluationOutcome
-    execution_time: float
-    execution_wall_clock_time: float
-    execution_memory: int
-    exit_code: int
-    exit_signal: int
-    output_file: str
+    verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+
+    solution_cpu_time_sec: float = 0.0
+    solution_wall_clock_time_sec: float = 0.0
+    solution_max_memory_kib: int = 0
+    solution_exit_code: int = 0
+    solution_exit_signal: int = 0
+
+    output_file: str = None
 
     checker_run: bool = False
     checker_reason: str = ""
+
+    def fill_from_solution_process(self, solution: Process):
+        self.verdict
+
+        self.solution_cpu_time_sec = solution.cpu_time_sec
+        self.solution_wall_clock_time_sec = solution.wall_clock_time_sec
+        self.solution_max_memory_kib = solution.max_rss_kib
+        self.solution_exit_code = solution.exit_code
+        self.solution_exit_signal = solution.exit_signal
 
 
 class CompilationOutcome(Enum):
@@ -103,14 +118,14 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
     (For example, when generating answer files.)
     """
 
-    group_accepted = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.ACCEPTED, 
+    group_accepted = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.ACCEPTED,
                       EvaluationOutcome.PARTIAL, EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
     group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, EvaluationOutcome.RUNERROR_EXITCODE]
+    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, 
+                           EvaluationOutcome.RUNERROR_EXITCODE, EvaluationOutcome.RUNERROR_MEMORY]
     group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
-                            EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
-                            EvaluationOutcome.INTERNAL_ERROR]
-
+                         EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
+                         EvaluationOutcome.INTERNAL_ERROR]
 
     if eval_res.verdict in group_accepted:
         return ExecutionResult(verdict=ExecutionOutcome.SUCCESS, reason=eval_res.checker_reason)

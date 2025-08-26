@@ -88,8 +88,8 @@ class GenerationStep:
                                    stdout=subprocess.PIPE,
                                    stdout_redirect=stdout_redirect,
                                    stderr_redirect=sandbox_output_err,
-                                   time_limit=self.limits.trusted_step_time_limit_sec,
-                                   memory_limit=self.limits.trusted_step_memory_limit_mib)
+                                   time_limit_sec=self.limits.trusted_step_time_limit_sec,
+                                   memory_limit_mib=self.limits.trusted_step_memory_limit_mib)
 
                     # Close the unnecessary pipes in the parent,
                     # allowing the child to receive EOF when it's done
@@ -125,7 +125,7 @@ class GenerationStep:
                         command[0] = os.path.basename(command[0])
                     full_command = " | ".join([' '.join(command) for command in commands])
                     return ExecutionResult(ExecutionOutcome.TIMEDOUT,
-                                           f"Generator command `{full_command}' timed-out (time consumed: {process.wall_clock_time:3f}).\n"
+                                           f"Generator command `{full_command}' timed-out (time consumed: {process.wall_clock_time_sec:3f}).\n"
                                            "If this is expected, consider raising trusted step time limit.")
                 if process.status != 0:
                     command = process.args

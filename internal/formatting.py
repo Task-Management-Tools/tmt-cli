@@ -123,6 +123,16 @@ class Formatter:
         else:
             self.print(reason)
 
+    group_accepted = [EvaluationOutcome.ACCEPTED]
+    group_partial = [EvaluationOutcome.PARTIAL]
+    group_wrong_answer = [EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
+    group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
+    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, 
+                            EvaluationOutcome.RUNERROR_EXITCODE, EvaluationOutcome.RUNERROR_MEMORY]
+    group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
+                            EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
+                            EvaluationOutcome.INTERNAL_ERROR]
+        
     def print_checker_status(self, result: EvaluationResult) -> str:
         """
         Formats the execution short status (the one with surrounded by square brackets).
@@ -132,26 +142,19 @@ class Formatter:
         def print_result(checker_color: str, checker_status: str):
             self.print_fixed_width('[', checker_color, checker_status, self.ANSI_RESET, ']', width=8)
 
-        group_accepted = [EvaluationOutcome.ACCEPTED]
-        group_partial = [EvaluationOutcome.PARTIAL]
-        group_wrong_answer = [EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
-        group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-        group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, EvaluationOutcome.RUNERROR_EXITCODE]
-        group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
-                             EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
-                             EvaluationOutcome.INTERNAL_ERROR]
 
-        if result.verdict in group_accepted:
+
+        if result.verdict in self.group_accepted:
             return print_result(self.ANSI_GREEN, "OK")
-        elif result.verdict in group_partial:
+        elif result.verdict in self.group_partial:
             return print_result(self.ANSI_GREEN, "OK")
-        elif result.verdict in group_wrong_answer:
+        elif result.verdict in self.group_wrong_answer:
             return print_result(self.ANSI_GREEN, "OK")
-        elif result.verdict in group_timeout:
+        elif result.verdict in self.group_timeout:
             return print_result(self.ANSI_GREY, "SKIP")
-        elif result.verdict in group_runtime_error:
+        elif result.verdict in self.group_runtime_error:
             return print_result(self.ANSI_GREY, "SKIP")
-        elif result.verdict in group_judge_error:
+        elif result.verdict in self.group_judge_error:
             return print_result(self.ANSI_RED_BG, "FAIL")
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
@@ -167,26 +170,17 @@ class Formatter:
             if print_reason:
                 self.print_reason(result.checker_reason)
 
-        group_accepted = [EvaluationOutcome.ACCEPTED]
-        group_partial = [EvaluationOutcome.PARTIAL]
-        group_wrong_answer = [EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
-        group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-        group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, EvaluationOutcome.RUNERROR_EXITCODE]
-        group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
-                             EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
-                             EvaluationOutcome.INTERNAL_ERROR]
-
-        if result.verdict in group_accepted:
+        if result.verdict in self.group_accepted:
             return print_result(self.ANSI_GREEN)
-        elif result.verdict in group_partial:
+        elif result.verdict in self.group_partial:
             return print_result(self.ANSI_YELLOW)
-        elif result.verdict in group_wrong_answer:
+        elif result.verdict in self.group_wrong_answer:
             return print_result(self.ANSI_RED)
-        elif result.verdict in group_timeout:
+        elif result.verdict in self.group_timeout:
             return print_result(self.ANSI_BLUE)
-        elif result.verdict in group_runtime_error:
+        elif result.verdict in self.group_runtime_error:
             return print_result(self.ANSI_PURPLE)
-        elif result.verdict in group_judge_error:
+        elif result.verdict in self.group_judge_error:
             return print_result(self.ANSI_RED)
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
