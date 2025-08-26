@@ -21,6 +21,8 @@ class ICPCCheckerStep(CheckerStep):
         if self.context.path.has_checker_directory():
             compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
                                                directory=self.context.path.checker,
+                                               compiler=self.context.compiler,
+                                               compile_flags=self.context.compile_flags,
                                                compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
                                                compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,
                                                executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)

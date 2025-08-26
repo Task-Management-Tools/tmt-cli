@@ -19,6 +19,8 @@ class ValidationStep:
 
     def compile(self) -> CompilationResult:
         return compile_with_make(directory=self.context.path.validator,
+                                 compiler=self.context.compiler,
+                                 compile_flags=self.context.compile_flags,
                                  makefile_path=self.context.path.makefile_normal,
                                  compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
                                  compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,

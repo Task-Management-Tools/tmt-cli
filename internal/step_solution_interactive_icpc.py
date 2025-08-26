@@ -45,7 +45,8 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
 
         return compile_cpp_single(working_dir=self.context.path.sandbox_solution,
                                   files=files,
-                                  flags=None,
+                                  compiler=self.context.compiler,
+                                  compile_flags=self.context.compile_flags,
                                   # these parameters are intended trusted step time limit instead of compile limit,
                                   # since they will occur on judge, so they should have more restrictive limits
                                   compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
@@ -57,6 +58,8 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
         if self.context.path.has_checker_directory():
             compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
                                                directory=self.context.path.checker,
+                                               compiler=self.context.compiler,
+                                               compile_flags=self.context.compile_flags,
                                                compile_time_limit_sec=self.context.config.trusted_compile_time_limit_sec,
                                                compile_memory_limit_mib=self.context.config.trusted_compile_memory_limit_mib,
                                                executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib)

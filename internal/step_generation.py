@@ -19,6 +19,8 @@ class GenerationStep:
 
     def compile(self) -> CompilationResult:
         return compile_with_make(makefile_path=self.context.path.makefile_normal,
+                                 compiler=self.context.compiler,
+                                 compile_flags=self.context.compile_flags,
                                  directory=self.context.path.generator,
                                  compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
                                  compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,

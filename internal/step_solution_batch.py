@@ -35,7 +35,8 @@ class BatchSolutionStep(MetaSolutionStep):
 
         return compile_cpp_single(working_dir=self.context.path.sandbox_solution,
                                   files=files,
-                                  flags=None,
+                                  compiler=self.context.compiler,
+                                  compile_flags=self.context.compile_flags,
                                   # these parameters are intended trusted step time limit instead of compile limit,
                                   # since they will occur on judge, so they should have more restrictive limits
                                   compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,

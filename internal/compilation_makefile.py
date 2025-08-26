@@ -12,23 +12,22 @@ MAKE = "make"
 
 
 def compile_with_make(*, makefile_path: str, directory: str,
+                      compiler: str,
+                      compile_flags: list[str],
                       compile_time_limit_sec: float, compile_memory_limit_mib: int,
                       executable_stack_size_mib: int) -> CompilationOutcome:
     command = [MAKE, "-C", directory, "-f", makefile_path]
 
-    cxx_flags = os.getenv("CXXFLAGS", "")
-    cxx_flags += "-std=c++20 -Wall -Wextra -O2"
-
     # On MacOS, this has to be set during compile time
     if platform.system() == "Darwin":
-        cxx_flags += f" -Wl,--stack,{executable_stack_size_mib}"
+        compile_flags += [f"-Wl,--stack,{executable_stack_size_mib * 1024 * 1024}"]
 
     compile_process = Process(command,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
                               time_limit=compile_time_limit_sec,
                               memory_limit=compile_memory_limit_mib,
-                              env={"CXXFLAGS": cxx_flags} | os.environ)
+                              env={"CXX": compiler, "CXXFLAGS": ' '.join(compile_flags)} | os.environ)
     stdout, stderr = wait_for_outputs(compile_process)
 
     # We have to obtain stderr again from files if they are piped out.

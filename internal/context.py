@@ -77,6 +77,9 @@ class TMTContext:
         """Constructs absolute paths for the problem package. See the class for more information."""
         self.config: TMTConfig = None
         """Stores configs parsed from the problem package. See the class for more information."""
+        
+        self.compiler = "g++"
+        self.compile_flags = ["-std=gnu++20", "-Wall", "-Wextra", "-O2"] # TODO read it from .yaml
 
     def construct_test_filename(self, code_name, extension):
         return code_name + make_file_extension(extension)

@@ -48,10 +48,12 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
             resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit, self.output_limit))
+            # TODO
             # Address space (virtual memory) limit
-            resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
+            # resource.setrlimit(resource.RLIMIT_AS, (self.memory_limit, self.memory_limit))
             # Stack size same as address space
-            resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
+            # resource.setrlimit(resource.RLIMIT_STACK, (self.memory_limit, self.memory_limit))
+
             # We disable core-dump here: this will cause runtime error to take significantly more time,
             # and therefore incorrectly treated as wall clock limit exceed. The core dump feature is not
             # really used anywhere in CP context so it should have no side-effects.
