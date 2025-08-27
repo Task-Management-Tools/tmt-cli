@@ -1,15 +1,39 @@
 import argparse
 import pathlib
 import os
+import yaml
 
 from internal.recipe_parser import parse_contest_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
-from internal.context import CheckerType, init_tmt_root, TMTContext
+from internal.config import CheckerType, TMTConfig
+from internal.context import TMTContext
+from internal.paths import ProblemDirectoryHelper
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
 from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
 from internal.step_checker_icpc import ICPCCheckerStep
+
+
+def init_tmt_root(script_root: str) -> TMTContext:
+    """Initialize the root directory of tmt tasks."""
+
+    context = TMTContext()
+
+    tmt_root = pathlib.Path.cwd()
+    while tmt_root != tmt_root.parent:
+        if (tmt_root / ProblemDirectoryHelper.PROBLEM_YAML).exists():
+            context.path = ProblemDirectoryHelper(str(tmt_root), script_root)
+            with open(context.path.tmt_config, 'r') as file:
+                problem_yaml = yaml.safe_load(file)
+                context.config = TMTConfig(problem_yaml)
+            return context
+        tmt_root = tmt_root.parent
+
+    raise FileNotFoundError(2,
+                            f"No tmt root found in the directory hierarchy"
+                            f"The directory must contain a {ProblemDirectoryHelper.PROBLEM_YAML} file.",
+                            ProblemDirectoryHelper.PROBLEM_YAML)
 
 
 def initialize_directory(root_dir: pathlib.Path):
@@ -37,19 +61,25 @@ def generate_testcases(context: TMTContext):
     # Compile generators, validators and solutions
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
-    # TODO: change type and model solution path accordin to setting
+
     model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
     solution_step = context.config.get_solution_step()(context=context,
                                                        is_generation=True,
                                                        submission_files=[model_solution_full_path])
 
+    context.path.clean_logs()
+    os.makedirs(context.path.logs)
+    os.makedirs(context.path.logs_generation, exist_ok=True)
+
     formatter.print("Generator   compile ")
     generation_step.prepare_sandbox()
-    formatter.print_compile_string_with_exit(generation_step.compile())
+    generation_compilation = generation_step.compile()
+    formatter.print_compile_string_with_exit(generation_compilation)
 
     formatter.print("Validator   compile ")
     validation_step.prepare_sandbox()
-    formatter.print_compile_string_with_exit(validation_step.compile())
+    validation_compilation = validation_step.compile()
+    formatter.print_compile_string_with_exit(validation_compilation)
 
     formatter.print("Solution    compile ")
     solution_step.prepare_sandbox()
@@ -80,9 +110,7 @@ def generate_testcases(context: TMTContext):
 
     # TODO: in case of update testcases, these should be mkdir instead of mkdir_clean.
     context.path.clean_testcases()
-    context.path.clean_logs()
     os.makedirs(context.path.testcases)
-    os.makedirs(context.path.logs)
     pathlib.Path(context.path.testcases_summary).touch()
 
     codename_length = max(map(len, validations.keys())) + 2
@@ -170,8 +198,8 @@ def invoke_solution(context: TMTContext, files: list[str]):
             checker_step.prepare_sandbox()
             formatter.print_compile_string_with_exit(checker_step.compile())
             if context.path.has_checker_directory() and context.config.checker_type is CheckerType.DEFAULT:
-                formatter.println(formatter.ANSI_YELLOW, 
-                                  "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.", 
+                formatter.println(formatter.ANSI_YELLOW,
+                                  "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
                                   formatter.ANSI_RESET)
 
     recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
@@ -182,8 +210,8 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
     if len(unavailable_testcases):
         formatter.println(formatter.ANSI_YELLOW,
-                        "Warning: testcases ", ', '.join(unavailable_testcases), " were not available.",
-                        formatter.ANSI_RESET)
+                          "Warning: testcases ", ', '.join(unavailable_testcases), " were not available.",
+                          formatter.ANSI_RESET)
     if is_apport_active():
         formatter.println(
             formatter.ANSI_YELLOW,

@@ -1,5 +1,24 @@
-testcases/
-logs/
-sandbox/
-*.exe
+# Compilation dependencies
+generator/*.d
+validator/*.d
+checker/*.d
+
+# Compilation logs
+generator/*.compile.log
+validator/*.compile.log
+checker/*.compile.log
+
+# Compilation executables
+generator/*.exe
+validator/*.exe
+checker/*.exe
 checker/checker
+
+# Testcases
+testcases/
+
+# Logs
+logs/
+
+# Sandbox
+sandbox/

@@ -3,26 +3,25 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from internal.context import TMTContext
 from internal.compilation_makefile import compile_with_make
+from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcome
 
 
 class GenerationStep:
-    def __init__(self, context: 'TMTContext'):
+    def __init__(self, context: TMTContext):
         self.context = context
         self.limits = context.config  # for short hand reference
         self.workdir = self.context.path.sandbox_generation
 
     def compile(self) -> CompilationResult:
-        return compile_with_make(makefile_path=self.context.path.makefile_normal,
-                                 compiler=self.context.compiler,
-                                 compile_flags=self.context.compile_flags,
-                                 directory=self.context.path.generator,
-                                 compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
-                                 compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,
-                                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+        comp_result = compile_with_make(makefile_path=self.context.path.makefile_normal,
+                                        directory=self.context.path.generator,
+                                        context=self.context,
+                                        executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+        comp_result.dump_to_logs(self.context.path.logs_generation, "generator")
+        return comp_result
 
     def prepare_sandbox(self):
         os.makedirs(self.workdir, exist_ok=True)

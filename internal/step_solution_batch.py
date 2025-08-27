@@ -7,12 +7,10 @@ from pathlib import Path
 
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_cpp_single import compile_cpp_single
+from internal.context import TMTContext
 from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
 
 class BatchSolutionStep(MetaSolutionStep):
     def __init__(self, *, context: 'TMTContext', is_generation: bool, submission_files: list[str]):
@@ -22,7 +20,7 @@ class BatchSolutionStep(MetaSolutionStep):
 
         if len(self.submission_files) != 1:
             raise ValueError("Batch task only supports single file submission.")
-    
+
     def prepare_sandbox(self):
         os.makedirs(self.context.path.sandbox_solution, exist_ok=True)
 
@@ -32,20 +30,16 @@ class BatchSolutionStep(MetaSolutionStep):
             files.append(self.context.path.replace_with_grader(self.grader))
 
         comp_result = compile_cpp_single(working_dir=self.context.path.sandbox_solution,
-                                  files=files,
-                                  compiler=self.context.compiler,
-                                  compile_flags=self.context.compile_flags,
-                                  # these parameters are intended trusted step time limit instead of compile limit,
-                                  # since they will occur on judge, so they should have more restrictive limits
-                                  compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
-                                  compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-                                  executable_stack_size_mib=self.memory_limit_mib,
-                                  executable_name=self.executable_name)
-        os.makedirs(self.log_directory, exist_ok=True)
-        with open(os.path.join(self.log_directory, "solution.compile.out"), "w+") as f:
-            f.write(comp_result.standard_output)
-        with open(os.path.join(self.log_directory, "solution.compile.err"), "w+") as f:
-            f.write(comp_result.standard_error)
+                                         files=files,
+                                         compiler=self.context.compiler,
+                                         compile_flags=self.context.compile_flags,
+                                         # these parameters are intended trusted step time limit instead of compile limit,
+                                         # since they will occur on judge, so they should have more restrictive limits
+                                         compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
+                                         compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
+                                         executable_stack_size_mib=self.memory_limit_mib,
+                                         executable_name=self.executable_name)
+        comp_result.dump_to_logs(self.log_directory, "solution")
         return comp_result
 
     def run_solution(self, code_name: str) -> EvaluationResult:

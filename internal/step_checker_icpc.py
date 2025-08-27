@@ -2,7 +2,8 @@ import os
 import shutil
 import pathlib
 
-from internal.context import CheckerType, TMTContext
+from internal.config import CheckerType
+from internal.context import TMTContext
 from internal.step_checker import CheckerStep
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
@@ -10,17 +11,14 @@ from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationRes
 
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, context: 'TMTContext'):
+    def __init__(self, context: TMTContext):
         super().__init__(context)
         self.limits = context.config  # shorthand
 
     def compile(self) -> CompilationResult:
 
         common_kwargs = {
-            "compiler": self.context.compiler,
-            "compile_flags": self.context.compile_flags,
-            "compile_time_limit_sec": self.limits.trusted_compile_time_limit_sec,
-            "compile_memory_limit_mib": self.limits.trusted_compile_memory_limit_mib,
+            "context": self.context,
             "executable_stack_size_mib": self.limits.trusted_step_memory_limit_mib
         }
         if self.context.config.checker_type is CheckerType.CUSTOM:

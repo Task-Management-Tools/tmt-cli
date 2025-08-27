@@ -2,10 +2,9 @@ import os
 import shutil
 from pathlib import Path
 
-from internal.context import TMTContext
-
-from internal.context import JudgeConvention
 from internal.compilation_makefile import compile_with_make
+from internal.config import JudgeConvention
+from internal.context import TMTContext
 from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcome
 from internal.runner import Process, pre_wait_procs, wait_procs
 
@@ -17,13 +16,12 @@ class ValidationStep:
         self.workdir = self.context.path.sandbox_validation
 
     def compile(self) -> CompilationResult:
-        return compile_with_make(directory=self.context.path.validator,
-                                 compiler=self.context.compiler,
-                                 compile_flags=self.context.compile_flags,
-                                 makefile_path=self.context.path.makefile_normal,
-                                 compile_time_limit_sec=self.limits.trusted_compile_time_limit_sec,
-                                 compile_memory_limit_mib=self.limits.trusted_compile_memory_limit_mib,
-                                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+        comp_result = compile_with_make(makefile_path=self.context.path.makefile_normal,
+                                        directory=self.context.path.validator,
+                                        context=self.context,
+                                        executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+        comp_result.dump_to_logs(self.context.path.logs_generation, "validator")
+        return comp_result
 
     def prepare_sandbox(self):
         os.makedirs(self.workdir, exist_ok=True)
@@ -41,7 +39,7 @@ class ValidationStep:
 
         input_filename = self.context.construct_input_filename(code_name)
         expected_exitcode = 42 if self.context.config.judge is JudgeConvention.ICPC else 0
-        
+
         try:
             # Preprocess, could raise FileNotFound error in case validator does not exist
             for command in commands:
@@ -119,7 +117,7 @@ class ValidationStep:
                 return ExecutionResult(ExecutionOutcome.SUCCESS)
             else:
                 failed_command[0] = os.path.basename(failed_command[0])
-                with open(os.path.join(self.context.path.logs, file_err_name), 'r') as f:
+                with open(os.path.join(self.context.path.logs_generation, file_err_name), 'r') as f:
                     lines = f.readlines()
                     lastline = lines[-1].rstrip('\n') if lines else None
                 if lastline is None:

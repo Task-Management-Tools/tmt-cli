@@ -5,7 +5,7 @@ from internal.outcome import EvaluationResult, CompilationResult
 
 
 class CheckerStep():
-    def __init__(self, context: 'TMTContext'):
+    def __init__(self, context: TMTContext):
         self.context = context
 
     def compile(self) -> CompilationResult:

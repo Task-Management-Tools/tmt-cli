@@ -105,6 +105,6 @@ int main(int argc, char **argv)
         wrong_answer(("Participant exceeded maximum queries count " + std::to_string(max_queries)).c_str());
     }
     if (std::cin.fail())
-        wrong_answer("Failed to read interger from the participant");
+        wrong_answer("Failed to read integer from the participant");
     exit(EXIT_AC);
 }

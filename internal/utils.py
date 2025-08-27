@@ -17,3 +17,4 @@ def is_apport_active():
         return result.stdout.strip() == "active"
     except FileNotFoundError:
         return False  # systemctl not available
+

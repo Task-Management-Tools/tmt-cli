@@ -5,6 +5,7 @@ import stat
 
 from pathlib import Path
 
+
 class ProblemDirectoryHelper:
     """
     Helps everything with files and directories.
@@ -25,10 +26,11 @@ class ProblemDirectoryHelper:
         def combine_path(self: 'ProblemDirectoryHelper'):
             return os.path.join(self.problem_dir, *name)
         return property(combine_path)
-    
+
     def _extend_path_property(base: property, *name):
         return property(lambda self: os.path.join(base.fget(self), *name))
-    
+
+    include = _problem_path_property("include")
 
     validator = _problem_path_property("validator")
 
@@ -61,7 +63,7 @@ class ProblemDirectoryHelper:
         def combine_path(self: 'ProblemDirectoryHelper'):
             return os.path.join(self.script_dir, *name)
         return property(combine_path)
-    
+
     makefile_normal = _internal_path_property("internal", "Makefile")
     makefile_checker = _internal_path_property("internal", "CheckerMakefile")
 
@@ -78,7 +80,7 @@ class ProblemDirectoryHelper:
 
         if not os.path.exists(path) or not os.path.isdir(path):
             raise ValueError(f"{path} is not a directory")
-        
+
         for filename in os.listdir(path):
             file_path = os.path.join(path, filename)
             if os.path.isfile(file_path) or os.path.islink(file_path):

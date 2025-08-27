@@ -1,3 +1,5 @@
+import os
+
 from enum import Enum
 from dataclasses import dataclass
 
@@ -89,6 +91,13 @@ class CompilationResult:
     standard_error: str = ""
     exit_status: int = 0
 
+    def dump_to_logs(self, log_directory: str, job_name: str):
+        os.makedirs(log_directory, exist_ok=True)
+        with open(os.path.join(log_directory, job_name + ".compile.out"), "w+") as f:
+            f.write(self.standard_output)
+        with open(os.path.join(log_directory, job_name + ".compile.err"), "w+") as f:
+            f.write(self.standard_error)
+
 
 class ExecutionOutcome(Enum):
     # The execution finished successfully.
@@ -121,7 +130,7 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
     group_accepted = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.ACCEPTED,
                       EvaluationOutcome.PARTIAL, EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
     group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, 
+    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL,
                            EvaluationOutcome.RUNERROR_EXITCODE, EvaluationOutcome.RUNERROR_MEMORY]
     group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
                          EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,

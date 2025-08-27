@@ -2,12 +2,9 @@ import signal
 
 from abc import ABCMeta, abstractmethod
 
+from internal.context import TMTContext
 from internal.outcome import EvaluationResult, EvaluationOutcome, CompilationResult
 from internal.runner import Process
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
 
 
 class MetaSolutionStep(metaclass=ABCMeta):

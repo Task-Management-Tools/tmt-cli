@@ -1,5 +1,4 @@
 import os
-import platform
 import shutil
 import signal
 import subprocess
@@ -9,18 +8,15 @@ from pathlib import Path
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_makefile import compile_with_make
 from internal.compilation_cpp_single import compile_cpp_single
+from internal.context import TMTContext
 from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOutcome, CompilationResult
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
 
 
 class InteractiveICPCSolutionStep(MetaSolutionStep):
     """Implements ICPC interactive problem evaluation."""
 
-    def __init__(self, *, context: 'TMTContext', is_generation: bool, submission_files: list[str]):
+    def __init__(self, *, context: TMTContext, is_generation: bool, submission_files: list[str]):
         super().__init__(context=context,
                          is_generation=is_generation,
                          submission_files=submission_files)
@@ -53,30 +49,19 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
                                          compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
                                          executable_stack_size_mib=self.memory_limit_mib,
                                          executable_name=self.executable_name)
-        os.makedirs(self.log_directory, exist_ok=True)
-        with open(os.path.join(self.log_directory, "solution.compile.out"), "w+") as f:
-            f.write(comp_result.standard_output)
-        with open(os.path.join(self.log_directory, "solution.compile.err"), "w+") as f:
-            f.write(comp_result.standard_error)
+        comp_result.dump_to_logs(self.log_directory, "solution")
         return comp_result
 
     def compile_interactor(self) -> CompilationResult:
         if self.context.path.has_checker_directory():
             comp_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
                                             directory=self.context.path.checker,
-                                            compiler=self.context.compiler,
-                                            compile_flags=self.context.compile_flags,
-                                            compile_time_limit_sec=self.context.config.trusted_compile_time_limit_sec,
-                                            compile_memory_limit_mib=self.context.config.trusted_compile_memory_limit_mib,
+                                            context=self.context,
                                             executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib)
 
             shutil.copy(os.path.join(self.context.path.checker, "checker"), self.context.path.sandbox_checker)
 
-            os.makedirs(self.log_directory, exist_ok=True)
-            with open(os.path.join(self.log_directory, "interactor.compile.out"), "w+") as f:
-                f.write(comp_result.standard_output)
-            with open(os.path.join(self.log_directory, "interactor.compile.err"), "w+") as f:
-                f.write(comp_result.standard_error)
+            comp_result.dump_to_logs(self.log_directory, "interactor")
             return comp_result
         return CompilationResult(CompilationOutcome.FAILED, "`checker' directory not found.")
 

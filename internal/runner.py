@@ -24,7 +24,7 @@ class Process(subprocess.Popen):
 
         # MiB to bytes
         self.memory_limit_bytes: int = (resource.RLIM_INFINITY if memory_limit_mib == resource.RLIM_INFINITY else
-                                        memory_limit_mib * 1024 * 1024)  
+                                        memory_limit_mib * 1024 * 1024)
         self.output_limit_bytes: int = (resource.RLIM_INFINITY if output_limit_mib == resource.RLIM_INFINITY else
                                         output_limit_mib * 1024 * 1024)
 
@@ -51,7 +51,7 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
             resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit_bytes, self.output_limit_bytes))
-            
+
             # Stack size same as address space
             stack_hard_limit = resource.getrlimit(resource.RLIMIT_STACK)[1]
             if self.memory_limit_bytes == resource.RLIM_INFINITY:
@@ -68,15 +68,15 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
             if self.stdin_redirect is not None:
-                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_CREAT)
+                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_CREAT, mode=0o644)
                 os.dup2(stdin_redirect, 0)
                 os.close(stdin_redirect)
             if self.stdout_redirect is not None:
-                stdout_redirect = os.open(self.stdout_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT)
+                stdout_redirect = os.open(self.stdout_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT, mode=0o644)
                 os.dup2(stdout_redirect, 1)
                 os.close(stdout_redirect)
             if self.stderr_redirect is not None:
-                stderr_redirect = os.open(self.stderr_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT)
+                stderr_redirect = os.open(self.stderr_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT, mode=0o644)
                 os.dup2(stderr_redirect, 2)
                 os.close(stderr_redirect)
 

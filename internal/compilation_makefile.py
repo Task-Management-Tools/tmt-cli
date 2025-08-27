@@ -6,34 +6,45 @@ from pathlib import Path
 
 from internal.runner import Process, wait_for_outputs
 from internal.outcome import CompilationOutcome, CompilationResult
-
+from internal.context import TMTContext
 
 MAKE = "make"
 
 
-def compile_with_make(*, makefile_path: str, directory: str,
-                      compiler: str,
-                      compile_flags: list[str],
-                      compile_time_limit_sec: float, compile_memory_limit_mib: int,
+def compile_with_make(*,
+                      makefile_path: str,
+                      directory: str,
+                      context: TMTContext,
                       executable_stack_size_mib: int) -> CompilationResult:
     command = [MAKE, "-C", directory, "-f", makefile_path]
+
+    compilation_time_limit_sec = context.config.trusted_compile_time_limit_sec
+    compilation_memory_limit_mib = context.config.trusted_compile_memory_limit_mib
+    compiler = context.compiler
+    compile_flags = context.compile_flags
+    include_paths = [context.path.include]
 
     # On MacOS, this has to be set during compile time
     if platform.system() == "Darwin":
         compile_flags += [f"-Wl,--stack,{executable_stack_size_mib * 1024 * 1024}"]
 
-    compile_process = Process(command,
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE,
-                              time_limit_sec=compile_time_limit_sec,
-                              memory_limit_mib=compile_memory_limit_mib,
-                              env={"CXX": compiler, "CXXFLAGS": ' '.join(compile_flags)} | os.environ)
+    sandbox_setting = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "time_limit_sec": compilation_time_limit_sec,
+        "memory_limit_mib": compilation_memory_limit_mib,
+        "env": {"CXX": compiler,
+                "CXXFLAGS": ' '.join(compile_flags),
+                "INCPATHS": ' '.join(include_paths)} | os.environ
+    }
+
+    compile_process = Process(command, **sandbox_setting)
     stdout, stderr = wait_for_outputs(compile_process)
 
+    logs, _ = wait_for_outputs(Process([MAKE, "-C", directory, "-f", makefile_path, "-s", "logs"], **sandbox_setting))
     # We have to obtain stderr again from files if they are piped out.
-    logs = sorted(Path(directory).glob('._*.compile.log'))
-    for log in logs:
-        with log.open('r') as infile:
+    for log in logs.split():
+        with open(log, 'r') as infile:
             stderr += infile.read()
 
     return CompilationResult(verdict=(CompilationOutcome.SUCCESS if compile_process.status == 0 else
