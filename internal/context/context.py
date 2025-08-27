@@ -32,7 +32,7 @@ class TMTConfig:
     def parse_time_to_second(cls, field_name: str, input: str) -> float:
         match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", input)
         if match is None:
-            raise ValueError(f"{field_name} \"{match}\" is invalid.")
+            raise ValueError(f"{field_name} \"{input}\" is invalid.")
         if match.group(2) == "ms":
             return float(match.group(1)) / 1000.0
         else:
@@ -42,7 +42,7 @@ class TMTConfig:
     def parse_bytes_to_mib(cls, field_name: str, input: str) -> int:
         match = re.fullmatch(r"(\d+)\s*(G|GB|GiB|M|MB|MiB)", input)
         if match is None:
-            raise ValueError(f"{field_name} \"{match}\" is invalid.")
+            raise ValueError(f"{field_name} \"{input}\" is invalid.")
         if match.group(2).startswith('G'):
             return int(match.group(1)) * 1024
         else:
