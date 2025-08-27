@@ -53,7 +53,16 @@ def command_init(root_dir: pathlib.Path):
 
 def command_gen(context: TMTContext, args):
     """Generate test cases in the given directory."""
+    import hashlib
+    import json
+
     formatter = Formatter()
+
+    if args.verify_hash and not (os.path.exists(context.path.testcases_hashes) and os.path.isfile(context.path.testcases_hashes)):
+        formatter.println(formatter.ANSI_RED,
+                          "Testcase hashes does not exist. There is nothing to verify.",
+                          formatter.ANSI_RESET)
+        return
 
     # Compile generators, validators and solutions
     generation_step = GenerationStep(context)
@@ -116,10 +125,11 @@ def command_gen(context: TMTContext, args):
 
     # TODO: in case of update testcases, these should be mkdir instead of mkdir_clean.
     context.path.clean_testcases()
-    os.makedirs(context.path.testcases)
+    os.makedirs(context.path.testcases, exist_ok=True)
     pathlib.Path(context.path.testcases_summary).touch()
 
     codename_length = max(map(len, validations.keys())) + 2
+    testcase_hashes = {}
 
     with open(context.path.testcases_summary, "wt") as testcases_summary:
         for testset in recipe.testsets.values():
@@ -192,12 +202,60 @@ def command_gen(context: TMTContext, args):
                 # TODO: this should print more meaningful contents, right now it is only the testcases
                 if result:
                     testcases_summary.write(f"{code_name}\n")
+                    for testcase_file_exts in [context.config.input_extension, context.config.output_extension] + list(testset.extra_file):
+                        base_filename = context.construct_test_filename(code_name, testcase_file_exts)
+                        file = os.path.join(context.path.testcases, base_filename)
+                        with open(file, "rb") as f:
+                            testcase_hashes[base_filename] = hashlib.file_digest(f, "sha256").hexdigest()
+
+        if args.verify_hash:
+            formatter.println()
+            with open(context.path.testcases_hashes, "r") as f:
+                official_testcase_hashes: dict = json.load(f)
+            if testcase_hashes == official_testcase_hashes:
+                formatter.println(formatter.ANSI_GREEN, "Hash matches!", formatter.ANSI_RESET)
+            else:
+                tab = ' ' * 4
+                # Hash mismatch
+                formatter.println(formatter.ANSI_RED, "Hash mismatches:", formatter.ANSI_RESET)
+                common_files = official_testcase_hashes.keys() & testcase_hashes.keys()
+                for filename in sorted(common_files):
+                    if official_testcase_hashes[filename] != testcase_hashes[filename]:
+                        formatter.println(tab, f"{filename}: {official_testcase_hashes[filename]} (found {testcase_hashes[filename]})")
+                # Missing files
+                missing_files = official_testcase_hashes.keys() - testcase_hashes.keys()
+                if len(missing_files) > 0:
+                    formatter.println(formatter.ANSI_RED, "Missing files:", formatter.ANSI_RESET)
+                    for file in sorted(missing_files):
+                        formatter.println(tab, file)
+                # Extra files
+                extra_files = testcase_hashes.keys() - official_testcase_hashes.keys()
+                if len(extra_files) > 0:
+                    formatter.println(formatter.ANSI_RED, "Extra files:", formatter.ANSI_RESET)
+                    for file in sorted(extra_files):
+                        formatter.println(tab, file)
+
+        else:
+            with open(context.path.testcases_hashes, "w") as f:
+                json.dump(testcase_hashes, f, sort_keys=True, indent=4)
 
 
 def command_invoke(context: TMTContext, args):
 
     formatter = Formatter()
     actual_files = [os.path.join(os.getcwd(), file) for file in args.submission_files]
+
+    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
+    all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
+
+    if not (os.path.exists(context.path.testcases_summary) and os.path.isfile(context.path.testcases_summary)):
+        formatter.println(formatter.ANSI_RED,
+                          "Testcase summary does not exist. Please generate the testcases first.",
+                          formatter.ANSI_RESET)
+        return
+    with open(context.path.testcases_summary, "rt") as testcases_summary:
+        available_testcases = [line.strip() for line in testcases_summary.readlines()]
+    unavailable_testcases = [testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
 
     if pathlib.Path(context.path.testcases_summary).exists():
         solution_step = context.config.get_solution_step()(context=context,
@@ -225,12 +283,6 @@ def command_invoke(context: TMTContext, args):
                 formatter.println(formatter.ANSI_YELLOW,
                                   "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
                                   formatter.ANSI_RESET)
-
-    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
-    all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
-    with open(context.path.testcases_summary, "rt") as testcases_summary:
-        available_testcases = [line.strip() for line in testcases_summary.readlines()]
-    unavailable_testcases = [testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
 
     if len(unavailable_testcases):
         formatter.println(formatter.ANSI_YELLOW,
@@ -304,6 +356,9 @@ def main():
     parser_gen.add_argument("-r", "--show-reason",
                             action="store_true",
                             help="Show the failed reason and checker's output (in case of checker validation is enabled) of each testcase.")
+    parser_gen.add_argument("--verify-hash",
+                            action="store_true",
+                            help="Check if the hash digest of the testcases matches.")
 
     parser_invoke = subparsers.add_parser("invoke", help="Invoke a solution.")
     parser_invoke.add_argument("-r", "--show-reason", action="store_true")

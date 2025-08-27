@@ -3,8 +3,6 @@ import errno
 import shutil
 import stat
 
-from pathlib import Path
-
 
 class ProblemDirectoryHelper:
     """
@@ -43,6 +41,7 @@ class ProblemDirectoryHelper:
 
     testcases = _problem_path_property("testcases")
     testcases_summary = _extend_path_property(testcases, "summary")
+    testcases_hashes = _extend_path_property(testcases, "hash.json")
 
     sandbox = _problem_path_property("sandbox")
     sandbox_generation = _extend_path_property(sandbox, "generation")
@@ -67,9 +66,17 @@ class ProblemDirectoryHelper:
     makefile_normal = _internal_path_property("internal", "Makefile")
     makefile_checker = _internal_path_property("internal", "CheckerMakefile")
 
-    def clean_testcases(self):
+    def clean_testcases(self, keep_hash=True):
+        testcase_hash_exists = os.path.exists(self.testcases_hashes)
         if os.path.exists(self.testcases):
-            shutil.rmtree(self.testcases)
+            for filename in os.listdir(self.testcases):
+                file_path = os.path.join(self.testcases, filename)
+                if keep_hash and testcase_hash_exists and os.path.samefile(file_path, self.testcases_hashes):
+                    continue
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
 
     def clean_logs(self):
         if os.path.exists(self.logs):

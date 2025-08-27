@@ -15,7 +15,8 @@ checker/*.exe
 checker/checker
 
 # Testcases
-testcases/
+testcases/*
+!testcases/hash.json
 
 # Logs
 logs/
