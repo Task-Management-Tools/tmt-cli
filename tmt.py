@@ -37,7 +37,7 @@ def init_tmt_root(script_root: str) -> TMTContext:
                             ProblemDirectoryHelper.PROBLEM_YAML)
 
 
-def initialize_directory(root_dir: pathlib.Path):
+def command_init(root_dir: pathlib.Path):
     """Initialize the given directory for tmt tasks."""
 
     if not root_dir.exists():
@@ -55,7 +55,7 @@ def cprint(*args, **kwargs):
     print(*args, **kwargs, end='', flush=True)
 
 
-def generate_testcases(context: TMTContext):
+def command_gen(context: TMTContext, args):
     """Generate test cases in the given directory."""
     formatter = Formatter()
 
@@ -187,8 +187,7 @@ def generate_testcases(context: TMTContext):
                 else:
                     result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
 
-                # TODO: make it a CLI argument
-                if True:
+                if args.show_reason:
                     formatter.print_reason(result.reason)
                 formatter.println()
 
@@ -199,10 +198,10 @@ def generate_testcases(context: TMTContext):
                     testcases_summary.write(f"{code_name}\n")
 
 
-def invoke_solution(context: TMTContext, files: list[str]):
+def command_invoke(context: TMTContext, args):
 
     formatter = Formatter()
-    actual_files = [os.path.join(os.getcwd(), file) for file in files]
+    actual_files = [os.path.join(os.getcwd(), file) for file in args.submission_files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
         solution_step = context.config.get_solution_step()(context=context,
@@ -262,15 +261,12 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
         if not solution_step.skip_checker():
             formatter.print("check ")
-            # TODO: find actual argument to pass to checker
             testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcase))
             testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcase))
-            # TODO
             solution_result = checker_step.run_checker(context.config.checker_arguments, solution_result, testcase_input, testcase_answer)
             formatter.print_checker_status(solution_result)
 
-        # TODO: Change print_reason into a CLI argument
-        formatter.print_checker_verdict(solution_result, print_reason=True)
+        formatter.print_checker_verdict(solution_result, print_reason=args.show_reason)
         formatter.println()
 
         if solution_result.output_file is not None:
@@ -278,30 +274,43 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
 
 def main():
-
-    parser = argparse.ArgumentParser(description="tmt - task management tools")
+    parser = argparse.ArgumentParser(description="TMT - Task Management Tools")
     parser.add_argument(
-        "--version", action="version", version="tmt 0.0.0",
-        help="Show the version of tmt"
+        "--version", action="version", version="TMT 0.0.0",
+        help="Show the version of TMT."
     )
-    parser.add_argument(
-        "command", choices=["init", "gen", "clean", "invoke"],
-        help="Command to execute: init, gen, clean, or invoke"
-    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    args, remaining = parser.parse_known_args()
+    parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
+
+    parser_gen = subparsers.add_parser("gen", help="Generate testcases.")
+    parser_gen.add_argument("-r", "--show-reason", 
+                            action="store_true", 
+                            help="Show the failed reason and checker's output (in case of checker validation is enabled) of each testcase.")
+
+    parser_invoke = subparsers.add_parser("invoke", help="Invoke a solution.")
+    parser_invoke.add_argument("-r", "--show-reason", action="store_true")
+    parser_invoke.add_argument('submission_files', nargs='*')
+
+    parser_clean = subparsers.add_parser("clean", help="Clean-up a TMT problem directory.")
+
+    args = parser.parse_args()
 
     if args.command == "init":
-        initialize_directory(pathlib.Path.cwd())
+        command_init(pathlib.Path.cwd())
         return
 
     context = init_tmt_root(str(pathlib.Path(__file__).parent.resolve()))
 
     if args.command == "gen":
-        generate_testcases(context)
-    elif args.command == "invoke":
-        invoke_solution(context, remaining)
-    elif args.command == "clean":
+        command_gen(context, args)
+        return 
+    
+    if args.command == "invoke":
+        command_invoke(context, args)
+        return 
+    
+    if args.command == "clean":
         # clean_testcases(root_dir)
         raise NotImplementedError(
             "The 'clean' command is not implemented yet."
