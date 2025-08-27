@@ -10,7 +10,7 @@ from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcom
 
 
 class GenerationStep:
-    def __init__(self, context: 'TMTContext'):
+    def __init__(self, context: TMTContext):
         self.context = context
         self.limits = context.config  # for short hand reference
         self.workdir = self.context.path.sandbox_generation

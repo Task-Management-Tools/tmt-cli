@@ -3,14 +3,14 @@ import shutil
 import pathlib
 
 from internal.context import CheckerType, TMTContext
-from internal.step_checker import CheckerStep
 from internal.compilation_makefile import compile_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
+from .base import CheckerStep
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, context: 'TMTContext'):
+    def __init__(self, context: TMTContext):
         super().__init__(context)
         self.limits = context.config  # shorthand
 

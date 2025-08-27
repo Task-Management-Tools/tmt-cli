@@ -6,10 +6,12 @@ from internal.recipe_parser import parse_contest_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
 from internal.context import CheckerType, TMTContext, find_problem_dir
-from internal.step_generation import GenerationStep
-from internal.step_validation import ValidationStep
 from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
-from internal.step_checker_icpc import ICPCCheckerStep
+
+from internal.steps.generation import GenerationStep
+from internal.steps.validation import ValidationStep
+from internal.steps.solution import SolutionStep, make_solution_step
+from internal.steps.checker.icpc import ICPCCheckerStep
 
 
 def cprint(*args, **kwargs):
@@ -26,9 +28,12 @@ def generate_testcases(context: TMTContext):
     # TODO: change type and model solution path accordin to setting
     model_solution_full_path = context.path.replace_with_solution(
         context.config.model_solution_path)
-    solution_step = context.config.get_solution_step()(context=context,
-                                                       is_generation=True,
-                                                       submission_files=[model_solution_full_path])
+
+
+    solution_step: SolutionStep = make_solution_step(problem_type=context.config.problem_type,
+                                                     context=context,
+                                                     is_generation=True,
+                                                     submission_files=[model_solution_full_path])
 
     formatter.print("Generator   compile ")
     generation_step.prepare_sandbox()
@@ -143,9 +148,10 @@ def invoke_solution(context: TMTContext, files: list[str]):
     actual_files = [os.path.join(os.getcwd(), file) for file in files]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step = context.config.get_solution_step()(context=context,
-                                                           is_generation=False,
-                                                           submission_files=actual_files)
+        solution_step: SolutionStep = make_solution_step(problem_type=context.config.problem_type,
+                                                         context=context,
+                                                         is_generation=False,
+                                                         submission_files=actual_files)
         checker_step = ICPCCheckerStep(context)
 
         formatter.print("Solution    compile ")

@@ -6,12 +6,7 @@ import re
 from enum import Enum
 from typing import Type
 
-from internal.utils import make_file_extension
-from internal.paths import ProblemDirectoryHelper
-from internal.step_solution import MetaSolutionStep
-from internal.step_solution_batch import BatchSolutionStep
-from internal.step_solution_interactive_icpc import InteractiveICPCSolutionStep
-
+from .paths import ProblemDirectoryHelper
 
 class JudgeConvention(Enum):
     ICPC = "icpc"
@@ -121,15 +116,6 @@ class TMTConfig:
         self.trusted_step_memory_limit_mib = 4 * 1024
         self.trusted_step_output_limit_mib = resource.RLIM_INFINITY
 
-    def get_solution_step(self) -> Type[MetaSolutionStep]:
-        if self.problem_type is ProblemType.BATCH:
-            return BatchSolutionStep
-        elif self.problem_type is ProblemType.INTERACTIVE:
-            return InteractiveICPCSolutionStep
-        else:
-            raise ValueError(str(self.problem_type) +
-                             " is not a valid problem type.")
-
 
 class TMTContext:
     def __init__(self, problem_dir: str, script_root: str):
@@ -145,13 +131,15 @@ class TMTContext:
         self.compile_flags = ["-std=gnu++20", "-Wall",
                               "-Wextra", "-O2"]  # TODO read it from .yaml
 
-    def construct_test_filename(self, code_name, extension):
-        return code_name + make_file_extension(extension)
+    def construct_test_filename(self, code_name: str, extension: str):
+        if not extension.startswith('.'):
+            extension = '.' + extension
+        return code_name + extension
 
-    def construct_input_filename(self, code_name):
+    def construct_input_filename(self, code_name: str):
         return self.construct_test_filename(code_name, self.config.input_extension)
 
-    def construct_output_filename(self, code_name):
+    def construct_output_filename(self, code_name: str):
         return self.construct_test_filename(code_name, self.config.output_extension)
 
 def find_problem_dir(script_root: str) -> str:

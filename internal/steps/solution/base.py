@@ -1,17 +1,13 @@
 import signal
+from abc import ABC, abstractmethod
 
-from abc import ABCMeta, abstractmethod
-
+from internal.context import ProblemType, TMTContext
 from internal.outcome import EvaluationResult, EvaluationOutcome, CompilationResult
 from internal.runner import Process
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
 
-
-class MetaSolutionStep(metaclass=ABCMeta):
-    def __init__(self, *,  context: 'TMTContext', is_generation: bool, submission_files: list[str]):
+class SolutionStep(ABC):
+    def __init__(self, *, context: TMTContext, is_generation: bool, submission_files: list[str]):
         self.context = context
 
         self.executable_name = self.context.config.short_name

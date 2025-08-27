@@ -1,21 +1,17 @@
-from __future__ import annotations
-
 import os
 import shutil
 
 from pathlib import Path
 
+from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_cpp_single import compile_cpp_single
-from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from internal.context import TMTContext
+from .base import SolutionStep
 
-class BatchSolutionStep(MetaSolutionStep):
-    def __init__(self, *, context: 'TMTContext', is_generation: bool, submission_files: list[str]):
+class BatchSolutionStep(SolutionStep):
+    def __init__(self, *, context: TMTContext, is_generation: bool, submission_files: list[str]):
         super().__init__(context=context,
                          is_generation=is_generation,
                          submission_files=submission_files)

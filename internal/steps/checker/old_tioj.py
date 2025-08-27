@@ -1,5 +1,6 @@
-from internal.step_checker import CheckerStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
+
+from .base import CheckerStep
 
 
 class CMSCheckerStep(CheckerStep):
