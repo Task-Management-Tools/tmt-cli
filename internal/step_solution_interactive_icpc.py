@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 from internal.runner import Process, pre_wait_procs, wait_procs
-from internal.compilation_makefile import compile_with_make
+from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.context import TMTContext
 from internal.step_solution import MetaSolutionStep
@@ -21,9 +21,6 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
                          is_generation=is_generation,
                          submission_files=submission_files)
 
-        if len(submission_files) != 1:
-            raise ValueError("ICPC-style interactive task only supports single file submission.")
-
     @classmethod
     def has_interactor(cls):
         return True
@@ -36,11 +33,19 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
         os.makedirs(self.context.path.sandbox_solution, exist_ok=True)
         os.makedirs(self.context.path.sandbox_checker, exist_ok=True)
 
-    def compile_solution(self) -> CompilationResult:
-        files = self.submission_files
+    def clean_up(self):
+        clean_with_make(makefile_path=self.context.path.makefile_checker,
+                        directory=self.context.path.checker,
+                        context=self.context)
 
+    def compile_solution(self) -> CompilationResult:
+        if len(self.submission_files) != 1:
+            return CompilationResult(verdict=CompilationOutcome.FAILED, 
+                                     exit_status=-1,
+                                     standard_error="ICPC-style interactive task only supports single file submission.")
+        
         comp_result = compile_cpp_single(working_dir=self.context.path.sandbox_solution,
-                                         files=files,
+                                         files=self.submission_files,
                                          compiler=self.context.compiler,
                                          compile_flags=self.context.compile_flags,
                                          # these parameters are intended trusted step time limit instead of compile limit,

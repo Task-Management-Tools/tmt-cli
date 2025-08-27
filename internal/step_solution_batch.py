@@ -9,7 +9,7 @@ from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.context import TMTContext
 from internal.step_solution import MetaSolutionStep
-from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
+from internal.outcome import CompilationOutcome, EvaluationOutcome, EvaluationResult, CompilationResult
 
 
 class BatchSolutionStep(MetaSolutionStep):
@@ -18,13 +18,18 @@ class BatchSolutionStep(MetaSolutionStep):
                          is_generation=is_generation,
                          submission_files=submission_files)
 
-        if len(self.submission_files) != 1:
-            raise ValueError("Batch task only supports single file submission.")
-
     def prepare_sandbox(self):
         os.makedirs(self.context.path.sandbox_solution, exist_ok=True)
 
+    def clean_up(self):
+        pass
+
     def compile_solution(self) -> CompilationResult:
+        if len(self.submission_files) != 1:
+            return CompilationResult(verdict=CompilationOutcome.FAILED,
+                                     exit_status=-1,
+                                     standard_error="Batch task only supports single file submission.")
+        
         files = self.submission_files
         if self.grader is not None:
             files.append(self.context.path.replace_with_grader(self.grader))

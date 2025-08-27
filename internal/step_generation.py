@@ -1,9 +1,8 @@
 import os
 import shutil
 import subprocess
-from pathlib import Path
 
-from internal.compilation_makefile import compile_with_make
+from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
@@ -25,6 +24,11 @@ class GenerationStep:
 
     def prepare_sandbox(self):
         os.makedirs(self.workdir, exist_ok=True)
+
+    def clean_up(self):
+        clean_with_make(makefile_path=self.context.path.makefile_normal,
+                        directory=self.context.path.generator,
+                        context=self.context)
 
     def run_generator(self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]) -> GenerationResult:
         """
@@ -67,7 +71,6 @@ class GenerationStep:
             for command in commands:
                 if not command[0].startswith(os.sep):
                     command[0] = self.context.path.replace_with_generator(command[0])
-
 
             # Launch each command, chaining stdin/stdout
             generator_processes: list[Process] = []

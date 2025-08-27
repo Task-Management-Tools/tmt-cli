@@ -2,7 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-from internal.compilation_makefile import compile_with_make
+from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.config import JudgeConvention
 from internal.context import TMTContext
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
@@ -22,7 +22,12 @@ class ValidationStep:
                                         executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
         comp_result.dump_to_logs(self.context.path.logs_generation, "validator")
         return comp_result
-
+    
+    def clean_up(self):
+        clean_with_make(makefile_path=self.context.path.makefile_normal,
+                        directory=self.context.path.validator,
+                        context=self.context)
+        
     def prepare_sandbox(self):
         os.makedirs(self.workdir, exist_ok=True)
 

@@ -15,6 +15,7 @@ CPP_SOURCES = $(wildcard *.cpp) $(wildcard *.cc)
 SRCS = $(CPP_SOURCES) $(CC_SOURCES)
 DEP = checker.d
 EXE = checker
+LOG = checker.compile.log
 
 all: $(EXE)
 
@@ -24,9 +25,9 @@ $(DEP): $(CPP_SOURCES)
 include $(DEP)
 
 $(EXE): $(CPP_SOURCES)
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(CPP_SOURCES) -o $(EXE) 2> checker.compile.log
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(CPP_SOURCES) -o $(EXE) 2> $(LOG)
 
 clean:
-	rm -f $(EXE) $(DEP)
+	rm -f $(EXE) $(DEP) $(LOG)
 
 .PHONY: all clean

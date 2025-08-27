@@ -51,10 +51,6 @@ def command_init(root_dir: pathlib.Path):
         "Directory initialization is not implemented yet.")
 
 
-def cprint(*args, **kwargs):
-    print(*args, **kwargs, end='', flush=True)
-
-
 def command_gen(context: TMTContext, args):
     """Generate test cases in the given directory."""
     formatter = Formatter()
@@ -146,7 +142,7 @@ def command_gen(context: TMTContext, args):
                     validation_step.run_validator(result, validations[code_name], code_name, list(testset.extra_file))
                 formatter.print_exec_result(result.input_validation)
 
-                # Run solution: 
+                # Run solution:
                 # skip (and fail) if input validation did not succeed
                 # skip if generator already produced output
                 formatter.print("ans ")
@@ -159,7 +155,7 @@ def command_gen(context: TMTContext, args):
                     result.output_generation = eval_outcome_to_run_outcome(solution_result)
                     result.reason = solution_result.checker_reason
                 formatter.print_exec_result(result.output_generation)
-                
+
                 # Run checker
                 # If both input is validated and output is available, run checker if the testcase type should apply check
                 if run_checker:
@@ -173,11 +169,11 @@ def command_gen(context: TMTContext, args):
                     else:
                         testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(code_name))
                         testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(code_name))
-                        
+
                         copied_testcase_output = os.path.join(context.path.sandbox_checker, os.path.basename(testcase_answer))
                         shutil.copy(testcase_answer, copied_testcase_output)
-                        
-                        checker_result = checker_step.run_checker(context.config.checker_arguments, 
+
+                        checker_result = checker_step.run_checker(context.config.checker_arguments,
                                                                   EvaluationResult(
                                                                       output_file=copied_testcase_output
                                                                   ), testcase_input, testcase_answer)
@@ -273,6 +269,27 @@ def command_invoke(context: TMTContext, args):
             os.unlink(solution_result.output_file)
 
 
+def command_clean(context: TMTContext):
+    if os.path.exists(context.path.logs):
+        shutil.rmtree(context.path.logs)
+    if os.path.exists(context.path.sandbox):
+        shutil.rmtree(context.path.sandbox)
+    if os.path.exists(context.path.testcases):
+        shutil.rmtree(context.path.testcases)  # TODO: keep testcase hash
+    # TODO: clean statement?
+
+    # Cleanup generators, validators and solutions
+    GenerationStep(context).clean_up()
+    ValidationStep(context).clean_up()
+    if context.config.problem_type is ProblemType.BATCH and context.config.checker_type is not CheckerType.DEFAULT:
+        ICPCCheckerStep(context).clean_up()
+    context.config.get_solution_step()(context=context,
+                                       is_generation=False,
+                                       submission_files=None).clean_up()
+
+    Formatter().println("Cleanup completed.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="TMT - Task Management Tools")
     parser.add_argument(
@@ -284,8 +301,8 @@ def main():
     parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
 
     parser_gen = subparsers.add_parser("gen", help="Generate testcases.")
-    parser_gen.add_argument("-r", "--show-reason", 
-                            action="store_true", 
+    parser_gen.add_argument("-r", "--show-reason",
+                            action="store_true",
                             help="Show the failed reason and checker's output (in case of checker validation is enabled) of each testcase.")
 
     parser_invoke = subparsers.add_parser("invoke", help="Invoke a solution.")
@@ -304,17 +321,15 @@ def main():
 
     if args.command == "gen":
         command_gen(context, args)
-        return 
-    
+        return
+
     if args.command == "invoke":
         command_invoke(context, args)
-        return 
-    
+        return
+
     if args.command == "clean":
-        # clean_testcases(root_dir)
-        raise NotImplementedError(
-            "The 'clean' command is not implemented yet."
-        )
+        command_clean(context)
+        return
 
 
 if __name__ == "__main__":

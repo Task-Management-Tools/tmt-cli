@@ -46,6 +46,10 @@ class MetaSolutionStep(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def clean_up(self):
+        pass
+
+    @abstractmethod
     def compile_solution(self) -> CompilationResult:
         pass
 

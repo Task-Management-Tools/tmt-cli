@@ -5,7 +5,7 @@ import pathlib
 from internal.config import CheckerType
 from internal.context import TMTContext
 from internal.step_checker import CheckerStep
-from internal.compilation_makefile import compile_with_make
+from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
@@ -43,6 +43,11 @@ class ICPCCheckerStep(CheckerStep):
 
     def prepare_sandbox(self):
         super().prepare_sandbox()
+
+    def clean_up(self):
+        clean_with_make(makefile_path=self.context.path.makefile_checker,
+                        directory=self.context.path.checker,
+                        context=self.context)
 
     def run_checker(self, arguments: list[str],
                     evaluation_record: EvaluationResult, input_file: str, answer_file: str) -> EvaluationResult:
