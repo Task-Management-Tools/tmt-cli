@@ -6,7 +6,7 @@ from pathlib import Path
 from internal.compilation_makefile import compile_with_make
 from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
-from internal.outcome import CompilationResult, ExecutionResult, ExecutionOutcome
+from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
 
 
 class GenerationStep:
@@ -26,7 +26,7 @@ class GenerationStep:
     def prepare_sandbox(self):
         os.makedirs(self.workdir, exist_ok=True)
 
-    def run_generator(self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]) -> ExecutionResult:
+    def run_generator(self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]) -> GenerationResult:
         """
         This function only raises Exception for internal errors.
         """
@@ -34,32 +34,46 @@ class GenerationStep:
         os.makedirs(self.context.path.logs_generation, exist_ok=True)
         os.makedirs(self.context.path.testcases, exist_ok=True)
 
-        produce_files = ([self.context.construct_input_filename(code_name)] +
-                         [self.context.construct_test_filename(code_name, ext) for ext in extra_output_exts])
+        testcase_extra = [self.context.construct_test_filename(code_name, ext) for ext in extra_output_exts]
 
+        result = GenerationResult()
+        generates_output = False  # TODO: should be True when config answer_generation is generator.
         try:
-            # Preprocess: replace generator and replace manual files
-            for command in commands:
-                if command[0] == "manual":
-                    command[0] = "/usr/bin/cat"
-                    for i in range(1, len(command)):
-                        command[i] = self.context.path.replace_with_manual(command[i])
-                else:
-                    command[0] = self.context.path.replace_with_generator(command[0])
+            # Filenames
+            testcase_input = self.context.construct_input_filename(code_name)
+            testcase_output = self.context.construct_output_filename(code_name)
+            sandbox_testcase_input = os.path.join(self.context.path.sandbox_generation, testcase_input)
+            sandbox_testcase_output = os.path.join(self.context.path.sandbox_generation, testcase_output)
 
-            sandbox_produce_files = []
+            sandbox_testcase_extra = []
             sandbox_logs = []
 
-            for file in produce_files:
+            for file in testcase_extra:
                 sandbox_file = os.path.join(self.workdir, file)
-                sandbox_produce_files.append(sandbox_file)
-                Path(sandbox_file).touch()
+                sandbox_testcase_extra.append(sandbox_file)
 
+            # Preprocess: replace manual
+            if commands[0][0] == "manual":
+                if len(commands[0]) == 2:
+                    commands[0] = ["/usr/bin/cat", self.context.path.replace_with_manual(commands[0][1])]
+                elif len(commands[0]) == 3:
+                    commands = [
+                        ["/usr/bin/cp", self.context.path.replace_with_manual(commands[0][2]), sandbox_testcase_output],
+                        ["/usr/bin/cat", self.context.path.replace_with_manual(commands[0][1])]
+                    ] + commands[1:]
+                    result.is_output_forced = True
+
+            # Preprocess: replace manual files
+            for command in commands:
+                if not command[0].startswith(os.sep):
+                    command[0] = self.context.path.replace_with_generator(command[0])
+
+
+            # Launch each command, chaining stdin/stdout
             generator_processes: list[Process] = []
             prev_proc = None
 
             sigset = pre_wait_procs()
-            # Launch each command, chaining stdin/stdout
             try:
                 for i, command in enumerate(commands, 1):
 
@@ -70,12 +84,8 @@ class GenerationStep:
 
                     # For the first command, stdin is closed (None)
                     stdin = prev_proc.stdout if prev_proc else None
-
                     # For the last command, stdout goes to the file; otherwise to a pipe
-                    if i == len(commands):
-                        stdout_redirect = sandbox_produce_files[0]
-                    else:
-                        stdout_redirect = None
+                    stdout_redirect = sandbox_testcase_input if i == len(commands) else None
 
                     proc = Process(command,
                                    preexec_fn=lambda: os.chdir(self.workdir),
@@ -102,36 +112,58 @@ class GenerationStep:
             generator_processes[-1].stdout.close()
             wait_procs(generator_processes, sigset)
 
-            # Move tests & extra files
+            # Move testcase input
+            shutil.move(sandbox_testcase_input, os.path.join(self.context.path.testcases, testcase_input))
+            # If testcase output was generated, use this output
+            if os.path.exists(sandbox_testcase_output) and os.path.isfile(sandbox_testcase_output):
+                shutil.move(sandbox_testcase_output, os.path.join(self.context.path.testcases, testcase_output))
+                generates_output = True
+                if sandbox_testcase_output in sandbox_testcase_extra:
+                    sandbox_testcase_extra.remove(sandbox_testcase_output)
 
-            for file in sandbox_produce_files:
+            # Move extra files
+            for file in sandbox_testcase_extra:
                 shutil.move(file, os.path.join(self.context.path.testcases, os.path.basename(file)))
+
             # Move logs
             for file in sandbox_logs:
                 shutil.move(file, os.path.join(self.context.path.logs_generation, os.path.basename(file)))
 
+            # Check generation program status
+            result.input_generation = ExecutionOutcome.SUCCESS
+
             for process in generator_processes:
                 if process.is_timedout:
+                    result.input_generation = ExecutionOutcome.TIMEDOUT
+
                     for command in commands:
                         command[0] = os.path.basename(command[0])
                     full_command = " | ".join([' '.join(command) for command in commands])
-                    return ExecutionResult(ExecutionOutcome.TIMEDOUT,
-                                           f"Generator command `{full_command}' timed-out (time consumed: {process.wall_clock_time_sec:3f}).\n"
-                                           "If this is expected, consider raising trusted step time limit.")
-                if process.status != 0:
+                    result.reason = (f"Generator command `{full_command}' timed-out (time consumed: {process.wall_clock_time_sec:3f}). "
+                                     "If this is expected, consider raising trusted step time limit.")
+
+                elif process.status != 0:
+                    result.input_generation = ExecutionOutcome.CRASHED
+
                     command = process.args
                     command[0] = os.path.basename(command[0])
+
                     if process.is_signaled_exit:
-                        return ExecutionResult(ExecutionOutcome.CRASHED,
-                                               f"Generator command `{' '.join(command)}' crashed (killed by signal {process.exit_signal}).\n"
-                                               "This could be out-of-memory crash, see trusted step memory limit for more information.")
+                        result.reason = (
+                            f"Generator command `{' '.join(command)}' crashed (killed by signal {process.exit_signal}). "
+                            "This could be out-of-memory crash, see trusted step memory limit for more information."
+                        )
                     else:
-                        return ExecutionResult(ExecutionOutcome.CRASHED,
-                                               f"Generator command `{' '.join(command)}' crashed (exit status {process.exit_code}).\n"
-                                               "This could be out-of-memory crash, see trusted step memory limit for more information.")
+                        result.reason = (
+                            f"Generator command `{' '.join(command)}' crashed (exit status {process.exit_code}). "
+                            "This could be out-of-memory crash, see trusted step memory limit for more information."
+                        )
 
+        # If at any point some curcial file is missing, then the generation step must be wrong.
         except FileNotFoundError as err:
-            return ExecutionResult(ExecutionOutcome.FAILED,
-                                   f"File {err.filename} not found: {err.strerror}")
+            result.input_generation = ExecutionOutcome.FAILED
+            result.reason = f"File {err.filename} not found: {err.strerror}"
 
-        return ExecutionResult(ExecutionOutcome.SUCCESS)
+        if generates_output:
+            result.output_generation = ExecutionOutcome.SKIPPED_SUCCESS
+        return result

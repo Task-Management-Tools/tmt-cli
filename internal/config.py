@@ -92,7 +92,8 @@ class TMTConfig:
             if self.checker_type is CheckerType.CUSTOM:
                 self.checker_filename = yaml["output_validation"]["filename"]
             self.checker_arguments = yaml["output_validation"].get("arguments", "").split()
-            self.check_forced_output = bool(yaml["output_validation"].get("arguments", True))
+            self.check_forced_output = bool(yaml["output_validation"].get("check_forced_output", True))
+            self.check_generated_output = bool(yaml["output_validation"].get("check_generated_output", True))
         else:
             if "output_validation" in yaml:
                 raise ValueError("Output validation should not be specified when the problem type is not batch.")

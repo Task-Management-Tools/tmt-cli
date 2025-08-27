@@ -1,17 +1,18 @@
 import argparse
 import pathlib
 import os
+import shutil
 import yaml
 
 from internal.recipe_parser import parse_contest_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
-from internal.config import CheckerType, TMTConfig
+from internal.config import CheckerType, ProblemType, TMTConfig
 from internal.context import TMTContext
 from internal.paths import ProblemDirectoryHelper
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
-from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
+from internal.outcome import EvaluationResult, ExecutionOutcome, eval_outcome_to_grade_outcome, eval_outcome_to_run_outcome
 from internal.step_checker_icpc import ICPCCheckerStep
 
 
@@ -61,6 +62,10 @@ def generate_testcases(context: TMTContext):
     # Compile generators, validators and solutions
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
+    run_checker = (context.config.problem_type is ProblemType.BATCH and context.config.checker_type is not CheckerType.DEFAULT
+                   and (context.config.check_forced_output or context.config.check_generated_output))
+    if run_checker:
+        checker_step = ICPCCheckerStep(context)
 
     model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
     solution_step = context.config.get_solution_step()(context=context,
@@ -93,6 +98,11 @@ def generate_testcases(context: TMTContext):
         formatter.print("Manager     compile ")
         formatter.print_compile_string_with_exit(solution_step.compile_manager())
 
+    if run_checker:
+        formatter.print("Checker     compile ")
+        checker_step.prepare_sandbox()
+        formatter.print_compile_string_with_exit(checker_step.compile())
+
     recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
 
     # TODO: it is better to do this in recipe_parser.py but I fear not to touch the humongous multiclass structure
@@ -123,50 +133,69 @@ def generate_testcases(context: TMTContext):
                 formatter.print(' ' * 4)
                 formatter.print_fixed_width(code_name, width=codename_length)
 
-                reason = ""
                 # Run generator
                 formatter.print("gen ")
-                generator_result = generation_step.run_generator(test.commands,
-                                                                 code_name,
-                                                                 list(testset.extra_file))
-                formatter.print_exec_result(generator_result)
-                reason = generator_result.reason
-                with open(os.path.join(context.path.logs_generation, f"{code_name}.gen.log"), "w+") as f:
-                    f.write(generator_result.reason)
+                result = generation_step.run_generator(test.commands, code_name, list(testset.extra_file))
+                formatter.print_exec_result(result.input_generation)
 
-                # Run validator
+                # Run validator: skip if input_generation did not succeed
                 formatter.print("val ")
-                if generator_result.verdict is not ExecutionOutcome.SUCCESS:
-                    validation_result = ExecutionResult(verdict=ExecutionOutcome.SKIPPED)
+                if result.input_generation is not ExecutionOutcome.SUCCESS:
+                    result.input_validation = ExecutionOutcome.SKIPPED
                 else:
-                    validation_result = validation_step.run_validator(validations[code_name],
-                                                                      code_name,
-                                                                      list(testset.extra_file))
-                    reason = validation_result.reason
-                formatter.print_exec_result(validation_result)
-                with open(os.path.join(context.path.logs_generation, f"{code_name}.val.log"), "w+") as f:
-                    f.write(validation_result.reason)
+                    validation_step.run_validator(result, validations[code_name], code_name, list(testset.extra_file))
+                formatter.print_exec_result(result.input_validation)
 
-                # Run solution
-                formatter.print("sol ")
-                if validation_result.verdict is not ExecutionOutcome.SUCCESS:
-                    solution_result = ExecutionResult(verdict=ExecutionOutcome.SKIPPED)
+                # Run solution: 
+                # skip (and fail) if input validation did not succeed
+                # skip if generator already produced output
+                formatter.print("ans ")
+                if result.input_validation is not ExecutionOutcome.SUCCESS:
+                    result.output_generation = ExecutionOutcome.SKIPPED
+                elif result.output_generation is ExecutionOutcome.SKIPPED_SUCCESS:
+                    pass
                 else:
                     solution_result = solution_step.run_solution(code_name)
-                    solution_result = eval_result_to_exec_result(solution_result)
-                    reason = solution_result.reason
-                formatter.print_exec_result(solution_result)
-                with open(os.path.join(context.path.logs_generation, f"{code_name}.sol.log"), "w+") as f:
-                    f.write(solution_result.reason)
+                    result.output_generation = eval_outcome_to_run_outcome(solution_result)
+                    result.reason = solution_result.checker_reason
+                formatter.print_exec_result(result.output_generation)
+                
+                # Run checker
+                # If both input is validated and output is available, run checker if the testcase type should apply check
+                if run_checker:
+                    formatter.print("val ")
+                    if (result.output_generation not in [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS] or
+                            result.input_validation not in [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]):
+                        result.output_validation = ExecutionOutcome.SKIPPED
+                    elif ((result.is_output_forced and not context.config.check_forced_output) or
+                          (not result.is_output_forced and not context.config.check_generated_output)):
+                        result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+                    else:
+                        testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(code_name))
+                        testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(code_name))
+                        
+                        copied_testcase_output = os.path.join(context.path.sandbox_checker, os.path.basename(testcase_answer))
+                        shutil.copy(testcase_answer, copied_testcase_output)
+                        
+                        checker_result = checker_step.run_checker(context.config.checker_arguments, 
+                                                                  EvaluationResult(
+                                                                      output_file=copied_testcase_output
+                                                                  ), testcase_input, testcase_answer)
+                        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
+                        result.reason = checker_result.checker_reason
+                    formatter.print_exec_result(result.output_validation)
+                else:
+                    result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
 
                 # TODO: make it a CLI argument
                 if True:
-                    reason = reason.replace('\n', ' ')
-                    formatter.print_reason(reason)
+                    formatter.print_reason(result.reason)
                 formatter.println()
 
+                with open(os.path.join(context.path.logs_generation, f"{code_name}.gen.log"), "w+") as f:
+                    f.write(result.reason)
                 # TODO: this should print more meaningful contents, right now it is only the testcases
-                if generator_result and validation_result and solution_result:
+                if result:
                     testcases_summary.write(f"{code_name}\n")
 
 
@@ -226,7 +255,7 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
         formatter.print("sol ")
         solution_result = solution_step.run_solution(testcase)
-        formatter.print_exec_result(eval_result_to_exec_result(solution_result))
+        formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
         formatter.print(f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
         with open(os.path.join(context.path.logs_invocation, f"{testcase}.sol.log"), "w+") as f:
             f.write(solution_result.checker_reason)

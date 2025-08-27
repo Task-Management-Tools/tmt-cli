@@ -2,7 +2,9 @@ import sys
 import os
 
 from internal.outcome import (
-    CompilationResult, CompilationOutcome, ExecutionResult, ExecutionOutcome, EvaluationResult, EvaluationOutcome
+    CompilationResult, CompilationOutcome, 
+    ExecutionOutcome, 
+    EvaluationResult, EvaluationOutcome
 )
 
 
@@ -88,7 +90,7 @@ class Formatter:
         if result.verdict not in [CompilationOutcome.SUCCESS, CompilationOutcome.SKIPPED]:
             exit(1)
 
-    def print_exec_result(self, result: ExecutionResult) -> None:
+    def print_exec_result(self, result: ExecutionOutcome) -> None:
         """
         Formats the execution output.
         """
@@ -97,18 +99,18 @@ class Formatter:
         def format(color: str, content: str):
             return '[', color, content, self.ANSI_RESET, ']'
 
-        if result.verdict is ExecutionOutcome.SUCCESS:
+        if result is ExecutionOutcome.SUCCESS:
             self.print_fixed_width(*format(self.ANSI_GREEN, "OK"), width=WIDTH)
-        elif result.verdict is ExecutionOutcome.CRASHED:
+        elif result is ExecutionOutcome.CRASHED:
             self.print_fixed_width(*format(self.ANSI_PURPLE, "RTE"), width=WIDTH)
-        elif result.verdict is ExecutionOutcome.FAILED:  # This is validation failed
+        elif result is ExecutionOutcome.FAILED:  # This is validation failed
             self.print_fixed_width(*format(self.ANSI_RED, "FAIL"), width=WIDTH)
-        elif result.verdict is ExecutionOutcome.TIMEDOUT:
+        elif result is ExecutionOutcome.TIMEDOUT:
             self.print_fixed_width(*format(self.ANSI_BLUE, "TLE"), width=WIDTH)
-        elif result.verdict is ExecutionOutcome.SKIPPED:
+        elif result is ExecutionOutcome.SKIPPED or result is ExecutionOutcome.SKIPPED_SUCCESS:
             self.print_fixed_width(*format(self.ANSI_GREY, "SKIP"), width=WIDTH)
         else:
-            raise ValueError(f"Unexpected ExecutionOutcome {result.verdict}")
+            raise ValueError(f"Unexpected ExecutionOutcome {result}")
 
     def print_reason(self, reason: str):
         # TODO: the following terminal width threshold should be configurable via global settings 

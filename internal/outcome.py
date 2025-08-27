@@ -64,8 +64,6 @@ class EvaluationResult:
     checker_reason: str = ""
 
     def fill_from_solution_process(self, solution: Process):
-        self.verdict
-
         self.solution_cpu_time_sec = solution.cpu_time_sec
         self.solution_wall_clock_time_sec = solution.wall_clock_time_sec
         self.solution_max_memory_kib = solution.max_rss_kib
@@ -100,6 +98,8 @@ class CompilationResult:
 
 
 class ExecutionOutcome(Enum):
+    # The execution has not been run yet.
+    UNKNOWN = "(unknown)"
     # The execution finished successfully.
     SUCCESS = "Execution success"
     # The execution crashed.
@@ -109,21 +109,32 @@ class ExecutionOutcome(Enum):
     # The execution timed-out.
     TIMEDOUT = "Execution timed-out"
     # The execution was not needed or skipped (most likely because the previous one is skipped).
-    SKIPPED = "Execution Skipped"
+    SKIPPED = "Execution skipped"
+    # The execution was not needed or skipped; however, it is because it is not needed instead of dependency failed.
+    SKIPPED_SUCCESS = "Execution success (but skipped)"
 
 
 @dataclass
-class ExecutionResult:
-    verdict: ExecutionOutcome
+class GenerationResult:
+    input_generation: ExecutionOutcome = ExecutionOutcome.UNKNOWN
+    input_validation: ExecutionOutcome = ExecutionOutcome.UNKNOWN
+    output_generation: ExecutionOutcome = ExecutionOutcome.UNKNOWN
+    output_validation: ExecutionOutcome = ExecutionOutcome.UNKNOWN
+
+    is_output_forced: bool = False
+
     reason: str = ""
 
     def __bool__(self):
-        return self.verdict is ExecutionOutcome.SUCCESS
+        for outcome in [self.input_generation, self.input_validation, self.output_generation, self.output_validation]:
+            if outcome not in [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]:
+                return False
+        return True
 
 
-def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
+def eval_outcome_to_run_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
     """
-    Maps EvaluationResult to ExecutionResult, whenwhether output is correct is not relavant here.
+    Maps EvaluationResult to ExecutionOutcome, when whether output is correct is not relavant here.
     (For example, when generating answer files.)
     """
 
@@ -137,12 +148,35 @@ def eval_result_to_exec_result(eval_res: EvaluationResult) -> ExecutionResult:
                          EvaluationOutcome.INTERNAL_ERROR]
 
     if eval_res.verdict in group_accepted:
-        return ExecutionResult(verdict=ExecutionOutcome.SUCCESS, reason=eval_res.checker_reason)
+        return ExecutionOutcome.SUCCESS
     elif eval_res.verdict in group_timeout:
-        return ExecutionResult(verdict=ExecutionOutcome.TIMEDOUT, reason=eval_res.checker_reason)
+        return ExecutionOutcome.TIMEDOUT
     elif eval_res.verdict in group_runtime_error:
-        return ExecutionResult(verdict=ExecutionOutcome.CRASHED, reason=eval_res.checker_reason)
+        return ExecutionOutcome.CRASHED
     elif eval_res.verdict in group_judge_error:
-        return ExecutionResult(verdict=ExecutionOutcome.FAILED, reason=eval_res.checker_reason)
+        return ExecutionOutcome.FAILED
     else:
-        raise ValueError(f"Unexpected verdict when running solution: {eval_res.verdict}")
+        raise ValueError(f"Unexpected verdict when converting {eval_res.verdict} to execution outcome.")
+
+
+def eval_outcome_to_grade_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
+    """
+    Maps EvaluationResult to ExecutionOutcome, where the result should be accepted.
+    (For example, when generating answer files and running checker.)
+    """
+
+    group_accepted = [EvaluationOutcome.ACCEPTED]
+    group_failed = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.PARTIAL,
+                    EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
+    group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
+                         EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
+                         EvaluationOutcome.INTERNAL_ERROR]
+
+    if eval_res.verdict in group_accepted:
+        return ExecutionOutcome.SUCCESS
+    elif eval_res.verdict in group_failed:
+        return ExecutionOutcome.FAILED
+    elif eval_res.verdict in group_judge_error:
+        return ExecutionOutcome.FAILED
+    else:
+        raise ValueError(f"Unexpected verdict when converting {eval_res.verdict} to execution outcome.")

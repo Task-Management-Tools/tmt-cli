@@ -23,32 +23,28 @@ int main(int argc, char **argv)
     std::smatch _;
     const std::regex numbers("0|-?[1-9][0-9]*");
 
-    std::string answer, output;
+    std::string input, answer, output;
+    testcase_input >> input;
     if (!(testcase_answer >> answer) || !std::regex_match(answer, _, numbers))
     {
-        feedback << argv[3] << ": judge has no output or is not a number\n";
-        feedback.flush();
+        feedback << "judge has no output or is not a number" << std::endl;
         abort();
     }
     if (!(std::cin >> output) || !std::regex_match(answer, _, numbers))
     {
-        feedback << argv[3] << ": contestant has no output or is not a number\n";
-        feedback.flush();
+        feedback << "contestant has no output or is not a number" << std::endl;
         exit(EXIT_WA);
     }
-    // special string to check checker crash
-    feedback << output;
 
-    if (output == "1234567890")
-        abort();
-    // ... and timeout:
-    if (output == "1234567891")
-        for (;;)
-            ;
-
-    if ((answer.back() ^ output.back()) % 2 != 0)
+    if ((answer.back() ^ input.back()) % 2 != 0)
     {
-        feedback << argv[3] << ": output mismatch\n";
+        feedback << "judge's answer isn't correct" << std::endl;
+        feedback.flush();
+        std::abort();
+    }
+    if ((output.back() ^ input.back()) % 2 != 0)
+    {
+        feedback << "contestant's answer isn't correct" << std::endl;
         feedback.flush();
         exit(EXIT_WA);
     }
