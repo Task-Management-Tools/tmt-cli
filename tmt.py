@@ -108,32 +108,22 @@ def command_gen(context: TMTContext, args):
         checker_step.prepare_sandbox()
         formatter.print_compile_string_with_exit(checker_step.compile())
 
-    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
-
-    # TODO: it is better to do this in recipe_parser.py but I fear not to touch the humongous multiclass structure
-    # so I temporarily write it here
-    validations = {test.test_name: [] for testset in recipe.testsets.values() for test in testset.tests}
-    for subtask in recipe.subtasks.values():
-        for testset in subtask.tests:
-            for attempt_testset_match in recipe.testsets.values():
-                if attempt_testset_match.testset_name == testset:
-                    for tests in attempt_testset_match.tests:
-                        for validator in subtask.validation:
-                            if len(validator.commands) > 1:
-                                raise ValueError("Validator with pipe is not supported")
-                            validations[tests.test_name].append(validator.commands[0])
+    with open(context.path.tmt_recipe) as f:
+        recipe = parse_contest_data(f.readlines())
 
     # TODO: in case of update testcases, these should be mkdir instead of mkdir_clean.
     context.path.clean_testcases()
     os.makedirs(context.path.testcases, exist_ok=True)
     pathlib.Path(context.path.testcases_summary).touch()
 
-    codename_length = max(map(len, validations.keys())) + 2
+    codename_length = max(map(len, recipe.get_all_test_names())) + 2
     testcase_hashes = {}
 
     with open(context.path.testcases_summary, "wt") as testcases_summary:
         for testset in recipe.testsets.values():
             for test in testset.tests:
+                
+                
                 code_name = test.test_name
 
                 formatter.print(' ' * 4)
@@ -141,7 +131,7 @@ def command_gen(context: TMTContext, args):
 
                 # Run generator
                 formatter.print("gen ")
-                result = generation_step.run_generator(test.commands, code_name, list(testset.extra_file))
+                result = generation_step.run_generator(test.execute.commands, code_name, list(testset.extra_file))
                 formatter.print_exec_result(result.input_generation)
 
                 # Run validator: skip if input_generation did not succeed
@@ -149,7 +139,12 @@ def command_gen(context: TMTContext, args):
                 if result.input_generation is not ExecutionOutcome.SUCCESS:
                     result.input_validation = ExecutionOutcome.SKIPPED
                 else:
-                    validation_step.run_validator(result, validations[code_name], code_name, list(testset.extra_file))
+                    validation_commands = []
+                    for exe in test.validation:
+                        if len(exe.commands) != 1:
+                            raise ValueError("Validation with pipe is not supported.")
+                        validation_commands.append(exe.commands[0])
+                    validation_step.run_validator(result, validation_commands, code_name, list(testset.extra_file))
                 formatter.print_exec_result(result.input_validation)
 
                 # Run solution:
@@ -245,8 +240,8 @@ def command_invoke(context: TMTContext, args):
     formatter = Formatter()
     actual_files = [os.path.join(os.getcwd(), file) for file in args.submission_files]
 
-    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
-    all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
+    with open(context.path.tmt_recipe) as f:
+        recipe = parse_contest_data(f.readlines())
 
     if not (os.path.exists(context.path.testcases_summary) and os.path.isfile(context.path.testcases_summary)):
         formatter.println(formatter.ANSI_RED,
@@ -255,7 +250,7 @@ def command_invoke(context: TMTContext, args):
         return
     with open(context.path.testcases_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
-    unavailable_testcases = [testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
+    unavailable_testcases = [testcase for testcase in recipe.get_all_test_names() if available_testcases.count(testcase) == 0]
 
     if pathlib.Path(context.path.testcases_summary).exists():
         solution_step = context.config.get_solution_step()(context=context,
