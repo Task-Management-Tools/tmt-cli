@@ -12,24 +12,6 @@ from internal.step_solution import MetaSolutionStep
 from internal.step_solution_batch import BatchSolutionStep
 from internal.step_solution_interactive_icpc import InteractiveICPCSolutionStep
 
-class TMTContext:
-    def __init__(self):
-        self.path: ProblemDirectoryHelper = None
-        """Constructs absolute paths for the problem package. See the class for more information."""
-        self.config: 'TMTConfig' = None
-        """Stores configs parsed from the problem package. See the class for more information."""
-
-        self.compiler = "g++"
-        self.compile_flags = ["-std=gnu++20", "-Wall", "-Wextra", "-O2"]  # TODO read it from .yaml
-
-    def construct_test_filename(self, code_name, extension):
-        return code_name + make_file_extension(extension)
-
-    def construct_input_filename(self, code_name):
-        return self.construct_test_filename(code_name, self.config.input_extension)
-
-    def construct_output_filename(self, code_name):
-        return self.construct_test_filename(code_name, self.config.output_extension)
 
 class JudgeConvention(Enum):
     ICPC = "icpc"
@@ -78,15 +60,18 @@ class TMTConfig:
         # description: (str)
 
         # time_limit: (number) ms/s
-        self.time_limit_sec = self.parse_time_to_second("Time limit", yaml["time_limit"])
+        self.time_limit_sec = self.parse_time_to_second(
+            "Time limit", yaml["time_limit"])
         # memory_limit: (number) MB/GB
-        self.memory_limit_mib = self.parse_bytes_to_mib("Memory limit", yaml["memory_limit"])
+        self.memory_limit_mib = self.parse_bytes_to_mib(
+            "Memory limit", yaml["memory_limit"])
 
         # output_limit: (number) MB/GB or "unlimited"
         if yaml["output_limit"] == "unlimited":
             self.output_limit_mib = resource.RLIM_INFINITY
         else:
-            self.output_limit_mib = self.parse_bytes_to_mib("Output limit", yaml["output_limit"])
+            self.output_limit_mib = self.parse_bytes_to_mib(
+                "Output limit", yaml["output_limit"])
 
         # input_extension: (str)
         self.input_extension = str(yaml["input_extension"])
@@ -106,23 +91,28 @@ class TMTConfig:
 
         # input_validation: (str)
         if yaml["input_validation"] != "default":
-            raise ValueError("Unsupported input validation mode " + yaml["input_validation"])
+            raise ValueError(
+                "Unsupported input validation mode " + yaml["input_validation"])
 
         # output_validation:
         if self.problem_type is ProblemType.BATCH:
             self.checker_type = CheckerType(yaml["output_validation"]["type"])
             if self.checker_type is CheckerType.CUSTOM:
                 self.checker_filename = yaml["output_validation"]["filename"]
-            self.checker_arguments = yaml["output_validation"].get("arguments", "").split()
-            self.check_forced_output = bool(yaml["output_validation"].get("arguments", True))
+            self.checker_arguments = yaml["output_validation"].get(
+                "arguments", "").split()
+            self.check_forced_output = bool(
+                yaml["output_validation"].get("arguments", True))
         else:
             if "output_validation" in yaml:
-                raise ValueError("Output validation should not be specified when the problem type is not batch.")
+                raise ValueError(
+                    "Output validation should not be specified when the problem type is not batch.")
 
         if yaml["answer_generation"]["type"] == "solution":
             self.model_solution_path = yaml["answer_generation"]["filename"]
         else:  # TODO: support "generator" mode
-            raise ValueError(yaml["answer_generation"]["type"] + " is not a valid answer generation mode")
+            raise ValueError(yaml["answer_generation"]["type"] +
+                             " is not a valid answer generation mode")
 
         self.trusted_compile_time_limit_sec = 60.0  # 1 minute
         self.trusted_compile_memory_limit_mib = resource.RLIM_INFINITY
@@ -137,31 +127,39 @@ class TMTConfig:
         elif self.problem_type is ProblemType.INTERACTIVE:
             return InteractiveICPCSolutionStep
         else:
-            raise ValueError(str(self.problem_type) + " is not a valid problem type.")
+            raise ValueError(str(self.problem_type) +
+                             " is not a valid problem type.")
 
 
+class TMTContext:
+    def __init__(self, problem_dir: str, script_root: str):
+        # context.path constructs absolute paths.
+        self.path = ProblemDirectoryHelper(problem_dir, script_root)
 
-def _load_config(context: TMTContext):
-    # use PyYAML to parse the problem.yaml file
-    with open(context.path.tmt_config, 'r') as file:
-        problem_yaml = yaml.safe_load(file)
-        context.config = TMTConfig(problem_yaml)
+        with open(self.path.tmt_config, 'r') as file:
+            problem_yaml = yaml.safe_load(file)
+        # self.config stores the parsed config from problem.yaml
+        self.config = TMTConfig(problem_yaml)
 
+        self.compiler = "g++"
+        self.compile_flags = ["-std=gnu++20", "-Wall",
+                              "-Wextra", "-O2"]  # TODO read it from .yaml
 
-def init_tmt_root(script_root: str) -> TMTContext:
-    """Initialize the root directory of tmt tasks."""
+    def construct_test_filename(self, code_name, extension):
+        return code_name + make_file_extension(extension)
 
-    context = TMTContext()
+    def construct_input_filename(self, code_name):
+        return self.construct_test_filename(code_name, self.config.input_extension)
 
-    tmt_root = pathlib.Path.cwd()
-    while tmt_root != tmt_root.parent:
-        if (tmt_root / ProblemDirectoryHelper.PROBLEM_YAML).exists():
-            context.path = ProblemDirectoryHelper(str(tmt_root), script_root)
-            _load_config(context)
-            return context
-        tmt_root = tmt_root.parent
+    def construct_output_filename(self, code_name):
+        return self.construct_test_filename(code_name, self.config.output_extension)
 
-    raise FileNotFoundError(2,
-                            f"No tmt root found in the directory hierarchy"
-                            f"The directory must contain a {ProblemDirectoryHelper.PROBLEM_YAML} file.",
-                            ProblemDirectoryHelper.PROBLEM_YAML)
+def find_problem_dir(script_root: str) -> str:
+    cwd = pathlib.Path.cwd()
+    for directory in [cwd] + list(cwd.parents):
+        if (directory / ProblemDirectoryHelper.PROBLEM_YAML).exists():
+            return str(directory.resolve())
+    raise FileNotFoundError(
+        "Cannot find " + ProblemDirectoryHelper.PROBLEM_YAML +
+        " in the current directory or any of its parent directories.")
+

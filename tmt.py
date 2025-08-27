@@ -5,25 +5,11 @@ import os
 from internal.recipe_parser import parse_contest_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
-from internal.context import CheckerType, init_tmt_root, TMTContext
+from internal.context import CheckerType, TMTContext, find_problem_dir
 from internal.step_generation import GenerationStep
 from internal.step_validation import ValidationStep
 from internal.outcome import ExecutionResult, ExecutionOutcome, eval_result_to_exec_result
 from internal.step_checker_icpc import ICPCCheckerStep
-
-
-def initialize_directory(root_dir: pathlib.Path):
-    """Initialize the given directory for tmt tasks."""
-
-    if not root_dir.exists():
-        raise FileNotFoundError(f"Directory {root_dir} does not exist.")
-    if not root_dir.is_dir():
-        raise NotADirectoryError(f"{root_dir} is not a directory.")
-    if any(root_dir.iterdir()):
-        raise ValueError(f"Directory {root_dir} is not empty.")
-
-    raise NotImplementedError(
-        "Directory initialization is not implemented yet.")
 
 
 def cprint(*args, **kwargs):
@@ -38,7 +24,8 @@ def generate_testcases(context: TMTContext):
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
     # TODO: change type and model solution path accordin to setting
-    model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
+    model_solution_full_path = context.path.replace_with_solution(
+        context.config.model_solution_path)
     solution_step = context.config.get_solution_step()(context=context,
                                                        is_generation=True,
                                                        submission_files=[model_solution_full_path])
@@ -57,17 +44,20 @@ def generate_testcases(context: TMTContext):
 
     if solution_step.has_interactor():
         formatter.print("Interactor  compile ")
-        formatter.print_compile_string_with_exit(solution_step.compile_interactor())
+        formatter.print_compile_string_with_exit(
+            solution_step.compile_interactor())
 
     if solution_step.has_manager():
         formatter.print("Manager     compile ")
-        formatter.print_compile_string_with_exit(solution_step.compile_manager())
+        formatter.print_compile_string_with_exit(
+            solution_step.compile_manager())
 
     recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
 
     # TODO: it is better to do this in recipe_parser.py but I fear not to touch the humongous multiclass structure
     # so I temporarily write it here
-    validations = {test.test_name: [] for testset in recipe.testsets.values() for test in testset.tests}
+    validations = {test.test_name: []
+                   for testset in recipe.testsets.values() for test in testset.tests}
     for subtask in recipe.subtasks.values():
         for testset in subtask.tests:
             for attempt_testset_match in recipe.testsets.values():
@@ -75,8 +65,10 @@ def generate_testcases(context: TMTContext):
                     for tests in attempt_testset_match.tests:
                         for validator in subtask.validation:
                             if len(validator.commands) > 1:
-                                raise ValueError("Validator with pipe is not supported")
-                            validations[tests.test_name].append(validator.commands[0])
+                                raise ValueError(
+                                    "Validator with pipe is not supported")
+                            validations[tests.test_name].append(
+                                validator.commands[0])
 
     # TODO: in case of update testcases, these should be mkdir instead of mkdir_clean.
     context.path.clean_testcases()
@@ -109,7 +101,8 @@ def generate_testcases(context: TMTContext):
                 # Run validator
                 formatter.print("val ")
                 if generator_result.verdict is not ExecutionOutcome.SUCCESS:
-                    validation_result = ExecutionResult(verdict=ExecutionOutcome.SKIPPED)
+                    validation_result = ExecutionResult(
+                        verdict=ExecutionOutcome.SKIPPED)
                 else:
                     validation_result = validation_step.run_validator(validations[code_name],
                                                                       code_name,
@@ -122,10 +115,12 @@ def generate_testcases(context: TMTContext):
                 # Run solution
                 formatter.print("sol ")
                 if validation_result.verdict is not ExecutionOutcome.SUCCESS:
-                    solution_result = ExecutionResult(verdict=ExecutionOutcome.SKIPPED)
+                    solution_result = ExecutionResult(
+                        verdict=ExecutionOutcome.SKIPPED)
                 else:
                     solution_result = solution_step.run_solution(code_name)
-                    solution_result = eval_result_to_exec_result(solution_result)
+                    solution_result = eval_result_to_exec_result(
+                        solution_result)
                     reason = solution_result.reason
                 formatter.print_exec_result(solution_result)
                 with open(os.path.join(context.path.logs_generation, f"{code_name}.sol.log"), "w+") as f:
@@ -155,35 +150,42 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
         formatter.print("Solution    compile ")
         solution_step.prepare_sandbox()
-        formatter.print_compile_string_with_exit(solution_step.compile_solution())
+        formatter.print_compile_string_with_exit(
+            solution_step.compile_solution())
 
         if solution_step.has_interactor():
             formatter.print("Interactor  compile ")
-            formatter.print_compile_string_with_exit(solution_step.compile_interactor())
+            formatter.print_compile_string_with_exit(
+                solution_step.compile_interactor())
 
         if solution_step.has_manager():
             formatter.print("Manager     compile ")
-            formatter.print_compile_string_with_exit(solution_step.compile_manager())
+            formatter.print_compile_string_with_exit(
+                solution_step.compile_manager())
 
         if not solution_step.skip_checker():
             formatter.print("Checker     compile ")
             checker_step.prepare_sandbox()
             formatter.print_compile_string_with_exit(checker_step.compile())
             if context.path.has_checker_directory() and context.config.checker_type is CheckerType.DEFAULT:
-                formatter.println(formatter.ANSI_YELLOW, 
-                                  "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.", 
+                formatter.println(formatter.ANSI_YELLOW,
+                                  "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
                                   formatter.ANSI_RESET)
 
     recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
-    all_testcases = [test.test_name for testset in recipe.testsets.values() for test in testset.tests]
+    all_testcases = [test.test_name for testset in recipe.testsets.values()
+                     for test in testset.tests]
     with open(context.path.testcases_summary, "rt") as testcases_summary:
-        available_testcases = [line.strip() for line in testcases_summary.readlines()]
-    unavailable_testcases = [testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
+        available_testcases = [line.strip()
+                               for line in testcases_summary.readlines()]
+    unavailable_testcases = [
+        testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
 
     if len(unavailable_testcases):
         formatter.println(formatter.ANSI_YELLOW,
-                        "Warning: testcases ", ', '.join(unavailable_testcases), " were not available.",
-                        formatter.ANSI_RESET)
+                          "Warning: testcases ", ', '.join(
+                              unavailable_testcases), " were not available.",
+                          formatter.ANSI_RESET)
     if is_apport_active():
         formatter.println(
             formatter.ANSI_YELLOW,
@@ -198,18 +200,23 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
         formatter.print("sol ")
         solution_result = solution_step.run_solution(testcase)
-        formatter.print_exec_result(eval_result_to_exec_result(solution_result))
-        formatter.print(f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
+        formatter.print_exec_result(
+            eval_result_to_exec_result(solution_result))
+        formatter.print(f"{solution_result.solution_cpu_time_sec:6.3f} s / {
+                        solution_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
         with open(os.path.join(context.path.logs_invocation, f"{testcase}.sol.log"), "w+") as f:
             f.write(solution_result.checker_reason)
 
         if not solution_step.skip_checker():
             formatter.print("check ")
             # TODO: find actual argument to pass to checker
-            testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcase))
-            testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcase))
+            testcase_input = os.path.join(
+                context.path.testcases, context.construct_input_filename(testcase))
+            testcase_answer = os.path.join(
+                context.path.testcases, context.construct_output_filename(testcase))
             # TODO
-            solution_result = checker_step.run_checker(context.config.checker_arguments, solution_result, testcase_input, testcase_answer)
+            solution_result = checker_step.run_checker(
+                context.config.checker_arguments, solution_result, testcase_input, testcase_answer)
             formatter.print_checker_status(solution_result)
 
         # TODO: Change print_reason into a CLI argument
@@ -221,7 +228,6 @@ def invoke_solution(context: TMTContext, files: list[str]):
 
 
 def main():
-
     parser = argparse.ArgumentParser(description="tmt - task management tools")
     parser.add_argument(
         "--version", action="version", version="tmt 0.0.0",
@@ -235,10 +241,13 @@ def main():
     args, remaining = parser.parse_known_args()
 
     if args.command == "init":
-        initialize_directory(pathlib.Path.cwd())
+        raise NotImplementedError(
+            "Directory initialization is not implemented yet.")
         return
 
-    context = init_tmt_root(str(pathlib.Path(__file__).parent.resolve()))
+    script_dir = str(pathlib.Path(__file__).parent.resolve())
+    problem_dir = find_problem_dir(script_dir)
+    context = TMTContext(problem_dir, script_dir)
 
     if args.command == "gen":
         generate_testcases(context)
