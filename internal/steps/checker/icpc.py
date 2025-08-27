@@ -2,12 +2,13 @@ import os
 import shutil
 import pathlib
 
-from internal.config import CheckerType
-from internal.context import TMTContext
-from internal.step_checker import CheckerStep
+
+from internal.context import CheckerType, TMTContext
 from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
+
+from .base import CheckerStep
 
 
 class ICPCCheckerStep(CheckerStep):

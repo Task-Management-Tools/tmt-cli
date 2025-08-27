@@ -2,15 +2,14 @@ import os
 import shutil
 from pathlib import Path
 
+from internal.context import JudgeConvention, TMTContext
 from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.config import JudgeConvention
-from internal.context import TMTContext
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.runner import Process, pre_wait_procs, wait_procs
 
 
 class ValidationStep:
-    def __init__(self, context: 'TMTContext'):
+    def __init__(self, context: TMTContext):
         self.context = context
         self.limits = context.config  # for short hand reference
         self.workdir = self.context.path.sandbox_validation

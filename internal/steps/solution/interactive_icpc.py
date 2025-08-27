@@ -2,18 +2,18 @@ import os
 import shutil
 import signal
 import subprocess
-
 from pathlib import Path
 
+from internal.context import TMTContext
 from internal.runner import Process, pre_wait_procs, wait_procs
 from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.compilation_cpp_single import compile_cpp_single
-from internal.context import TMTContext
-from internal.step_solution import MetaSolutionStep
 from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOutcome, CompilationResult
 
+from .base import SolutionStep
 
-class InteractiveICPCSolutionStep(MetaSolutionStep):
+
+class InteractiveICPCSolutionStep(SolutionStep):
     """Implements ICPC interactive problem evaluation."""
 
     def __init__(self, *, context: TMTContext, is_generation: bool, submission_files: list[str]):
@@ -40,10 +40,10 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
 
     def compile_solution(self) -> CompilationResult:
         if len(self.submission_files) != 1:
-            return CompilationResult(verdict=CompilationOutcome.FAILED, 
+            return CompilationResult(verdict=CompilationOutcome.FAILED,
                                      exit_status=-1,
                                      standard_error="ICPC-style interactive task only supports single file submission.")
-        
+
         comp_result = compile_cpp_single(working_dir=self.context.path.sandbox_solution,
                                          files=self.submission_files,
                                          compiler=self.context.compiler,
@@ -95,7 +95,7 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
         if self.is_generation:
             with open(testcase_answer, "w+b"):
                 pass  # Truncate the file
-        
+
         try:
             shutil.copy(testcase_input, sandbox_checker_input_file)
             shutil.copy(testcase_answer, sandbox_checker_answer_file)
@@ -151,7 +151,6 @@ class InteractiveICPCSolutionStep(MetaSolutionStep):
             if os.path.isdir(checker_feedback_logs):
                 shutil.rmtree(checker_feedback_logs)
             shutil.copytree(sandbox_checker_feedback_dir, os.path.join(self.log_directory, f"{code_name}.checker.feedback"))
-
 
         except FileNotFoundError as exception:
             # We can simply raise, since there will be no processes left

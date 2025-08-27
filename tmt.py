@@ -7,34 +7,21 @@ import yaml
 from internal.recipe_parser import parse_contest_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
-from internal.config import CheckerType, ProblemType, TMTConfig
-from internal.context import TMTContext
-from internal.paths import ProblemDirectoryHelper
-from internal.step_generation import GenerationStep
-from internal.step_validation import ValidationStep
+from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
 from internal.outcome import EvaluationResult, ExecutionOutcome, eval_outcome_to_grade_outcome, eval_outcome_to_run_outcome
-from internal.step_checker_icpc import ICPCCheckerStep
 
+from internal.steps.generation import GenerationStep
+from internal.steps.validation import ValidationStep
+from internal.steps.solution import SolutionStep, make_solution_step
+from internal.steps.checker.icpc import ICPCCheckerStep
 
-def init_tmt_root(script_root: str) -> TMTContext:
-    """Initialize the root directory of tmt tasks."""
-
-    context = TMTContext()
-
-    tmt_root = pathlib.Path.cwd()
-    while tmt_root != tmt_root.parent:
-        if (tmt_root / ProblemDirectoryHelper.PROBLEM_YAML).exists():
-            context.path = ProblemDirectoryHelper(str(tmt_root), script_root)
-            with open(context.path.tmt_config, 'r') as file:
-                problem_yaml = yaml.safe_load(file)
-                context.config = TMTConfig(problem_yaml)
-            return context
-        tmt_root = tmt_root.parent
-
-    raise FileNotFoundError(2,
-                            f"No tmt root found in the directory hierarchy"
-                            f"The directory must contain a {ProblemDirectoryHelper.PROBLEM_YAML} file.",
-                            ProblemDirectoryHelper.PROBLEM_YAML)
+# from internal.config import CheckerType, ProblemType, TMTConfig
+# from internal.context import TMTContext
+# from internal.paths import ProblemDirectoryHelper
+# from internal.step_generation import GenerationStep
+# from internal.step_validation import ValidationStep
+# from internal.outcome import EvaluationResult, ExecutionOutcome, eval_outcome_to_grade_outcome, eval_outcome_to_run_outcome
+# from internal.step_checker_icpc import ICPCCheckerStep
 
 
 def command_init(root_dir: pathlib.Path):
@@ -71,11 +58,12 @@ def command_gen(context: TMTContext, args):
                    and (context.config.check_forced_output or context.config.check_generated_output))
     if run_checker:
         checker_step = ICPCCheckerStep(context)
-
     model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
-    solution_step = context.config.get_solution_step()(context=context,
-                                                       is_generation=True,
-                                                       submission_files=[model_solution_full_path])
+
+    solution_step: SolutionStep = make_solution_step(problem_type=context.config.problem_type,
+                                                     context=context,
+                                                     is_generation=True,
+                                                     submission_files=[model_solution_full_path])
 
     context.path.clean_logs()
     os.makedirs(context.path.logs)
@@ -97,11 +85,13 @@ def command_gen(context: TMTContext, args):
 
     if solution_step.has_interactor():
         formatter.print("Interactor  compile ")
-        formatter.print_compile_string_with_exit(solution_step.compile_interactor())
+        formatter.print_compile_string_with_exit(
+            solution_step.compile_interactor())
 
     if solution_step.has_manager():
         formatter.print("Manager     compile ")
-        formatter.print_compile_string_with_exit(solution_step.compile_manager())
+        formatter.print_compile_string_with_exit(
+            solution_step.compile_manager())
 
     if run_checker:
         formatter.print("Checker     compile ")
@@ -122,8 +112,7 @@ def command_gen(context: TMTContext, args):
     with open(context.path.testcases_summary, "wt") as testcases_summary:
         for testset in recipe.testsets.values():
             for test in testset.tests:
-                
-                
+
                 code_name = test.test_name
 
                 formatter.print(' ' * 4)
@@ -190,6 +179,7 @@ def command_gen(context: TMTContext, args):
 
                 if args.show_reason:
                     formatter.print_reason(result.reason)
+
                 formatter.println()
 
                 with open(os.path.join(context.path.logs_generation, f"{code_name}.gen.log"), "w+") as f:
@@ -253,22 +243,26 @@ def command_invoke(context: TMTContext, args):
     unavailable_testcases = [testcase for testcase in recipe.get_all_test_names() if available_testcases.count(testcase) == 0]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step = context.config.get_solution_step()(context=context,
-                                                           is_generation=False,
-                                                           submission_files=actual_files)
+        solution_step: SolutionStep = make_solution_step(problem_type=context.config.problem_type,
+                                                         context=context,
+                                                         is_generation=False,
+                                                         submission_files=actual_files)
         checker_step = ICPCCheckerStep(context)
 
         formatter.print("Solution    compile ")
         solution_step.prepare_sandbox()
-        formatter.print_compile_string_with_exit(solution_step.compile_solution())
+        formatter.print_compile_string_with_exit(
+            solution_step.compile_solution())
 
         if solution_step.has_interactor():
             formatter.print("Interactor  compile ")
-            formatter.print_compile_string_with_exit(solution_step.compile_interactor())
+            formatter.print_compile_string_with_exit(
+                solution_step.compile_interactor())
 
         if solution_step.has_manager():
             formatter.print("Manager     compile ")
-            formatter.print_compile_string_with_exit(solution_step.compile_manager())
+            formatter.print_compile_string_with_exit(
+                solution_step.compile_manager())
 
         if not solution_step.skip_checker():
             formatter.print("Checker     compile ")
@@ -278,6 +272,15 @@ def command_invoke(context: TMTContext, args):
                 formatter.println(formatter.ANSI_YELLOW,
                                   "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
                                   formatter.ANSI_RESET)
+
+    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
+    all_testcases = [test.test_name for testset in recipe.testsets.values()
+                     for test in testset.tests]
+    with open(context.path.testcases_summary, "rt") as testcases_summary:
+        available_testcases = [line.strip()
+                               for line in testcases_summary.readlines()]
+    unavailable_testcases = [
+        testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
 
     if len(unavailable_testcases):
         formatter.println(formatter.ANSI_YELLOW,
@@ -299,6 +302,7 @@ def command_invoke(context: TMTContext, args):
         solution_result = solution_step.run_solution(testcase)
         formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
         formatter.print(f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
+
         with open(os.path.join(context.path.logs_invocation, f"{testcase}.sol.log"), "w+") as f:
             f.write(solution_result.checker_reason)
 
@@ -307,6 +311,7 @@ def command_invoke(context: TMTContext, args):
             testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcase))
             testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcase))
             solution_result = checker_step.run_checker(context.config.checker_arguments, solution_result, testcase_input, testcase_answer)
+
             formatter.print_checker_status(solution_result)
 
         formatter.print_checker_verdict(solution_result, print_reason=args.show_reason)
@@ -321,8 +326,7 @@ def command_clean(context: TMTContext):
         shutil.rmtree(context.path.logs)
     if os.path.exists(context.path.sandbox):
         shutil.rmtree(context.path.sandbox)
-    if os.path.exists(context.path.testcases):
-        shutil.rmtree(context.path.testcases)  # TODO: keep testcase hash
+    context.path.clean_testcases()
     # TODO: clean statement?
 
     # Cleanup generators, validators and solutions
@@ -330,9 +334,10 @@ def command_clean(context: TMTContext):
     ValidationStep(context).clean_up()
     if context.config.problem_type is ProblemType.BATCH and context.config.checker_type is not CheckerType.DEFAULT:
         ICPCCheckerStep(context).clean_up()
-    context.config.get_solution_step()(context=context,
-                                       is_generation=False,
-                                       submission_files=None).clean_up()
+    make_solution_step(problem_type=context.config.problem_type,
+                       context=context,
+                       is_generation=False,
+                       submission_files=[]).clean_up()
 
     Formatter().println("Cleanup completed.")
 
@@ -367,7 +372,9 @@ def main():
         command_init(pathlib.Path.cwd())
         return
 
-    context = init_tmt_root(str(pathlib.Path(__file__).parent.resolve()))
+    script_dir = str(pathlib.Path(__file__).parent.resolve())
+    problem_dir = find_problem_dir(script_dir)
+    context = TMTContext(problem_dir, script_dir)
 
     if args.command == "gen":
         command_gen(context, args)

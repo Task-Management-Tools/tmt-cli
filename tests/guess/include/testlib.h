@@ -1,1 +1,1 @@
-../../../example/aplusb/include/testlib.h
+../../testlib.h
