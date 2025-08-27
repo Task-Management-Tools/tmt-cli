@@ -191,16 +191,15 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
 
     This function is modified from cms-dev:cms/grading/Sandbox.py#L66.
     """
-
-    stdout, stderr = "", ""
-
     # Read stdout and stderr to the end without having to block
     # because of insufficient buffering (and without allocating too
     # much memory). Unix specific.
+
+    stdout, stderr = "", ""
     try:
         while proc.wait4() is None:
-            to_read = ([proc.stdout] if proc.stdout and not proc.stdout.closed else [] +
-                       [proc.stderr] if proc.stderr and not proc.stderr.closed else [])
+            to_read = ([proc.stdout] if proc.stdout is not None and not proc.stdout.closed else [] +
+                       [proc.stderr] if proc.stderr is not None and not proc.stderr.closed else [])
             if len(to_read) == 0:
                 break
             available_read = select.select(to_read, [], [], 1.0)[0]
@@ -212,6 +211,12 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
                     stdout += content
                 else:
                     stderr += content
+
+        while content := proc.stdout.read(8 * 1024):
+            stdout += content.decode()
+        while content := proc.stderr.read(8 * 1024):
+            stderr += content.decode()
+
     except KeyboardInterrupt:
         proc.safe_kill()
         raise

@@ -42,6 +42,6 @@ def compile_cpp_single(*, working_dir: str, files: list[str],
     return CompilationResult(verdict=(CompilationOutcome.SUCCESS if compilation.status == 0 else
                                       CompilationOutcome.TIMEDOUT if compilation.is_timedout else
                                       CompilationOutcome.FAILED),
-                             standard_output=stdout,
-                             standard_error=stderr,
+                             standard_output=stdout.rstrip(),
+                             standard_error=stderr.rstrip(),
                              exit_status=compilation.status)
