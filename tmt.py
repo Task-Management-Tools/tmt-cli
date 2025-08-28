@@ -321,25 +321,44 @@ def command_invoke(context: TMTContext, args):
             os.unlink(solution_result.output_file)
 
 
-def command_clean(context: TMTContext):
-    if os.path.exists(context.path.logs):
-        shutil.rmtree(context.path.logs)
-    if os.path.exists(context.path.sandbox):
-        shutil.rmtree(context.path.sandbox)
-    context.path.clean_testcases()
+def command_clean(context: TMTContext, args):
+    formatter = Formatter()
+
+    def confirm(message: str) -> bool:
+        if args.noconfirm:
+            formatter.println(message + ".")
+            return True
+
+        formatter.print(message + "? [Y/n] ")
+        while True:
+            yesno = input().strip().lower()
+            if yesno in ['y', 'yes']:
+                return True
+            if yesno in ['n', 'no']:
+                return False
+            formatter.print("Please answer yes or no. [Y/n] ")
+
+    if confirm("Cleanup logs and sandbox"):
+        if os.path.exists(context.path.logs):
+            shutil.rmtree(context.path.logs)
+        if os.path.exists(context.path.sandbox):
+            shutil.rmtree(context.path.sandbox)
+
+    if confirm("Cleanup testcases"):
+        context.path.clean_testcases()
     # TODO: clean statement?
 
-    # Cleanup generators, validators and solutions
-    GenerationStep(context).clean_up()
-    ValidationStep(context).clean_up()
-    if context.config.problem_type is ProblemType.BATCH and context.config.checker_type is not CheckerType.DEFAULT:
-        ICPCCheckerStep(context).clean_up()
-    make_solution_step(problem_type=context.config.problem_type,
-                       context=context,
-                       is_generation=False,
-                       submission_files=[]).clean_up()
+    if confirm("Cleanup compiled generators, validators and solutions"):
+        GenerationStep(context).clean_up()
+        ValidationStep(context).clean_up()
+        if context.config.problem_type is ProblemType.BATCH and context.config.checker_type is not CheckerType.DEFAULT:
+            ICPCCheckerStep(context).clean_up()
+        make_solution_step(problem_type=context.config.problem_type,
+                           context=context,
+                           is_generation=False,
+                           submission_files=[]).clean_up()
 
-    Formatter().println("Cleanup completed.")
+    formatter.println("Cleanup completed.")
 
 
 def main():
@@ -365,6 +384,7 @@ def main():
     parser_invoke.add_argument('submission_files', nargs='*')
 
     parser_clean = subparsers.add_parser("clean", help="Clean-up a TMT problem directory.")
+    parser_clean.add_argument("--noconfirm", action="store_true")
 
     args = parser.parse_args()
 
@@ -385,7 +405,7 @@ def main():
         return
 
     if args.command == "clean":
-        command_clean(context)
+        command_clean(context, args)
         return
 
 
