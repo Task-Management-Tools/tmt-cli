@@ -21,8 +21,8 @@ def compile_with_make(
 
     compilation_time_limit_sec = context.config.trusted_compile_time_limit_sec
     compilation_memory_limit_mib = context.config.trusted_compile_memory_limit_mib
-    compiler = context.compiler
-    compile_flags = context.compile_flags
+    compiler = context.compiler("cpp")
+    compile_flags = context.compile_flags("cpp")
     include_paths = [context.path.include]
 
     # On MacOS, this has to be set during compile time
@@ -79,8 +79,8 @@ def clean_with_make(*, makefile_path: str, directory: str, context: TMTContext) 
 
     compilation_time_limit_sec = context.config.trusted_compile_time_limit_sec
     compilation_memory_limit_mib = context.config.trusted_compile_memory_limit_mib
-    compiler = context.compiler
-    compile_flags = context.compile_flags
+    compiler = context.compiler("cpp")
+    compile_flags = context.compile_flags("cpp")
     include_paths = [context.path.include]
 
     sandbox_setting = {

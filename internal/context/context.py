@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pathlib
 import re
 import resource
@@ -135,18 +133,21 @@ class TMTContext:
         # context.path constructs absolute paths.
         self.path = ProblemDirectoryHelper(problem_dir, script_root)
 
-        with open(self.path.tmt_config, "r") as file:
+        with open(self.path.problem_yaml, "r") as file:
             problem_yaml = yaml.safe_load(file)
         # self.config stores the parsed config from problem.yaml
         self.config = TMTConfig(problem_yaml)
 
-        self.compiler = "g++"
-        self.compile_flags = [
-            "-std=gnu++20",
-            "-Wall",
-            "-Wextra",
-            "-O2",
-        ]  # TODO read it from .yaml
+        with open(self.path.compiler_yaml, "r") as file:
+            self.compiler_yaml = yaml.safe_load(file)
+
+    def compiler(self, language: str) -> str:
+        if language == "cpp":
+            return "g++"
+        raise NotImplementedError("Not supported now")
+
+    def compile_flags(self, language: str) -> list[str]:
+        return self.compiler_yaml[language]["flags"]
 
     def construct_test_filename(self, code_name: str, extension: str):
         if not extension.startswith("."):

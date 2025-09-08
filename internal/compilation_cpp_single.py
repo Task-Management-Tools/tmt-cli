@@ -40,6 +40,11 @@ def compile_cpp_single(
         executable_stack_size_mib = min(executable_stack_size_mib, 512) 
         compile_flags += ["-Wl,-stack_size", f"-Wl,{executable_stack_size_mib * 1024 * 1024:x}"]
 
+    compiler = os.getenv("CXX", compiler)
+    CXXFLAGS = os.getenv("CXXFLAGS")
+    if CXXFLAGS is not None:
+        compile_flags = CXXFLAGS.split()
+
     compilation = Process(
         [compiler] + compile_flags + files + ["-o", executable_name],
         preexec_fn=lambda: os.chdir(working_dir),

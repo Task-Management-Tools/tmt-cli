@@ -56,7 +56,8 @@ class ProblemDirectoryHelper:
     logs_invocation = _extend_path_property(logs, "invocation")
 
     # Important files
-    tmt_config = _problem_path_property("problem.yaml")
+    problem_yaml = _problem_path_property("problem.yaml")
+    compiler_yaml = _problem_path_property("compiler.yaml")
     tmt_recipe = _problem_path_property("recipe")
 
     def _internal_path_property(*name):
