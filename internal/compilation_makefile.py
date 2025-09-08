@@ -54,8 +54,11 @@ def compile_with_make(
     )
     # We have to obtain stderr again from files if they are piped out.
     for log in logs.split():
-        with open(log, "r") as infile:
-            stderr += infile.read()
+        if os.path.exists(log):
+            with open(log, "r") as infile:
+                stderr += infile.read()
+        else:
+            stderr += f"warning: compilation log file {logs} could not be found"
 
     return CompilationResult(
         verdict=(
