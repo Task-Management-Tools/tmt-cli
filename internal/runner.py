@@ -6,6 +6,7 @@ import select
 import subprocess
 import resource
 import traceback
+import platform
 from threading import Timer
 
 
@@ -149,6 +150,8 @@ class Process(subprocess.Popen):
     # This is RSS (which is what we acutally want)
     @property
     def max_rss_kib(self) -> int:
+        if platform.system() == "Darwin":
+            return (self.rusage.ru_maxrss + 1023) // 1024
         return self.rusage.ru_maxrss
 
     # We cannot know with this type of execution, so return -1 instead
@@ -191,25 +194,49 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
     This procedures assumes SIGCHILD is blocked before any creation of child processes.
     """
     # Block SIGCHLD so we can wait for it explicitly
-    remaining = procs.copy()
+    pid_to_proc = {p.pid: p for p in procs}
+    remaining = set(p.pid for p in procs)
     try:
-        while remaining:
-            # Wait for a SIGCHLD
-            signal.sigwaitinfo({signal.SIGCHLD})
+        # For macOS, sigwaitinfo is not available, we use kqueue here to avoid busy waiting
+        if platform.system() == "Darwin":
+            import select
+            kq = select.kqueue()
+            events = []
+            for pid in remaining:
+                kev = select.kevent(
+                    pid,
+                    filter=select.KQ_FILTER_PROC,
+                    flags=select.KQ_EV_ADD,
+                    fflags=select.KQ_NOTE_EXIT,
+                )
+                events.append(kev)
+            kq.control(events, 0, 0)
 
-            # Poll with wait4
-            still_alive: list[Process] = []
-            for proc in remaining:
-                if proc.wait4() is None:
-                    still_alive.append(proc)
+            while remaining:
+                triggered = kq.control(None, len(remaining), None)
+                for ev in triggered:
+                    pid = ev.ident
+                    if pid in remaining:
+                        pid_to_proc[pid].wait4()
+                        remaining.remove(pid)
+        else:
+            while remaining:
+                # Wait for a SIGCHLD
+                signal.sigwaitinfo({signal.SIGCHLD})
 
-            remaining = still_alive
+                # Poll with wait4
+                still_alive: set[int] = set()
+                for pid in remaining:
+                    if pid_to_proc[pid].wait4() is None:
+                        still_alive.add(pid)
+
+                remaining = still_alive
 
     except (KeyboardInterrupt, InterruptedError) as exception:
         # Force kill the children to prevent orphans
         # We should never recieve other singals other than SIGINT (and SIGKILL)
-        for process in remaining:
-            process.safe_kill()
+        for pid in remaining:
+            pid_to_proc[pid].safe_kill()
         raise exception  # this exception should be unhandled, since the user asked that
     finally:
         # restore sigmask

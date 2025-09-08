@@ -27,7 +27,8 @@ def compile_with_make(
 
     # On MacOS, this has to be set during compile time
     if platform.system() == "Darwin":
-        compile_flags += [f"-Wl,-stack_size -Wl,{executable_stack_size_mib * 1024 * 1024:x}"]
+        executable_stack_size_mib = min(executable_stack_size_mib, 512) 
+        compile_flags += ["-Wl,-stack_size", f"-Wl,{executable_stack_size_mib * 1024 * 1024:x}"]
 
     sandbox_setting = {
         "stdout": subprocess.PIPE,
