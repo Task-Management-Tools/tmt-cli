@@ -422,7 +422,7 @@ def command_clean(context: TMTContext, args):
     formatter = Formatter()
 
     def confirm(message: str) -> bool:
-        if args.noconfirm:
+        if args.yes:
             formatter.println(message + ".")
             return True
 
@@ -495,7 +495,7 @@ def main():
     parser_clean = subparsers.add_parser(
         "clean", help="Clean-up a TMT problem directory."
     )
-    parser_clean.add_argument("--noconfirm", action="store_true")
+    parser_clean.add_argument("-y", "--yes", action="store_true")
 
     args = parser.parse_args()
 
