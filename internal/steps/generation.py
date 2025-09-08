@@ -71,29 +71,32 @@ class GenerationStep:
                 sandbox_file = os.path.join(self.workdir, file)
                 sandbox_testcase_extra.append(sandbox_file)
 
+            start_parsing_index = 0
             # Preprocess: replace manual
             if commands[0][0] == "manual":
                 if len(commands[0]) == 2:
                     commands[0] = [
-                        "/usr/bin/cat",
+                        "cat",
                         self.context.path.replace_with_manual(commands[0][1]),
                     ]
+                    start_parsing_index = 1
                 elif len(commands[0]) == 3:
                     commands = [
                         [
-                            "/usr/bin/cp",
+                            "cp",
                             self.context.path.replace_with_manual(commands[0][2]),
                             sandbox_testcase_output,
                         ],
                         [
-                            "/usr/bin/cat",
+                            "cat",
                             self.context.path.replace_with_manual(commands[0][1]),
                         ],
                     ] + commands[1:]
+                    start_parsing_index = 2
                     result.is_output_forced = True
 
             # Preprocess: replace manual files
-            for command in commands:
+            for command in commands[start_parsing_index:]:
                 if not command[0].startswith(os.sep):
                     command[0] = self.context.path.replace_with_generator(command[0])
 
