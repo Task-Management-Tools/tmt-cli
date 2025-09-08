@@ -37,7 +37,7 @@ def compile_cpp_single(
 
     # On MacOS, this has to be set during compile time
     if platform.system() == "Darwin":
-        compile_flags += [f"-Wl,--stack,{executable_stack_size_mib * 1024 * 1024}"]
+        compile_flags += [f"-Wl,-stack_size -Wl,{executable_stack_size_mib * 1024 * 1024:x}"]
 
     compilation = Process(
         [compiler] + compile_flags + files + ["-o", executable_name],

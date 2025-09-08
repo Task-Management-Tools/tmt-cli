@@ -72,21 +72,10 @@ class Process(subprocess.Popen):
                 (self.output_limit_bytes, self.output_limit_bytes),
             )
 
-            # Stack size same as address space
-            stack_hard_limit = resource.getrlimit(resource.RLIMIT_STACK)[1]
-            if self.memory_limit_bytes == resource.RLIM_INFINITY:
+            if platform.system() != "Darwin":
                 resource.setrlimit(
-                    resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit)
-                )
-            else:
-                # take max of current hard limit and stack limit
-                if (
-                    stack_hard_limit == resource.RLIM_INFINITY
-                    or stack_hard_limit >= self.memory_limit_bytes
-                ):
-                    stack_hard_limit = self.memory_limit_bytes
-                resource.setrlimit(
-                    resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit)
+                    resource.RLIMIT_STACK,
+                    (self.memory_limit_bytes, self.memory_limit_bytes),
                 )
 
             # Disable core-dump: this will cause runtime error to take significantly more time,
