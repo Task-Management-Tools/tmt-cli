@@ -18,6 +18,11 @@ class CheckerStep(ABC):
         os.makedirs(self.context.path.sandbox_checker, exist_ok=True)
 
     @abstractmethod
-    def run_checker(self, arguments: list[str],
-                    evaluation_record: EvaluationResult, input_file: str, answer_file: str) -> EvaluationResult:
+    def run_checker(
+        self,
+        arguments: list[str],
+        evaluation_record: EvaluationResult,
+        input_file: str,
+        answer_file: str,
+    ) -> EvaluationResult:
         raise NotImplementedError

@@ -4,6 +4,7 @@ from .interactive_icpc import InteractiveICPCSolutionStep
 
 from internal.context import ProblemType
 
+
 def make_solution_step(problem_type: ProblemType, *args, **kwargs) -> SolutionStep:
     match problem_type:
         case ProblemType.BATCH:
@@ -11,5 +12,4 @@ def make_solution_step(problem_type: ProblemType, *args, **kwargs) -> SolutionSt
         case ProblemType.INTERACTIVE:
             return InteractiveICPCSolutionStep(*args, **kwargs)
         case _:
-            raise ValueError(str(problem_type) +
-                         " is not a valid problem type.")
+            raise ValueError(str(problem_type) + " is not a valid problem type.")

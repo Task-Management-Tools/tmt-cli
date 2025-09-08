@@ -15,10 +15,12 @@ class GenerationStep:
         self.workdir = self.context.path.sandbox_generation
 
     def compile(self) -> CompilationResult:
-        comp_result = compile_with_make(makefile_path=self.context.path.makefile_normal,
-                                        directory=self.context.path.generator,
-                                        context=self.context,
-                                        executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+        comp_result = compile_with_make(
+            makefile_path=self.context.path.makefile_normal,
+            directory=self.context.path.generator,
+            context=self.context,
+            executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
+        )
         comp_result.dump_to_logs(self.context.path.logs_generation, "generator")
         return comp_result
 
@@ -26,11 +28,15 @@ class GenerationStep:
         os.makedirs(self.workdir, exist_ok=True)
 
     def clean_up(self):
-        clean_with_make(makefile_path=self.context.path.makefile_normal,
-                        directory=self.context.path.generator,
-                        context=self.context)
+        clean_with_make(
+            makefile_path=self.context.path.makefile_normal,
+            directory=self.context.path.generator,
+            context=self.context,
+        )
 
-    def run_generator(self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]) -> GenerationResult:
+    def run_generator(
+        self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]
+    ) -> GenerationResult:
         """
         This function only raises Exception for internal errors.
         """
@@ -38,16 +44,25 @@ class GenerationStep:
         os.makedirs(self.context.path.logs_generation, exist_ok=True)
         os.makedirs(self.context.path.testcases, exist_ok=True)
 
-        testcase_extra = [self.context.construct_test_filename(code_name, ext) for ext in extra_output_exts]
+        testcase_extra = [
+            self.context.construct_test_filename(code_name, ext)
+            for ext in extra_output_exts
+        ]
 
         result = GenerationResult()
-        generates_output = False  # TODO: should be True when config answer_generation is generator.
+        generates_output = (
+            False  # TODO: should be True when config answer_generation is generator.
+        )
         try:
             # Filenames
             testcase_input = self.context.construct_input_filename(code_name)
             testcase_output = self.context.construct_output_filename(code_name)
-            sandbox_testcase_input = os.path.join(self.context.path.sandbox_generation, testcase_input)
-            sandbox_testcase_output = os.path.join(self.context.path.sandbox_generation, testcase_output)
+            sandbox_testcase_input = os.path.join(
+                self.context.path.sandbox_generation, testcase_input
+            )
+            sandbox_testcase_output = os.path.join(
+                self.context.path.sandbox_generation, testcase_output
+            )
 
             sandbox_testcase_extra = []
             sandbox_logs = []
@@ -59,11 +74,21 @@ class GenerationStep:
             # Preprocess: replace manual
             if commands[0][0] == "manual":
                 if len(commands[0]) == 2:
-                    commands[0] = ["/usr/bin/cat", self.context.path.replace_with_manual(commands[0][1])]
+                    commands[0] = [
+                        "/usr/bin/cat",
+                        self.context.path.replace_with_manual(commands[0][1]),
+                    ]
                 elif len(commands[0]) == 3:
                     commands = [
-                        ["/usr/bin/cp", self.context.path.replace_with_manual(commands[0][2]), sandbox_testcase_output],
-                        ["/usr/bin/cat", self.context.path.replace_with_manual(commands[0][1])]
+                        [
+                            "/usr/bin/cp",
+                            self.context.path.replace_with_manual(commands[0][2]),
+                            sandbox_testcase_output,
+                        ],
+                        [
+                            "/usr/bin/cat",
+                            self.context.path.replace_with_manual(commands[0][1]),
+                        ],
                     ] + commands[1:]
                     result.is_output_forced = True
 
@@ -79,25 +104,31 @@ class GenerationStep:
             sigset = pre_wait_procs()
             try:
                 for i, command in enumerate(commands, 1):
-
-                    sandbox_err_file = os.path.join(self.workdir,
-                                                    f"{code_name}.gen.{i}.err" if len(commands) > 1 else
-                                                    f"{code_name}.gen.err")
+                    sandbox_err_file = os.path.join(
+                        self.workdir,
+                        f"{code_name}.gen.{i}.err"
+                        if len(commands) > 1
+                        else f"{code_name}.gen.err",
+                    )
                     sandbox_logs.append(sandbox_err_file)
 
                     # For the first command, stdin is closed (None)
                     stdin = prev_proc.stdout if prev_proc else None
                     # For the last command, stdout goes to the file; otherwise to a pipe
-                    stdout_redirect = sandbox_testcase_input if i == len(commands) else None
+                    stdout_redirect = (
+                        sandbox_testcase_input if i == len(commands) else None
+                    )
 
-                    proc = Process(command,
-                                   preexec_fn=lambda: os.chdir(self.workdir),
-                                   stdin=stdin,
-                                   stdout=subprocess.PIPE,
-                                   stdout_redirect=stdout_redirect,
-                                   stderr_redirect=sandbox_err_file,
-                                   time_limit_sec=self.limits.trusted_step_time_limit_sec,
-                                   memory_limit_mib=self.limits.trusted_step_memory_limit_mib)
+                    proc = Process(
+                        command,
+                        preexec_fn=lambda: os.chdir(self.workdir),
+                        stdin=stdin,
+                        stdout=subprocess.PIPE,
+                        stdout_redirect=stdout_redirect,
+                        stderr_redirect=sandbox_err_file,
+                        time_limit_sec=self.limits.trusted_step_time_limit_sec,
+                        memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
+                    )
 
                     # Close the unnecessary pipes in the parent,
                     # allowing the child to receive EOF when it's done
@@ -116,21 +147,37 @@ class GenerationStep:
             wait_procs(generator_processes, sigset)
 
             # Move testcase input
-            shutil.move(sandbox_testcase_input, os.path.join(self.context.path.testcases, testcase_input))
+            shutil.move(
+                sandbox_testcase_input,
+                os.path.join(self.context.path.testcases, testcase_input),
+            )
             # If testcase output was generated, use this output
-            if os.path.exists(sandbox_testcase_output) and os.path.isfile(sandbox_testcase_output):
-                shutil.move(sandbox_testcase_output, os.path.join(self.context.path.testcases, testcase_output))
+            if os.path.exists(sandbox_testcase_output) and os.path.isfile(
+                sandbox_testcase_output
+            ):
+                shutil.move(
+                    sandbox_testcase_output,
+                    os.path.join(self.context.path.testcases, testcase_output),
+                )
                 generates_output = True
                 if sandbox_testcase_output in sandbox_testcase_extra:
                     sandbox_testcase_extra.remove(sandbox_testcase_output)
 
             # Move extra files
             for file in sandbox_testcase_extra:
-                shutil.move(file, os.path.join(self.context.path.testcases, os.path.basename(file)))
+                shutil.move(
+                    file,
+                    os.path.join(self.context.path.testcases, os.path.basename(file)),
+                )
 
             # Move logs
             for file in sandbox_logs:
-                shutil.move(file, os.path.join(self.context.path.logs_generation, os.path.basename(file)))
+                shutil.move(
+                    file,
+                    os.path.join(
+                        self.context.path.logs_generation, os.path.basename(file)
+                    ),
+                )
 
             # Check generation program status
             result.input_generation = ExecutionOutcome.SUCCESS
@@ -141,9 +188,13 @@ class GenerationStep:
 
                     for command in commands:
                         command[0] = os.path.basename(command[0])
-                    full_command = " | ".join([' '.join(command) for command in commands])
-                    result.reason = (f"Generator command `{full_command}' timed-out (time consumed: {process.wall_clock_time_sec:3f}). "
-                                     "If this is expected, consider raising trusted step time limit.")
+                    full_command = " | ".join(
+                        [" ".join(command) for command in commands]
+                    )
+                    result.reason = (
+                        f"Generator command `{full_command}' timed-out (time consumed: {process.wall_clock_time_sec:3f}). "
+                        "If this is expected, consider raising trusted step time limit."
+                    )
 
                 elif process.status != 0:
                     result.input_generation = ExecutionOutcome.CRASHED

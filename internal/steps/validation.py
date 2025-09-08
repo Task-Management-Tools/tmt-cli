@@ -15,22 +15,32 @@ class ValidationStep:
         self.workdir = self.context.path.sandbox_validation
 
     def compile(self) -> CompilationResult:
-        comp_result = compile_with_make(makefile_path=self.context.path.makefile_normal,
-                                        directory=self.context.path.validator,
-                                        context=self.context,
-                                        executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib)
+        comp_result = compile_with_make(
+            makefile_path=self.context.path.makefile_normal,
+            directory=self.context.path.validator,
+            context=self.context,
+            executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
+        )
         comp_result.dump_to_logs(self.context.path.logs_generation, "validator")
         return comp_result
-    
+
     def clean_up(self):
-        clean_with_make(makefile_path=self.context.path.makefile_normal,
-                        directory=self.context.path.validator,
-                        context=self.context)
-        
+        clean_with_make(
+            makefile_path=self.context.path.makefile_normal,
+            directory=self.context.path.validator,
+            context=self.context,
+        )
+
     def prepare_sandbox(self):
         os.makedirs(self.workdir, exist_ok=True)
 
-    def run_validator(self, result: GenerationResult, commands: list[list[str]], code_name: str, extra_input_exts: list[str]) -> None:
+    def run_validator(
+        self,
+        result: GenerationResult,
+        commands: list[list[str]],
+        code_name: str,
+        extra_input_exts: list[str],
+    ) -> None:
         """
         commands should contain all validators all at once (without piping the input file).
         extra_input_ext specifies a list of input extensions, which are the extra files generated through the generator stage.
@@ -44,7 +54,9 @@ class ValidationStep:
         self.context.path.empty_directory(self.workdir)
 
         input_filename = self.context.construct_input_filename(code_name)
-        expected_exitcode = 42 if self.context.config.judge is JudgeConvention.ICPC else 0
+        expected_exitcode = (
+            42 if self.context.config.judge is JudgeConvention.ICPC else 0
+        )
 
         try:
             # Preprocess, could raise FileNotFound error in case validator does not exist
@@ -66,25 +78,33 @@ class ValidationStep:
                     sandbox_error_file = os.path.join(self.workdir, error_filename)
 
                     # Copy input and extra inputs
-                    shutil.copy(os.path.join(self.context.path.testcases, input_filename),
-                                sandbox_input_file)
+                    shutil.copy(
+                        os.path.join(self.context.path.testcases, input_filename),
+                        sandbox_input_file,
+                    )
                     sandbox_extra_files = []
                     for ext in extra_input_exts:
-                        extra_filename = self.context.construct_test_filename(code_name, ext)
+                        extra_filename = self.context.construct_test_filename(
+                            code_name, ext
+                        )
                         sandbox_extra_file = os.path.join(self.workdir, extra_filename)
-                        shutil.copy(os.path.join(self.context.path.testcases, extra_filename),
-                                    sandbox_extra_file)
+                        shutil.copy(
+                            os.path.join(self.context.path.testcases, extra_filename),
+                            sandbox_extra_file,
+                        )
                         sandbox_extra_files.append(sandbox_extra_file)
 
                     # Run validator
                     sigset = pre_wait_procs()
-                    validator = Process(command,
-                                        preexec_fn=lambda: os.chdir(self.workdir),
-                                        stdin_redirect=sandbox_input_file,
-                                        stdout_redirect=sandbox_output_file,
-                                        stderr_redirect=sandbox_error_file,
-                                        time_limit_sec=self.limits.trusted_step_time_limit_sec,
-                                        memory_limit_mib=self.limits.trusted_step_memory_limit_mib)
+                    validator = Process(
+                        command,
+                        preexec_fn=lambda: os.chdir(self.workdir),
+                        stdin_redirect=sandbox_input_file,
+                        stdout_redirect=sandbox_output_file,
+                        stderr_redirect=sandbox_error_file,
+                        time_limit_sec=self.limits.trusted_step_time_limit_sec,
+                        memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
+                    )
 
                     wait_procs([validator], sigset)
 
@@ -96,10 +116,16 @@ class ValidationStep:
                     # Touch both output and error, in case they are removed
                     Path(sandbox_output_file).touch()
                     Path(sandbox_error_file).touch()
-                    shutil.move(sandbox_output_file,
-                                os.path.join(self.context.path.logs_generation, output_filename))
-                    shutil.move(sandbox_error_file,
-                                os.path.join(self.context.path.logs_generation, error_filename))
+                    shutil.move(
+                        sandbox_output_file,
+                        os.path.join(
+                            self.context.path.logs_generation, output_filename
+                        ),
+                    )
+                    shutil.move(
+                        sandbox_error_file,
+                        os.path.join(self.context.path.logs_generation, error_filename),
+                    )
 
                     # Check if validator succeed
                     if validator.is_timedout:
@@ -123,9 +149,14 @@ class ValidationStep:
 
                         command[0] = os.path.basename(command[0])
 
-                        with open(os.path.join(self.context.path.logs_generation, error_filename), 'r') as f:
+                        with open(
+                            os.path.join(
+                                self.context.path.logs_generation, error_filename
+                            ),
+                            "r",
+                        ) as f:
                             lines = f.readlines()
-                            lastline = lines[-1].rstrip('\n') if lines else None
+                            lastline = lines[-1].rstrip("\n") if lines else None
 
                         if lastline is None:
                             result.reason = (
@@ -142,7 +173,7 @@ class ValidationStep:
 
             result.input_validation = ExecutionOutcome.SUCCESS
             return result
-        
+
         except FileNotFoundError as err:
             result.input_validation = ExecutionOutcome.CRASHED
             result.reason = f"File {err.filename} not found: {err.strerror}"

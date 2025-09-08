@@ -21,8 +21,9 @@ class ProblemDirectoryHelper:
     # Subdirectories
 
     def _problem_path_property(*name):
-        def combine_path(self: 'ProblemDirectoryHelper'):
+        def combine_path(self: "ProblemDirectoryHelper"):
             return os.path.join(self.problem_dir, *name)
+
         return property(combine_path)
 
     def _extend_path_property(base: property, *name):
@@ -59,8 +60,9 @@ class ProblemDirectoryHelper:
     tmt_recipe = _problem_path_property("recipe")
 
     def _internal_path_property(*name):
-        def combine_path(self: 'ProblemDirectoryHelper'):
+        def combine_path(self: "ProblemDirectoryHelper"):
             return os.path.join(self.script_dir, *name)
+
         return property(combine_path)
 
     makefile_normal = _internal_path_property("internal", "Makefile")
@@ -71,7 +73,11 @@ class ProblemDirectoryHelper:
         if os.path.exists(self.testcases):
             for filename in os.listdir(self.testcases):
                 file_path = os.path.join(self.testcases, filename)
-                if keep_hash and testcase_hash_exists and os.path.samefile(file_path, self.testcases_hashes):
+                if (
+                    keep_hash
+                    and testcase_hash_exists
+                    and os.path.samefile(file_path, self.testcases_hashes)
+                ):
                     continue
                 if os.path.isfile(file_path) or os.path.islink(file_path):
                     os.unlink(file_path)
@@ -122,22 +128,26 @@ class ProblemDirectoryHelper:
     def replace_with_generator(self, file: str):
         test_files = [
             os.path.join(self.generator, file),
-            os.path.join(self.generator, file + ".exe")
+            os.path.join(self.generator, file + ".exe"),
         ]
         for test_file in test_files:
             if self._is_executable(test_file):
                 return test_file
-        raise FileNotFoundError(errno.ENOENT, f"Generator {file} could not be found.", file)
+        raise FileNotFoundError(
+            errno.ENOENT, f"Generator {file} could not be found.", file
+        )
 
     def replace_with_validator(self, file: str):
         test_files = [
             os.path.join(self.validator, file),
-            os.path.join(self.validator, file + ".exe")
+            os.path.join(self.validator, file + ".exe"),
         ]
         for test_file in test_files:
             if self._is_executable(test_file):
                 return test_file
-        raise FileNotFoundError(errno.ENOENT, f"Validator {file} could not be found.", file)
+        raise FileNotFoundError(
+            errno.ENOENT, f"Validator {file} could not be found.", file
+        )
 
     def replace_with_solution(self, file: str):
         test_files = [
@@ -146,7 +156,9 @@ class ProblemDirectoryHelper:
         for test_file in test_files:
             if self._is_regular_file(test_file):
                 return test_file
-        raise FileNotFoundError(errno.ENOENT, f"Solution {file} could not be found.", file)
+        raise FileNotFoundError(
+            errno.ENOENT, f"Solution {file} could not be found.", file
+        )
 
     def replace_with_grader(self, file: str):
         test_files = [
@@ -155,10 +167,14 @@ class ProblemDirectoryHelper:
         for test_file in test_files:
             if self._is_regular_file(test_file):
                 return test_file
-        raise FileNotFoundError(errno.ENOENT, f"Grader {file} could not be found.", file)
+        raise FileNotFoundError(
+            errno.ENOENT, f"Grader {file} could not be found.", file
+        )
 
     def replace_with_manual(self, file: str):
         if self._is_regular_file(os.path.join(self.generator_manuals, file)):
             return os.path.join(self.generator_manuals, file)
         else:
-            raise FileNotFoundError(errno.ENOENT, f"Manual {file} could not be found.", file)
+            raise FileNotFoundError(
+                errno.ENOENT, f"Manual {file} could not be found.", file
+            )

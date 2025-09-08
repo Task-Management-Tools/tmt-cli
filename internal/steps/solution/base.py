@@ -1,12 +1,15 @@
 import signal
 from abc import ABC, abstractmethod
 
-from internal.context import ProblemType, TMTContext
+from internal.context import TMTContext
 from internal.outcome import EvaluationResult, EvaluationOutcome, CompilationResult
 from internal.runner import Process
 
+
 class SolutionStep(ABC):
-    def __init__(self, *, context: TMTContext, is_generation: bool, submission_files: list[str]):
+    def __init__(
+        self, *, context: TMTContext, is_generation: bool, submission_files: list[str]
+    ):
         self.context = context
 
         self.executable_name = self.context.config.short_name
@@ -60,14 +63,15 @@ class SolutionStep(ABC):
     @abstractmethod
     def run_solution(self, code_name: str) -> EvaluationResult:
         """
-        Runs solution for input file code_name. 
+        Runs solution for input file code_name.
         If is_generation is True, then stores the output to testcase.
         Otherwise, keep the output in the sandbox and report the file in EvaluationResult.
         """
         raise NotImplementedError
 
-    def is_solution_abormal_exit(self, process: Process, eval_res: EvaluationResult) -> bool:
-
+    def is_solution_abormal_exit(
+        self, process: Process, eval_res: EvaluationResult
+    ) -> bool:
         if process.max_rss_kib > self.memory_limit_mib * 1024:
             eval_res.verdict = EvaluationOutcome.RUNERROR_MEMORY
         if process.cpu_time_sec > self.time_limit_sec:
@@ -80,10 +84,14 @@ class SolutionStep(ABC):
             eval_res.verdict = EvaluationOutcome.TIMEOUT
         elif process.exit_signal != 0:
             eval_res.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            eval_res.checker_reason = f"Execution killed by signal ({signal.strsignal(process.exit_signal)})"
+            eval_res.checker_reason = (
+                f"Execution killed by signal ({signal.strsignal(process.exit_signal)})"
+            )
         elif process.exit_code != 0:
             eval_res.verdict = EvaluationOutcome.RUNERROR_EXITCODE
-            eval_res.checker_reason = f"Execution exited with exit code {process.exit_code}"
+            eval_res.checker_reason = (
+                f"Execution exited with exit code {process.exit_code}"
+            )
         else:
             return False
         return True

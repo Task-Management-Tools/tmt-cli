@@ -14,8 +14,17 @@ class Process(subprocess.Popen):
     Extending subprocess.Popen.
     """
 
-    def __init__(self, *args, time_limit_sec: float, memory_limit_mib: int, output_limit_mib: int = resource.RLIM_INFINITY,
-                 stdin_redirect=None, stdout_redirect=None, stderr_redirect=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        time_limit_sec: float,
+        memory_limit_mib: int,
+        output_limit_mib: int = resource.RLIM_INFINITY,
+        stdin_redirect=None,
+        stdout_redirect=None,
+        stderr_redirect=None,
+        **kwargs,
+    ):
         """
         Simple but unsafe process sandbox for running programs and tracking time and memory usage.
         """
@@ -23,10 +32,16 @@ class Process(subprocess.Popen):
         self.time_limit_sec: float = time_limit_sec
 
         # MiB to bytes
-        self.memory_limit_bytes: int = (resource.RLIM_INFINITY if memory_limit_mib == resource.RLIM_INFINITY else
-                                        memory_limit_mib * 1024 * 1024)
-        self.output_limit_bytes: int = (resource.RLIM_INFINITY if output_limit_mib == resource.RLIM_INFINITY else
-                                        output_limit_mib * 1024 * 1024)
+        self.memory_limit_bytes: int = (
+            resource.RLIM_INFINITY
+            if memory_limit_mib == resource.RLIM_INFINITY
+            else memory_limit_mib * 1024 * 1024
+        )
+        self.output_limit_bytes: int = (
+            resource.RLIM_INFINITY
+            if output_limit_mib == resource.RLIM_INFINITY
+            else output_limit_mib * 1024 * 1024
+        )
 
         self.stdin_redirect = stdin_redirect
         self.stdout_redirect = stdout_redirect
@@ -38,7 +53,9 @@ class Process(subprocess.Popen):
         super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
-        self.wall_time_limit_sec: float = time_limit_sec + 1.0  # add one second on top of that
+        self.wall_time_limit_sec: float = (
+            time_limit_sec + 1.0
+        )  # add one second on top of that
 
         self.timer = Timer(self.wall_time_limit_sec, self.safe_kill)
         self.timer.start()
@@ -50,17 +67,27 @@ class Process(subprocess.Popen):
             cpu_time = int(math.ceil(self.time_limit_sec)) + 1
             resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
-            resource.setrlimit(resource.RLIMIT_FSIZE, (self.output_limit_bytes, self.output_limit_bytes))
+            resource.setrlimit(
+                resource.RLIMIT_FSIZE,
+                (self.output_limit_bytes, self.output_limit_bytes),
+            )
 
             # Stack size same as address space
             stack_hard_limit = resource.getrlimit(resource.RLIMIT_STACK)[1]
             if self.memory_limit_bytes == resource.RLIM_INFINITY:
-                resource.setrlimit(resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit))
+                resource.setrlimit(
+                    resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit)
+                )
             else:
                 # take max of current hard limit and stack limit
-                if stack_hard_limit == resource.RLIM_INFINITY or stack_hard_limit >= self.memory_limit_bytes:
+                if (
+                    stack_hard_limit == resource.RLIM_INFINITY
+                    or stack_hard_limit >= self.memory_limit_bytes
+                ):
                     stack_hard_limit = self.memory_limit_bytes
-                resource.setrlimit(resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit))
+                resource.setrlimit(
+                    resource.RLIMIT_STACK, (stack_hard_limit, stack_hard_limit)
+                )
 
             # Disable core-dump: this will cause runtime error to take significantly more time,
             # and therefore incorrectly treated as wall clock limit exceed. The core dump feature is not
@@ -68,15 +95,25 @@ class Process(subprocess.Popen):
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
             if self.stdin_redirect is not None:
-                stdin_redirect = os.open(self.stdin_redirect, os.O_RDONLY | os.O_CREAT, mode=0o644)
+                stdin_redirect = os.open(
+                    self.stdin_redirect, os.O_RDONLY | os.O_CREAT, mode=0o644
+                )
                 os.dup2(stdin_redirect, 0)
                 os.close(stdin_redirect)
             if self.stdout_redirect is not None:
-                stdout_redirect = os.open(self.stdout_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT, mode=0o644)
+                stdout_redirect = os.open(
+                    self.stdout_redirect,
+                    os.O_WRONLY | os.O_TRUNC | os.O_CREAT,
+                    mode=0o644,
+                )
                 os.dup2(stdout_redirect, 1)
                 os.close(stdout_redirect)
             if self.stderr_redirect is not None:
-                stderr_redirect = os.open(self.stderr_redirect, os.O_WRONLY | os.O_TRUNC | os.O_CREAT, mode=0o644)
+                stderr_redirect = os.open(
+                    self.stderr_redirect,
+                    os.O_WRONLY | os.O_TRUNC | os.O_CREAT,
+                    mode=0o644,
+                )
                 os.dup2(stderr_redirect, 2)
                 os.close(stderr_redirect)
 
@@ -113,36 +150,46 @@ class Process(subprocess.Popen):
         return self.returncode
 
     @property
-    def cpu_time_sec(self) -> float: return self.rusage.ru_utime + self.rusage.ru_stime
+    def cpu_time_sec(self) -> float:
+        return self.rusage.ru_utime + self.rusage.ru_stime
 
     @property
-    def wall_clock_time_sec(self) -> float: return self.poll_time - self.popen_time
+    def wall_clock_time_sec(self) -> float:
+        return self.poll_time - self.popen_time
 
     # This is RSS (which is what we acutally want)
     @property
-    def max_rss_kib(self) -> int: return self.rusage.ru_maxrss
+    def max_rss_kib(self) -> int:
+        return self.rusage.ru_maxrss
 
     # We cannot know with this type of execution, so return -1 instead
     @property
-    def max_vss_bytes(self) -> int: return -1
+    def max_vss_bytes(self) -> int:
+        return -1
 
     @property
-    def exit_signal(self): return os.WTERMSIG(self.status) if os.WIFSIGNALED(self.status) else 0
+    def exit_signal(self):
+        return os.WTERMSIG(self.status) if os.WIFSIGNALED(self.status) else 0
 
     @property
-    def exit_code(self): return os.WEXITSTATUS(self.status) if os.WIFEXITED(self.status) else 0
+    def exit_code(self):
+        return os.WEXITSTATUS(self.status) if os.WIFEXITED(self.status) else 0
 
     @property
-    def is_signaled_exit(self): return os.WIFSIGNALED(self.status)
+    def is_signaled_exit(self):
+        return os.WIFSIGNALED(self.status)
 
     @property
-    def is_cpu_timedout(self): return self.cpu_time_sec > self.time_limit_sec
+    def is_cpu_timedout(self):
+        return self.cpu_time_sec > self.time_limit_sec
 
     @property
-    def is_wall_clock_timedout(self): return self.wall_clock_time_sec > self.time_limit_sec
+    def is_wall_clock_timedout(self):
+        return self.wall_clock_time_sec > self.time_limit_sec
 
     @property
-    def is_timedout(self): return self.is_cpu_timedout or self.is_wall_clock_timedout
+    def is_timedout(self):
+        return self.is_cpu_timedout or self.is_wall_clock_timedout
 
 
 def pre_wait_procs() -> set:
@@ -198,8 +245,13 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
     stdout, stderr = "", ""
     try:
         while proc.wait4() is None:
-            to_read = ([proc.stdout] if proc.stdout is not None and not proc.stdout.closed else [] +
-                       [proc.stderr] if proc.stderr is not None and not proc.stderr.closed else [])
+            to_read = (
+                [proc.stdout]
+                if proc.stdout is not None and not proc.stdout.closed
+                else [] + [proc.stderr]
+                if proc.stderr is not None and not proc.stderr.closed
+                else []
+            )
             if len(to_read) == 0:
                 break
             available_read = select.select(to_read, [], [], 1.0)[0]

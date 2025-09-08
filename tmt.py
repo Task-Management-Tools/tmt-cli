@@ -2,13 +2,17 @@ import argparse
 import pathlib
 import os
 import shutil
-import yaml
 
 from internal.recipe_parser import parse_contest_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
 from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
-from internal.outcome import EvaluationResult, ExecutionOutcome, eval_outcome_to_grade_outcome, eval_outcome_to_run_outcome
+from internal.outcome import (
+    EvaluationResult,
+    ExecutionOutcome,
+    eval_outcome_to_grade_outcome,
+    eval_outcome_to_run_outcome,
+)
 
 from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
@@ -34,8 +38,7 @@ def command_init(root_dir: pathlib.Path):
     if any(root_dir.iterdir()):
         raise ValueError(f"Directory {root_dir} is not empty.")
 
-    raise NotImplementedError(
-        "Directory initialization is not implemented yet.")
+    raise NotImplementedError("Directory initialization is not implemented yet.")
 
 
 def command_gen(context: TMTContext, args):
@@ -45,25 +48,39 @@ def command_gen(context: TMTContext, args):
 
     formatter = Formatter()
 
-    if args.verify_hash and not (os.path.exists(context.path.testcases_hashes) and os.path.isfile(context.path.testcases_hashes)):
-        formatter.println(formatter.ANSI_RED,
-                          "Testcase hashes does not exist. There is nothing to verify.",
-                          formatter.ANSI_RESET)
+    if args.verify_hash and not (
+        os.path.exists(context.path.testcases_hashes)
+        and os.path.isfile(context.path.testcases_hashes)
+    ):
+        formatter.println(
+            formatter.ANSI_RED,
+            "Testcase hashes does not exist. There is nothing to verify.",
+            formatter.ANSI_RESET,
+        )
         return
 
     # Compile generators, validators and solutions
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
-    run_checker = (context.config.problem_type is ProblemType.BATCH and context.config.checker_type is not CheckerType.DEFAULT
-                   and (context.config.check_forced_output or context.config.check_generated_output))
+    run_checker = (
+        context.config.problem_type is ProblemType.BATCH
+        and context.config.checker_type is not CheckerType.DEFAULT
+        and (
+            context.config.check_forced_output or context.config.check_generated_output
+        )
+    )
     if run_checker:
         checker_step = ICPCCheckerStep(context)
-    model_solution_full_path = context.path.replace_with_solution(context.config.model_solution_path)
+    model_solution_full_path = context.path.replace_with_solution(
+        context.config.model_solution_path
+    )
 
-    solution_step: SolutionStep = make_solution_step(problem_type=context.config.problem_type,
-                                                     context=context,
-                                                     is_generation=True,
-                                                     submission_files=[model_solution_full_path])
+    solution_step: SolutionStep = make_solution_step(
+        problem_type=context.config.problem_type,
+        context=context,
+        is_generation=True,
+        submission_files=[model_solution_full_path],
+    )
 
     context.path.clean_logs()
     os.makedirs(context.path.logs)
@@ -85,13 +102,11 @@ def command_gen(context: TMTContext, args):
 
     if solution_step.has_interactor():
         formatter.print("Interactor  compile ")
-        formatter.print_compile_string_with_exit(
-            solution_step.compile_interactor())
+        formatter.print_compile_string_with_exit(solution_step.compile_interactor())
 
     if solution_step.has_manager():
         formatter.print("Manager     compile ")
-        formatter.print_compile_string_with_exit(
-            solution_step.compile_manager())
+        formatter.print_compile_string_with_exit(solution_step.compile_manager())
 
     if run_checker:
         formatter.print("Checker     compile ")
@@ -112,15 +127,16 @@ def command_gen(context: TMTContext, args):
     with open(context.path.testcases_summary, "wt") as testcases_summary:
         for testset in recipe.testsets.values():
             for test in testset.tests:
-
                 code_name = test.test_name
 
-                formatter.print(' ' * 4)
+                formatter.print(" " * 4)
                 formatter.print_fixed_width(code_name, width=codename_length)
 
                 # Run generator
                 formatter.print("gen ")
-                result = generation_step.run_generator(test.execute.commands, code_name, list(testset.extra_file))
+                result = generation_step.run_generator(
+                    test.execute.commands, code_name, list(testset.extra_file)
+                )
                 formatter.print_exec_result(result.input_generation)
 
                 # Run validator: skip if input_generation did not succeed
@@ -133,7 +149,9 @@ def command_gen(context: TMTContext, args):
                         if len(exe.commands) != 1:
                             raise ValueError("Validation with pipe is not supported.")
                         validation_commands.append(exe.commands[0])
-                    validation_step.run_validator(result, validation_commands, code_name, list(testset.extra_file))
+                    validation_step.run_validator(
+                        result, validation_commands, code_name, list(testset.extra_file)
+                    )
                 formatter.print_exec_result(result.input_validation)
 
                 # Run solution:
@@ -146,7 +164,9 @@ def command_gen(context: TMTContext, args):
                     pass
                 else:
                     solution_result = solution_step.run_solution(code_name)
-                    result.output_generation = eval_outcome_to_run_outcome(solution_result)
+                    result.output_generation = eval_outcome_to_run_outcome(
+                        solution_result
+                    )
                     result.reason = solution_result.checker_reason
                 formatter.print_exec_result(result.output_generation)
 
@@ -154,24 +174,47 @@ def command_gen(context: TMTContext, args):
                 # If both input is validated and output is available, run checker if the testcase type should apply check
                 if run_checker:
                     formatter.print("val ")
-                    if (result.output_generation not in [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS] or
-                            result.input_validation not in [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]):
+                    if result.output_generation not in [
+                        ExecutionOutcome.SUCCESS,
+                        ExecutionOutcome.SKIPPED_SUCCESS,
+                    ] or result.input_validation not in [
+                        ExecutionOutcome.SUCCESS,
+                        ExecutionOutcome.SKIPPED_SUCCESS,
+                    ]:
                         result.output_validation = ExecutionOutcome.SKIPPED
-                    elif ((result.is_output_forced and not context.config.check_forced_output) or
-                          (not result.is_output_forced and not context.config.check_generated_output)):
+                    elif (
+                        result.is_output_forced
+                        and not context.config.check_forced_output
+                    ) or (
+                        not result.is_output_forced
+                        and not context.config.check_generated_output
+                    ):
                         result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
                     else:
-                        testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(code_name))
-                        testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(code_name))
+                        testcase_input = os.path.join(
+                            context.path.testcases,
+                            context.construct_input_filename(code_name),
+                        )
+                        testcase_answer = os.path.join(
+                            context.path.testcases,
+                            context.construct_output_filename(code_name),
+                        )
 
-                        copied_testcase_output = os.path.join(context.path.sandbox_checker, os.path.basename(testcase_answer))
+                        copied_testcase_output = os.path.join(
+                            context.path.sandbox_checker,
+                            os.path.basename(testcase_answer),
+                        )
                         shutil.copy(testcase_answer, copied_testcase_output)
 
-                        checker_result = checker_step.run_checker(context.config.checker_arguments,
-                                                                  EvaluationResult(
-                                                                      output_file=copied_testcase_output
-                                                                  ), testcase_input, testcase_answer)
-                        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
+                        checker_result = checker_step.run_checker(
+                            context.config.checker_arguments,
+                            EvaluationResult(output_file=copied_testcase_output),
+                            testcase_input,
+                            testcase_answer,
+                        )
+                        result.output_validation = eval_outcome_to_grade_outcome(
+                            checker_result
+                        )
                         result.reason = checker_result.checker_reason
                     formatter.print_exec_result(result.output_validation)
                 else:
@@ -182,41 +225,62 @@ def command_gen(context: TMTContext, args):
 
                 formatter.println()
 
-                with open(os.path.join(context.path.logs_generation, f"{code_name}.gen.log"), "w+") as f:
+                with open(
+                    os.path.join(context.path.logs_generation, f"{code_name}.gen.log"),
+                    "w+",
+                ) as f:
                     f.write(result.reason)
                 # TODO: this should print more meaningful contents, right now it is only the testcases
                 if result:
                     testcases_summary.write(f"{code_name}\n")
-                    for testcase_file_exts in [context.config.input_extension, context.config.output_extension] + list(testset.extra_file):
-                        base_filename = context.construct_test_filename(code_name, testcase_file_exts)
+                    for testcase_file_exts in [
+                        context.config.input_extension,
+                        context.config.output_extension,
+                    ] + list(testset.extra_file):
+                        base_filename = context.construct_test_filename(
+                            code_name, testcase_file_exts
+                        )
                         file = os.path.join(context.path.testcases, base_filename)
                         with open(file, "rb") as f:
-                            testcase_hashes[base_filename] = hashlib.file_digest(f, "sha256").hexdigest()
+                            testcase_hashes[base_filename] = hashlib.file_digest(
+                                f, "sha256"
+                            ).hexdigest()
 
         if args.verify_hash:
             formatter.println()
             with open(context.path.testcases_hashes, "r") as f:
                 official_testcase_hashes: dict = json.load(f)
             if testcase_hashes == official_testcase_hashes:
-                formatter.println(formatter.ANSI_GREEN, "Hash matches!", formatter.ANSI_RESET)
+                formatter.println(
+                    formatter.ANSI_GREEN, "Hash matches!", formatter.ANSI_RESET
+                )
             else:
-                tab = ' ' * 4
+                tab = " " * 4
                 # Hash mismatch
-                formatter.println(formatter.ANSI_RED, "Hash mismatches:", formatter.ANSI_RESET)
+                formatter.println(
+                    formatter.ANSI_RED, "Hash mismatches:", formatter.ANSI_RESET
+                )
                 common_files = official_testcase_hashes.keys() & testcase_hashes.keys()
                 for filename in sorted(common_files):
                     if official_testcase_hashes[filename] != testcase_hashes[filename]:
-                        formatter.println(tab, f"{filename}: {official_testcase_hashes[filename]} (found {testcase_hashes[filename]})")
+                        formatter.println(
+                            tab,
+                            f"{filename}: {official_testcase_hashes[filename]} (found {testcase_hashes[filename]})",
+                        )
                 # Missing files
                 missing_files = official_testcase_hashes.keys() - testcase_hashes.keys()
                 if len(missing_files) > 0:
-                    formatter.println(formatter.ANSI_RED, "Missing files:", formatter.ANSI_RESET)
+                    formatter.println(
+                        formatter.ANSI_RED, "Missing files:", formatter.ANSI_RESET
+                    )
                     for file in sorted(missing_files):
                         formatter.println(tab, file)
                 # Extra files
                 extra_files = testcase_hashes.keys() - official_testcase_hashes.keys()
                 if len(extra_files) > 0:
-                    formatter.println(formatter.ANSI_RED, "Extra files:", formatter.ANSI_RESET)
+                    formatter.println(
+                        formatter.ANSI_RED, "Extra files:", formatter.ANSI_RESET
+                    )
                     for file in sorted(extra_files):
                         formatter.println(tab, file)
 
@@ -226,91 +290,124 @@ def command_gen(context: TMTContext, args):
 
 
 def command_invoke(context: TMTContext, args):
-
     formatter = Formatter()
     actual_files = [os.path.join(os.getcwd(), file) for file in args.submission_files]
 
     with open(context.path.tmt_recipe) as f:
         recipe = parse_contest_data(f.readlines())
 
-    if not (os.path.exists(context.path.testcases_summary) and os.path.isfile(context.path.testcases_summary)):
-        formatter.println(formatter.ANSI_RED,
-                          "Testcase summary does not exist. Please generate the testcases first.",
-                          formatter.ANSI_RESET)
+    if not (
+        os.path.exists(context.path.testcases_summary)
+        and os.path.isfile(context.path.testcases_summary)
+    ):
+        formatter.println(
+            formatter.ANSI_RED,
+            "Testcase summary does not exist. Please generate the testcases first.",
+            formatter.ANSI_RESET,
+        )
         return
     with open(context.path.testcases_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
-    unavailable_testcases = [testcase for testcase in recipe.get_all_test_names() if available_testcases.count(testcase) == 0]
+    unavailable_testcases = [
+        testcase
+        for testcase in recipe.get_all_test_names()
+        if available_testcases.count(testcase) == 0
+    ]
 
     if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step: SolutionStep = make_solution_step(problem_type=context.config.problem_type,
-                                                         context=context,
-                                                         is_generation=False,
-                                                         submission_files=actual_files)
+        solution_step: SolutionStep = make_solution_step(
+            problem_type=context.config.problem_type,
+            context=context,
+            is_generation=False,
+            submission_files=actual_files,
+        )
         checker_step = ICPCCheckerStep(context)
 
         formatter.print("Solution    compile ")
         solution_step.prepare_sandbox()
-        formatter.print_compile_string_with_exit(
-            solution_step.compile_solution())
+        formatter.print_compile_string_with_exit(solution_step.compile_solution())
 
         if solution_step.has_interactor():
             formatter.print("Interactor  compile ")
-            formatter.print_compile_string_with_exit(
-                solution_step.compile_interactor())
+            formatter.print_compile_string_with_exit(solution_step.compile_interactor())
 
         if solution_step.has_manager():
             formatter.print("Manager     compile ")
-            formatter.print_compile_string_with_exit(
-                solution_step.compile_manager())
+            formatter.print_compile_string_with_exit(solution_step.compile_manager())
 
         if not solution_step.skip_checker():
             formatter.print("Checker     compile ")
             checker_step.prepare_sandbox()
             formatter.print_compile_string_with_exit(checker_step.compile())
-            if context.path.has_checker_directory() and context.config.checker_type is CheckerType.DEFAULT:
-                formatter.println(formatter.ANSI_YELLOW,
-                                  "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
-                                  formatter.ANSI_RESET)
+            if (
+                context.path.has_checker_directory()
+                and context.config.checker_type is CheckerType.DEFAULT
+            ):
+                formatter.println(
+                    formatter.ANSI_YELLOW,
+                    "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
+                    formatter.ANSI_RESET,
+                )
 
     recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
-    all_testcases = [test.test_name for testset in recipe.testsets.values()
-                     for test in testset.tests]
+    all_testcases = [
+        test.test_name for testset in recipe.testsets.values() for test in testset.tests
+    ]
     with open(context.path.testcases_summary, "rt") as testcases_summary:
-        available_testcases = [line.strip()
-                               for line in testcases_summary.readlines()]
+        available_testcases = [line.strip() for line in testcases_summary.readlines()]
     unavailable_testcases = [
-        testcase for testcase in all_testcases if available_testcases.count(testcase) == 0]
+        testcase
+        for testcase in all_testcases
+        if available_testcases.count(testcase) == 0
+    ]
 
     if len(unavailable_testcases):
-        formatter.println(formatter.ANSI_YELLOW,
-                          "Warning: testcases ", ', '.join(unavailable_testcases), " were not available.",
-                          formatter.ANSI_RESET)
+        formatter.println(
+            formatter.ANSI_YELLOW,
+            "Warning: testcases ",
+            ", ".join(unavailable_testcases),
+            " were not available.",
+            formatter.ANSI_RESET,
+        )
     if is_apport_active():
         formatter.println(
             formatter.ANSI_YELLOW,
             "Warning: apport is active. Runtime error caused by signal might be treated as wall-clock limit exceeded due to apport crash collector delay.",
-            formatter.ANSI_RESET)
+            formatter.ANSI_RESET,
+        )
 
     codename_length = max(map(len, available_testcases)) + 2
 
     for testcase in available_testcases:
-        formatter.print(' ' * 4)
+        formatter.print(" " * 4)
         formatter.print_fixed_width(testcase, width=codename_length)
 
         formatter.print("sol ")
         solution_result = solution_step.run_solution(testcase)
         formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
-        formatter.print(f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  ")
+        formatter.print(
+            f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  "
+        )
 
-        with open(os.path.join(context.path.logs_invocation, f"{testcase}.sol.log"), "w+") as f:
+        with open(
+            os.path.join(context.path.logs_invocation, f"{testcase}.sol.log"), "w+"
+        ) as f:
             f.write(solution_result.checker_reason)
 
         if not solution_step.skip_checker():
             formatter.print("check ")
-            testcase_input = os.path.join(context.path.testcases, context.construct_input_filename(testcase))
-            testcase_answer = os.path.join(context.path.testcases, context.construct_output_filename(testcase))
-            solution_result = checker_step.run_checker(context.config.checker_arguments, solution_result, testcase_input, testcase_answer)
+            testcase_input = os.path.join(
+                context.path.testcases, context.construct_input_filename(testcase)
+            )
+            testcase_answer = os.path.join(
+                context.path.testcases, context.construct_output_filename(testcase)
+            )
+            solution_result = checker_step.run_checker(
+                context.config.checker_arguments,
+                solution_result,
+                testcase_input,
+                testcase_answer,
+            )
 
             formatter.print_checker_status(solution_result)
 
@@ -332,9 +429,9 @@ def command_clean(context: TMTContext, args):
         formatter.print(message + "? [Y/n] ")
         while True:
             yesno = input().strip().lower()
-            if yesno in ['y', 'yes']:
+            if yesno in ["y", "yes"]:
                 return True
-            if yesno in ['n', 'no']:
+            if yesno in ["n", "no"]:
                 return False
             formatter.print("Please answer yes or no. [Y/n] ")
 
@@ -351,12 +448,17 @@ def command_clean(context: TMTContext, args):
     if confirm("Cleanup compiled generators, validators and solutions"):
         GenerationStep(context).clean_up()
         ValidationStep(context).clean_up()
-        if context.config.problem_type is ProblemType.BATCH and context.config.checker_type is not CheckerType.DEFAULT:
+        if (
+            context.config.problem_type is ProblemType.BATCH
+            and context.config.checker_type is not CheckerType.DEFAULT
+        ):
             ICPCCheckerStep(context).clean_up()
-        make_solution_step(problem_type=context.config.problem_type,
-                           context=context,
-                           is_generation=False,
-                           submission_files=[]).clean_up()
+        make_solution_step(
+            problem_type=context.config.problem_type,
+            context=context,
+            is_generation=False,
+            submission_files=[],
+        ).clean_up()
 
     formatter.println("Cleanup completed.")
 
@@ -364,26 +466,35 @@ def command_clean(context: TMTContext, args):
 def main():
     parser = argparse.ArgumentParser(description="TMT - Task Management Tools")
     parser.add_argument(
-        "--version", action="version", version="TMT 0.0.0",
-        help="Show the version of TMT."
+        "--version",
+        action="version",
+        version="TMT 0.0.0",
+        help="Show the version of TMT.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
 
     parser_gen = subparsers.add_parser("gen", help="Generate testcases.")
-    parser_gen.add_argument("-r", "--show-reason",
-                            action="store_true",
-                            help="Show the failed reason and checker's output (in case of checker validation is enabled) of each testcase.")
-    parser_gen.add_argument("--verify-hash",
-                            action="store_true",
-                            help="Check if the hash digest of the testcases matches.")
+    parser_gen.add_argument(
+        "-r",
+        "--show-reason",
+        action="store_true",
+        help="Show the failed reason and checker's output (in case of checker validation is enabled) of each testcase.",
+    )
+    parser_gen.add_argument(
+        "--verify-hash",
+        action="store_true",
+        help="Check if the hash digest of the testcases matches.",
+    )
 
     parser_invoke = subparsers.add_parser("invoke", help="Invoke a solution.")
     parser_invoke.add_argument("-r", "--show-reason", action="store_true")
-    parser_invoke.add_argument('submission_files', nargs='*')
+    parser_invoke.add_argument("submission_files", nargs="*")
 
-    parser_clean = subparsers.add_parser("clean", help="Clean-up a TMT problem directory.")
+    parser_clean = subparsers.add_parser(
+        "clean", help="Clean-up a TMT problem directory."
+    )
     parser_clean.add_argument("--noconfirm", action="store_true")
 
     args = parser.parse_args()

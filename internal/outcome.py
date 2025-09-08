@@ -126,8 +126,16 @@ class GenerationResult:
     reason: str = ""
 
     def __bool__(self):
-        for outcome in [self.input_generation, self.input_validation, self.output_generation, self.output_validation]:
-            if outcome not in [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]:
+        for outcome in [
+            self.input_generation,
+            self.input_validation,
+            self.output_generation,
+            self.output_validation,
+        ]:
+            if outcome not in [
+                ExecutionOutcome.SUCCESS,
+                ExecutionOutcome.SKIPPED_SUCCESS,
+            ]:
                 return False
         return True
 
@@ -138,14 +146,29 @@ def eval_outcome_to_run_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
     (For example, when generating answer files.)
     """
 
-    group_accepted = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.ACCEPTED,
-                      EvaluationOutcome.PARTIAL, EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
+    group_accepted = [
+        EvaluationOutcome.RUN_SUCCESS,
+        EvaluationOutcome.ACCEPTED,
+        EvaluationOutcome.PARTIAL,
+        EvaluationOutcome.WRONG,
+        EvaluationOutcome.NO_FILE,
+        EvaluationOutcome.NO_OUTPUT,
+    ]
     group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL,
-                           EvaluationOutcome.RUNERROR_EXITCODE, EvaluationOutcome.RUNERROR_MEMORY]
-    group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
-                         EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
-                         EvaluationOutcome.INTERNAL_ERROR]
+    group_runtime_error = [
+        EvaluationOutcome.RUNERROR_OUTPUT,
+        EvaluationOutcome.RUNERROR_SIGNAL,
+        EvaluationOutcome.RUNERROR_EXITCODE,
+        EvaluationOutcome.RUNERROR_MEMORY,
+    ]
+    group_judge_error = [
+        EvaluationOutcome.MANAGER_CRASHED,
+        EvaluationOutcome.MANAGER_TIMEOUT,
+        EvaluationOutcome.CHECKER_CRASHED,
+        EvaluationOutcome.CHECKER_FAILED,
+        EvaluationOutcome.CHECKER_TIMEDOUT,
+        EvaluationOutcome.INTERNAL_ERROR,
+    ]
 
     if eval_res.verdict in group_accepted:
         return ExecutionOutcome.SUCCESS
@@ -156,7 +179,9 @@ def eval_outcome_to_run_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
     elif eval_res.verdict in group_judge_error:
         return ExecutionOutcome.FAILED
     else:
-        raise ValueError(f"Unexpected verdict when converting {eval_res.verdict} to execution outcome.")
+        raise ValueError(
+            f"Unexpected verdict when converting {eval_res.verdict} to execution outcome."
+        )
 
 
 def eval_outcome_to_grade_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
@@ -166,11 +191,21 @@ def eval_outcome_to_grade_outcome(eval_res: EvaluationResult) -> ExecutionOutcom
     """
 
     group_accepted = [EvaluationOutcome.ACCEPTED]
-    group_failed = [EvaluationOutcome.RUN_SUCCESS, EvaluationOutcome.PARTIAL,
-                    EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
-    group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
-                         EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
-                         EvaluationOutcome.INTERNAL_ERROR]
+    group_failed = [
+        EvaluationOutcome.RUN_SUCCESS,
+        EvaluationOutcome.PARTIAL,
+        EvaluationOutcome.WRONG,
+        EvaluationOutcome.NO_FILE,
+        EvaluationOutcome.NO_OUTPUT,
+    ]
+    group_judge_error = [
+        EvaluationOutcome.MANAGER_CRASHED,
+        EvaluationOutcome.MANAGER_TIMEOUT,
+        EvaluationOutcome.CHECKER_CRASHED,
+        EvaluationOutcome.CHECKER_FAILED,
+        EvaluationOutcome.CHECKER_TIMEDOUT,
+        EvaluationOutcome.INTERNAL_ERROR,
+    ]
 
     if eval_res.verdict in group_accepted:
         return ExecutionOutcome.SUCCESS
@@ -179,4 +214,6 @@ def eval_outcome_to_grade_outcome(eval_res: EvaluationResult) -> ExecutionOutcom
     elif eval_res.verdict in group_judge_error:
         return ExecutionOutcome.FAILED
     else:
-        raise ValueError(f"Unexpected verdict when converting {eval_res.verdict} to execution outcome.")
+        raise ValueError(
+            f"Unexpected verdict when converting {eval_res.verdict} to execution outcome."
+        )

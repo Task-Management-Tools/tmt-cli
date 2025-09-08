@@ -17,27 +17,36 @@ class ICPCCheckerStep(CheckerStep):
         self.limits = context.config  # shorthand
 
     def compile(self) -> CompilationResult:
-
         common_kwargs = {
             "context": self.context,
-            "executable_stack_size_mib": self.limits.trusted_step_memory_limit_mib
+            "executable_stack_size_mib": self.limits.trusted_step_memory_limit_mib,
         }
         if self.context.config.checker_type is CheckerType.CUSTOM:
             if not self.context.path.has_checker_directory():
                 raise FileNotFoundError("Directory checker is not present.")
-            compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
-                                               directory=self.context.path.checker,
-                                               **common_kwargs)
-            shutil.copy(os.path.join(self.context.path.checker, "checker"), self.context.path.sandbox_checker)
+            compile_result = compile_with_make(
+                makefile_path=self.context.path.makefile_checker,
+                directory=self.context.path.checker,
+                **common_kwargs,
+            )
+            shutil.copy(
+                os.path.join(self.context.path.checker, "checker"),
+                self.context.path.sandbox_checker,
+            )
         else:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
-            checker_path = pathlib.Path(self.context.path.script_dir) / "internal/checkers/icpc_default_validator.cc"
+            checker_path = (
+                pathlib.Path(self.context.path.script_dir)
+                / "internal/checkers/icpc_default_validator.cc"
+            )
             shutil.copy(checker_path, self.context.path.sandbox_checker)
 
-            compile_result = compile_with_make(makefile_path=self.context.path.makefile_checker,
-                                               directory=self.context.path.sandbox_checker,
-                                               **common_kwargs)
+            compile_result = compile_with_make(
+                makefile_path=self.context.path.makefile_checker,
+                directory=self.context.path.sandbox_checker,
+                **common_kwargs,
+            )
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
         return compile_result
@@ -46,13 +55,19 @@ class ICPCCheckerStep(CheckerStep):
         super().prepare_sandbox()
 
     def clean_up(self):
-        clean_with_make(makefile_path=self.context.path.makefile_checker,
-                        directory=self.context.path.checker,
-                        context=self.context)
+        clean_with_make(
+            makefile_path=self.context.path.makefile_checker,
+            directory=self.context.path.checker,
+            context=self.context,
+        )
 
-    def run_checker(self, arguments: list[str],
-                    evaluation_record: EvaluationResult, input_file: str, answer_file: str) -> EvaluationResult:
-
+    def run_checker(
+        self,
+        arguments: list[str],
+        evaluation_record: EvaluationResult,
+        input_file: str,
+        answer_file: str,
+    ) -> EvaluationResult:
         # In ICPC mode we do not need to check anything
         if evaluation_record.verdict is not EvaluationOutcome.RUN_SUCCESS:
             evaluation_record.checker_run = False
@@ -60,7 +75,9 @@ class ICPCCheckerStep(CheckerStep):
 
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
-        feedback_dir = os.path.join(self.context.path.sandbox_solution, "feedback_dir") + os.sep
+        feedback_dir = (
+            os.path.join(self.context.path.sandbox_solution, "feedback_dir") + os.sep
+        )
         if not os.path.isdir(feedback_dir):
             os.mkdir(feedback_dir)
 
@@ -70,13 +87,15 @@ class ICPCCheckerStep(CheckerStep):
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
 
         sigset = pre_wait_procs()
-        checker_process = Process([checker, input_file, answer_file, feedback_dir] + arguments,
-                                  stdin_redirect=evaluation_record.output_file,
-                                  stdout=None,
-                                  stderr=None,
-                                  time_limit_sec=self.limits.trusted_step_time_limit_sec,
-                                  memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
-                                  output_limit_mib=self.limits.trusted_step_output_limit_mib)
+        checker_process = Process(
+            [checker, input_file, answer_file, feedback_dir] + arguments,
+            stdin_redirect=evaluation_record.output_file,
+            stdout=None,
+            stderr=None,
+            time_limit_sec=self.limits.trusted_step_time_limit_sec,
+            memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
+            output_limit_mib=self.limits.trusted_step_output_limit_mib,
+        )
         wait_procs([checker_process], sigset)
 
         # the interesting files in the directory are:

@@ -2,9 +2,11 @@ import sys
 import os
 
 from internal.outcome import (
-    CompilationResult, CompilationOutcome, 
-    ExecutionOutcome, 
-    EvaluationResult, EvaluationOutcome
+    CompilationResult,
+    CompilationOutcome,
+    ExecutionOutcome,
+    EvaluationResult,
+    EvaluationOutcome,
 )
 
 
@@ -47,7 +49,7 @@ class Formatter:
 
         if endl:
             self.cursor = 0
-        print(*args, sep="", flush=True, end=('\n' if endl else ""))
+        print(*args, sep="", flush=True, end=("\n" if endl else ""))
 
     def println(self, *args) -> None:
         self.print(*args, endl=True)
@@ -57,7 +59,7 @@ class Formatter:
         for arg in args:
             if not isinstance(arg, self.AnsiSequence):
                 total_length += len(str(arg))
-        pad = ' ' * max(0, width - total_length)
+        pad = " " * max(0, width - total_length)
 
         self.print(*args, pad, endl=endl)
 
@@ -65,14 +67,27 @@ class Formatter:
         """
         Prints the compilation output in formatted result.
         """
-        if result.verdict not in [CompilationOutcome.SUCCESS, CompilationOutcome.SKIPPED]:
-            self.print('[', self.ANSI_RED, "FAIL", self.ANSI_RESET, ']', endl=True)
-            self.print(self.ANSI_YELLOW, "exit-code: ", self.ANSI_RESET, result.exit_status, endl=True)
+        if result.verdict not in [
+            CompilationOutcome.SUCCESS,
+            CompilationOutcome.SKIPPED,
+        ]:
+            self.print("[", self.ANSI_RED, "FAIL", self.ANSI_RESET, "]", endl=True)
+            self.print(
+                self.ANSI_YELLOW,
+                "exit-code: ",
+                self.ANSI_RESET,
+                result.exit_status,
+                endl=True,
+            )
             if result.standard_output.strip() != "":
-                self.print(self.ANSI_YELLOW, "standard output:", self.ANSI_RESET, endl=True)
+                self.print(
+                    self.ANSI_YELLOW, "standard output:", self.ANSI_RESET, endl=True
+                )
                 self.print(result.standard_output, endl=True)
             if result.standard_error.strip() != "":
-                self.print(self.ANSI_YELLOW, "standard error:", self.ANSI_RESET, endl=True)
+                self.print(
+                    self.ANSI_YELLOW, "standard error:", self.ANSI_RESET, endl=True
+                )
                 self.print(result.standard_error, endl=True)
         elif result.verdict is CompilationOutcome.SKIPPED:
             self.print("[", self.ANSI_GREY, "SKIP", self.ANSI_RESET, "]", endl=True)
@@ -83,11 +98,14 @@ class Formatter:
 
     def print_compile_string_with_exit(self, result: CompilationResult) -> str:
         """
-        Prints the compilation output in formatted result. This function can exit the whole program if the 
+        Prints the compilation output in formatted result. This function can exit the whole program if the
         CompilationResult is failure.
         """
         self.print_compile_string(result)
-        if result.verdict not in [CompilationOutcome.SUCCESS, CompilationOutcome.SKIPPED]:
+        if result.verdict not in [
+            CompilationOutcome.SUCCESS,
+            CompilationOutcome.SKIPPED,
+        ]:
             exit(1)
 
     def print_exec_result(self, result: ExecutionOutcome) -> None:
@@ -97,7 +115,7 @@ class Formatter:
         WIDTH = 7
 
         def format(color: str, content: str):
-            return '[', color, content, self.ANSI_RESET, ']'
+            return "[", color, content, self.ANSI_RESET, "]"
 
         if result is ExecutionOutcome.SUCCESS:
             self.print_fixed_width(*format(self.ANSI_GREEN, "OK"), width=WIDTH)
@@ -107,13 +125,16 @@ class Formatter:
             self.print_fixed_width(*format(self.ANSI_RED, "FAIL"), width=WIDTH)
         elif result is ExecutionOutcome.TIMEDOUT:
             self.print_fixed_width(*format(self.ANSI_BLUE, "TLE"), width=WIDTH)
-        elif result is ExecutionOutcome.SKIPPED or result is ExecutionOutcome.SKIPPED_SUCCESS:
+        elif (
+            result is ExecutionOutcome.SKIPPED
+            or result is ExecutionOutcome.SKIPPED_SUCCESS
+        ):
             self.print_fixed_width(*format(self.ANSI_GREY, "SKIP"), width=WIDTH)
         else:
             raise ValueError(f"Unexpected ExecutionOutcome {result}")
 
     def print_reason(self, reason: str):
-        # TODO: the following terminal width threshold should be configurable via global settings 
+        # TODO: the following terminal width threshold should be configurable via global settings
         if self.terminal_width is not None and self.terminal_width >= 96:
             buffer = reason
             cursor_position = self.cursor
@@ -127,14 +148,27 @@ class Formatter:
 
     group_accepted = [EvaluationOutcome.ACCEPTED]
     group_partial = [EvaluationOutcome.PARTIAL]
-    group_wrong_answer = [EvaluationOutcome.WRONG, EvaluationOutcome.NO_FILE, EvaluationOutcome.NO_OUTPUT]
+    group_wrong_answer = [
+        EvaluationOutcome.WRONG,
+        EvaluationOutcome.NO_FILE,
+        EvaluationOutcome.NO_OUTPUT,
+    ]
     group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-    group_runtime_error = [EvaluationOutcome.RUNERROR_OUTPUT, EvaluationOutcome.RUNERROR_SIGNAL, 
-                            EvaluationOutcome.RUNERROR_EXITCODE, EvaluationOutcome.RUNERROR_MEMORY]
-    group_judge_error = [EvaluationOutcome.MANAGER_CRASHED, EvaluationOutcome.MANAGER_TIMEOUT,
-                            EvaluationOutcome.CHECKER_CRASHED,  EvaluationOutcome.CHECKER_FAILED, EvaluationOutcome.CHECKER_TIMEDOUT,
-                            EvaluationOutcome.INTERNAL_ERROR]
-        
+    group_runtime_error = [
+        EvaluationOutcome.RUNERROR_OUTPUT,
+        EvaluationOutcome.RUNERROR_SIGNAL,
+        EvaluationOutcome.RUNERROR_EXITCODE,
+        EvaluationOutcome.RUNERROR_MEMORY,
+    ]
+    group_judge_error = [
+        EvaluationOutcome.MANAGER_CRASHED,
+        EvaluationOutcome.MANAGER_TIMEOUT,
+        EvaluationOutcome.CHECKER_CRASHED,
+        EvaluationOutcome.CHECKER_FAILED,
+        EvaluationOutcome.CHECKER_TIMEDOUT,
+        EvaluationOutcome.INTERNAL_ERROR,
+    ]
+
     def print_checker_status(self, result: EvaluationResult) -> str:
         """
         Formats the execution short status (the one with surrounded by square brackets).
@@ -142,9 +176,9 @@ class Formatter:
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
         def print_result(checker_color: str, checker_status: str):
-            self.print_fixed_width('[', checker_color, checker_status, self.ANSI_RESET, ']', width=8)
-
-
+            self.print_fixed_width(
+                "[", checker_color, checker_status, self.ANSI_RESET, "]", width=8
+            )
 
         if result.verdict in self.group_accepted:
             return print_result(self.ANSI_GREEN, "OK")
@@ -161,14 +195,18 @@ class Formatter:
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
 
-    def print_checker_verdict(self, result: EvaluationResult, print_reason: bool = False) -> str:
+    def print_checker_verdict(
+        self, result: EvaluationResult, print_reason: bool = False
+    ) -> str:
         """
         Formats the execution verdict and reason.
         """
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
         def print_result(content_color: str):
-            self.print_fixed_width(content_color, result.verdict.value, self.ANSI_RESET, ' ', width=16)
+            self.print_fixed_width(
+                content_color, result.verdict.value, self.ANSI_RESET, " ", width=16
+            )
             if print_reason:
                 self.print_reason(result.checker_reason)
 
