@@ -96,7 +96,7 @@ class Formatter:
         else:
             self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]", endl=True)
 
-    def print_compile_string_with_exit(self, result: CompilationResult) -> str:
+    def print_compile_string_with_exit(self, result: CompilationResult) -> None:
         """
         Prints the compilation output in formatted result. This function can exit the whole program if the
         CompilationResult is failure.

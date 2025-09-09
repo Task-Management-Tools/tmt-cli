@@ -127,7 +127,7 @@ class Process(subprocess.Popen):
                 pass
         self.timer.cancel()
 
-    def wait4(self) -> int:
+    def wait4(self) -> int | None:
         if self.returncode is None:
             poll_time = time.monotonic()
             pid, status, rusage = os.wait4(self.pid, os.WNOHANG)
@@ -137,6 +137,8 @@ class Process(subprocess.Popen):
                 self.returncode = os.waitstatus_to_exitcode(status)
                 self.poll_time = poll_time
                 self.timer.cancel()
+        elif not isinstance(self.returncode, int):
+            raise ValueError("Process returncode is not int nor None")
         return self.returncode
 
     @property
@@ -284,10 +286,12 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
                 else:
                     stderr += content
 
-        while content := proc.stdout.read(8 * 1024):
-            stdout += content.decode()
-        while content := proc.stderr.read(8 * 1024):
-            stderr += content.decode()
+        if proc.stdout is not None:
+            while content := proc.stdout.read(8 * 1024):
+                stdout += content.decode()
+        if proc.stderr is not None:
+            while content := proc.stderr.read(8 * 1024):
+                stderr += content.decode()
 
     except KeyboardInterrupt:
         proc.safe_kill()

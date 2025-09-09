@@ -128,6 +128,8 @@ def command_gen(context: TMTContext, args):
         for testset in recipe.testsets.values():
             for test in testset.tests:
                 code_name = test.test_name
+                if code_name is None:
+                    raise ValueError(f"command_gen: testcase without name encountered: {test}")
 
                 formatter.print(" " * 4)
                 formatter.print_fixed_width(code_name, width=codename_length)
@@ -242,8 +244,8 @@ def command_gen(context: TMTContext, args):
                         )
                         file = os.path.join(context.path.testcases, base_filename)
                         with open(file, "rb") as f:
-                            testcase_hashes[base_filename] = hashlib.file_digest(
-                                f, "sha256"
+                            testcase_hashes[base_filename] = hashlib.sha256(
+                                f.read()
                             ).hexdigest()
 
         if args.verify_hash:
@@ -358,7 +360,7 @@ def command_invoke(context: TMTContext, args):
     unavailable_testcases = [
         testcase
         for testcase in all_testcases
-        if available_testcases.count(testcase) == 0
+        if testcase is not None and available_testcases.count(testcase) == 0 
     ]
 
     if len(unavailable_testcases):

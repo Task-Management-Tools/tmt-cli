@@ -118,7 +118,8 @@ class ICPCCheckerStep(CheckerStep):
             evaluation_record.verdict = EvaluationOutcome.ACCEPTED
         else:
             evaluation_record.verdict = EvaluationOutcome.WRONG
-            if os.path.getsize(evaluation_record.output_file) == 0:
+            if (evaluation_record.output_file is None
+                    or os.path.getsize(evaluation_record.output_file) == 0):
                 evaluation_record.verdict = EvaluationOutcome.NO_OUTPUT
 
         return evaluation_record

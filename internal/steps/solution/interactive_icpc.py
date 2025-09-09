@@ -177,6 +177,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
                 output_limit_mib=self.context.config.trusted_step_output_limit_mib,
             )
 
+            assert solution.stdin is not None and solution.stdout is not None
             solution.stdin.close()
             solution.stdout.close()
 

@@ -116,7 +116,10 @@ class GenerationStep:
                     sandbox_logs.append(sandbox_err_file)
 
                     # For the first command, stdin is closed (None)
-                    stdin = prev_proc.stdout if prev_proc else None
+                    stdin = None
+                    if prev_proc is not None:
+                        stdin = prev_proc.stdout
+
                     # For the last command, stdout goes to the file; otherwise to a pipe
                     stdout_redirect = (
                         sandbox_testcase_input if i == len(commands) else None
@@ -146,6 +149,7 @@ class GenerationStep:
                     proc.safe_kill()
                 raise exception
 
+            assert generator_processes[-1].stdout is not None
             generator_processes[-1].stdout.close()
             wait_procs(generator_processes, sigset)
 
@@ -185,7 +189,7 @@ class GenerationStep:
             # Check generation program status
             result.input_generation = ExecutionOutcome.SUCCESS
 
-            for process in generator_processes:
+            for i, process in enumerate(generator_processes):
                 if process.is_timedout:
                     result.input_generation = ExecutionOutcome.TIMEDOUT
 
@@ -202,7 +206,7 @@ class GenerationStep:
                 elif process.status != 0:
                     result.input_generation = ExecutionOutcome.CRASHED
 
-                    command = process.args
+                    command = commands[i]
                     command[0] = os.path.basename(command[0])
 
                     if process.is_signaled_exit:

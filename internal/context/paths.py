@@ -4,30 +4,38 @@ import shutil
 import stat
 
 
+# Subdirectories properties creation helper
+def _problem_path_property(*kwargs):
+    def combine_path(self: "ProblemDirectoryHelper") -> str:
+        return os.path.join(self.problem_dir, *kwargs)
+
+    return property(combine_path)
+
+
+def _extend_path_property(parent_prop: property, *kwargs):
+    def combine_path(self: "ProblemDirectoryHelper") -> str:
+        if parent_prop.fget is None: 
+            raise ValueError(f"_extend_path_property: parent_prop.fget is None")
+        return os.path.join(parent_prop.fget(self), *kwargs)
+    
+    return property(combine_path)
+
+def _internal_path_property(*kwargs):
+    def combine_path(self: "ProblemDirectoryHelper"):
+        return os.path.join(self.script_dir, *kwargs)
+
+    return property(combine_path)
+
 class ProblemDirectoryHelper:
     """
     Helps everything with files and directories.
     """
-
-    MAKEFILE_NORMAL = "internal/Makefile"
-    MAKEFILE_CHECKER = "internal/CheckerMakefile"
 
     PROBLEM_YAML = "problem.yaml"
 
     def __init__(self, problem_dir: str, script_dir: str):
         self.problem_dir = problem_dir
         self.script_dir = script_dir
-
-    # Subdirectories
-
-    def _problem_path_property(*name):
-        def combine_path(self: "ProblemDirectoryHelper"):
-            return os.path.join(self.problem_dir, *name)
-
-        return property(combine_path)
-
-    def _extend_path_property(base: property, *name):
-        return property(lambda self: os.path.join(base.fget(self), *name))
 
     include = _problem_path_property("include")
 
@@ -59,12 +67,6 @@ class ProblemDirectoryHelper:
     problem_yaml = _problem_path_property("problem.yaml")
     compiler_yaml = _problem_path_property("compiler.yaml")
     tmt_recipe = _problem_path_property("recipe")
-
-    def _internal_path_property(*name):
-        def combine_path(self: "ProblemDirectoryHelper"):
-            return os.path.join(self.script_dir, *name)
-
-        return property(combine_path)
 
     makefile_normal = _internal_path_property("internal", "Makefile")
     makefile_checker = _internal_path_property("internal", "CheckerMakefile")
@@ -161,16 +163,16 @@ class ProblemDirectoryHelper:
             errno.ENOENT, f"Solution {file} could not be found.", file
         )
 
-    def replace_with_grader(self, file: str):
-        test_files = [
-            os.path.join(self.graders, file),
-        ]
-        for test_file in test_files:
-            if self._is_regular_file(test_file):
-                return test_file
-        raise FileNotFoundError(
-            errno.ENOENT, f"Grader {file} could not be found.", file
-        )
+    # def replace_with_grader(self, file: str):
+    #     test_files = [
+    #         os.path.join(self.graders, file),
+    #     ]
+    #     for test_file in test_files:
+    #         if self._is_regular_file(test_file):
+    #             return test_file
+    #     raise FileNotFoundError(
+    #         errno.ENOENT, f"Grader {file} could not be found.", file
+    #     )
 
     def replace_with_manual(self, file: str):
         if self._is_regular_file(os.path.join(self.generator_manuals, file)):

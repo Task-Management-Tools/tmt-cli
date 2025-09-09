@@ -58,7 +58,7 @@ class EvaluationResult:
     solution_exit_code: int = 0
     solution_exit_signal: int = 0
 
-    output_file: str = None
+    output_file: str | None = None
 
     checker_run: bool = False
     checker_reason: str = ""

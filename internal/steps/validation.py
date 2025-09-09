@@ -134,7 +134,7 @@ class ValidationStep:
                             f"Validator command {command} timed-out (time consumed: {validator.wall_clock_time_sec}). "
                             "If this is expected, consider raising trusted step time limit."
                         )
-                        return result
+                        return
 
                     elif validator.is_signaled_exit:
                         result.input_validation = ExecutionOutcome.CRASHED
@@ -142,7 +142,7 @@ class ValidationStep:
                             f"Validator command {command} aborted with signal (exit signal: {validator.exit_signal}). "
                             "This could be out-of-memory crash, see trusted step memory limit for more information."
                         )
-                        return result
+                        return
 
                     elif validator.exit_code != expected_exitcode:
                         result.input_validation = ExecutionOutcome.FAILED
@@ -165,16 +165,16 @@ class ValidationStep:
                             )
                         else:
                             result.reason = lastline
-                        return result
+                        return
 
             except FileNotFoundError as exception:
                 # We can simply raise, since there will be no processes left
                 raise exception
 
             result.input_validation = ExecutionOutcome.SUCCESS
-            return result
+            return
 
         except FileNotFoundError as err:
             result.input_validation = ExecutionOutcome.CRASHED
             result.reason = f"File {err.filename} not found: {err.strerror}"
-            return result
+            return
