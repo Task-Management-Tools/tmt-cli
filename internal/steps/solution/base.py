@@ -2,7 +2,12 @@ import signal
 from abc import ABC, abstractmethod
 
 from internal.context import TMTContext
-from internal.outcome import CompilationOutcome, EvaluationResult, EvaluationOutcome, CompilationResult
+from internal.outcome import (
+    CompilationOutcome,
+    EvaluationResult,
+    EvaluationOutcome,
+    CompilationResult,
+)
 from internal.runner import Process
 
 

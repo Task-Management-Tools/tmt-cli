@@ -37,8 +37,11 @@ def compile_cpp_single(
 
     # On MacOS, this has to be set during compile time
     if platform.system() == "Darwin":
-        executable_stack_size_mib = min(executable_stack_size_mib, 512) 
-        compile_flags += ["-Wl,-stack_size", f"-Wl,{executable_stack_size_mib * 1024 * 1024:x}"]
+        executable_stack_size_mib = min(executable_stack_size_mib, 512)
+        compile_flags += [
+            "-Wl,-stack_size",
+            f"-Wl,{executable_stack_size_mib * 1024 * 1024:x}",
+        ]
 
     compiler = os.getenv("CXX", compiler)
     CXXFLAGS = os.getenv("CXXFLAGS")

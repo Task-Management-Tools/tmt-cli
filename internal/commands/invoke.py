@@ -1,19 +1,10 @@
 import pathlib
 import os
-import shutil
 
 from internal.recipe_parser import parse_recipe_data
 from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
-from internal.outcome import (
-    EvaluationResult,
-    ExecutionOutcome,
-    eval_outcome_to_grade_outcome,
-    eval_outcome_to_run_outcome,
-)
-
-from internal.steps.generation import GenerationStep
-from internal.steps.validation import ValidationStep
+from internal.context import CheckerType, TMTContext
+from internal.outcome import eval_outcome_to_run_outcome
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
 
@@ -33,9 +24,13 @@ def is_apport_active():
         return False  # systemctl not available
 
 
-
-
-def command_invoke(*, formatter: Formatter, context: TMTContext, show_reason: bool, submission_files: list[str]):
+def command_invoke(
+    *,
+    formatter: Formatter,
+    context: TMTContext,
+    show_reason: bool,
+    submission_files: list[str],
+):
     actual_files = [os.path.join(os.getcwd(), file) for file in submission_files]
 
     with open(context.path.tmt_recipe) as f:
@@ -85,9 +80,13 @@ def command_invoke(*, formatter: Formatter, context: TMTContext, show_reason: bo
             checker_step.prepare_sandbox()
             formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
 
-            formatter.print(' ' * 2,
-                            "(default)" if context.config.checker_type is CheckerType.DEFAULT else
-                            context.config.checker_filename, endl=True)
+            formatter.print(
+                " " * 2,
+                "(default)"
+                if context.config.checker_type is CheckerType.DEFAULT
+                else context.config.checker_filename,
+                endl=True,
+            )
 
             if (
                 context.path.has_checker_directory()
@@ -108,7 +107,7 @@ def command_invoke(*, formatter: Formatter, context: TMTContext, show_reason: bo
     unavailable_testcases = [
         testcase
         for testcase in all_testcases
-        if testcase is not None and available_testcases.count(testcase) == 0 
+        if testcase is not None and available_testcases.count(testcase) == 0
     ]
 
     if len(unavailable_testcases):
@@ -166,4 +165,3 @@ def command_invoke(*, formatter: Formatter, context: TMTContext, show_reason: bo
 
         if solution_result.output_file is not None:
             os.unlink(solution_result.output_file)
-

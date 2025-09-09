@@ -363,6 +363,7 @@ class RecipeData:
                 for validation in self.global_validation:
                     test.add_validation(validation)
 
+
 class ParserContext:
     """
     Manages the parsing context and state during file processing.

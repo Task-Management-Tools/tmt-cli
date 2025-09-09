@@ -2,7 +2,7 @@ import argparse
 import pathlib
 
 from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
+from internal.context import TMTContext, find_problem_dir
 from internal.commands import command_gen, command_invoke, command_clean
 
 
@@ -52,11 +52,21 @@ def main():
     context = TMTContext(problem_dir, script_dir)
 
     if args.command == "gen":
-        command_gen(formatter=formatter, context=context, verify_hash=args.verify_hash, show_reason=args.show_reason)
+        command_gen(
+            formatter=formatter,
+            context=context,
+            verify_hash=args.verify_hash,
+            show_reason=args.show_reason,
+        )
         return
 
     if args.command == "invoke":
-        command_invoke(formatter=formatter, context=context, show_reason=args.show_reason, submission_files=args.submission_files)
+        command_invoke(
+            formatter=formatter,
+            context=context,
+            show_reason=args.show_reason,
+            submission_files=args.submission_files,
+        )
         return
 
     if args.command == "clean":

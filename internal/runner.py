@@ -202,6 +202,7 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
         # For macOS, sigwaitinfo is not available, we use kqueue here to avoid busy waiting
         if platform.system() == "Darwin":
             import select
+
             kq = select.kqueue()
             events = []
             still_alive: set[int] = set()

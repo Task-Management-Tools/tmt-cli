@@ -63,7 +63,9 @@ class Formatter:
 
         self.print(*args, pad, endl=endl)
 
-    def print_compile_string(self, result: CompilationResult, endl: bool = True) -> None:
+    def print_compile_string(
+        self, result: CompilationResult, endl: bool = True
+    ) -> None:
         """
         Prints the compilation output in formatted result.
         """
@@ -96,7 +98,9 @@ class Formatter:
         else:
             self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]", endl=endl)
 
-    def print_compile_string_with_exit(self, result: CompilationResult, endl: bool = True) -> None:
+    def print_compile_string_with_exit(
+        self, result: CompilationResult, endl: bool = True
+    ) -> None:
         """
         Prints the compilation output in formatted result. This function can exit the whole program if the
         CompilationResult is failure.

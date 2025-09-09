@@ -13,3 +13,9 @@ def make_solution_step(problem_type: ProblemType, *args, **kwargs) -> SolutionSt
             return InteractiveICPCSolutionStep(*args, **kwargs)
         case _:
             raise ValueError(str(problem_type) + " is not a valid problem type.")
+
+
+__all__ = [
+    SolutionStep,
+    make_solution_step,
+]

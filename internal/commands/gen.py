@@ -6,7 +6,7 @@ import json
 
 from internal.recipe_parser import parse_recipe_data
 from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
+from internal.context import CheckerType, TMTContext, ProblemType
 from internal.outcome import (
     EvaluationResult,
     ExecutionOutcome,
@@ -20,8 +20,9 @@ from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
 
 
-
-def command_gen(*, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool):
+def command_gen(
+    *, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool
+):
     """Generate test cases in the given directory."""
 
     if verify_hash and not (
@@ -89,9 +90,13 @@ def command_gen(*, formatter: Formatter, context: TMTContext, verify_hash: bool,
         checker_step.prepare_sandbox()
         formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
 
-        formatter.print(' ' * 2,
-                        "(default)" if context.config.checker_type is CheckerType.DEFAULT else
-                        context.config.checker_filename, endl=True)
+        formatter.print(
+            " " * 2,
+            "(default)"
+            if context.config.checker_type is CheckerType.DEFAULT
+            else context.config.checker_filename,
+            endl=True,
+        )
 
         if (
             context.path.has_checker_directory()
@@ -119,7 +124,9 @@ def command_gen(*, formatter: Formatter, context: TMTContext, verify_hash: bool,
             for test in testset.tests:
                 code_name = test.test_name
                 if code_name is None:
-                    raise ValueError(f"command_gen: testcase without name encountered: {test}")
+                    raise ValueError(
+                        f"command_gen: testcase without name encountered: {test}"
+                    )
 
                 formatter.print(" " * 4)
                 formatter.print_fixed_width(code_name, width=codename_length)
