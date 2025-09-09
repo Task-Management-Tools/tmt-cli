@@ -3,7 +3,6 @@ import os
 import shutil
 
 from internal.recipe_parser import parse_recipe_data
-from internal.utils import is_apport_active
 from internal.formatting import Formatter
 from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
 from internal.outcome import (
@@ -18,11 +17,26 @@ from internal.steps.validation import ValidationStep
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
 
+import subprocess
 
 
-def command_invoke(context: TMTContext, args):
-    formatter = Formatter()
-    actual_files = [os.path.join(os.getcwd(), file) for file in args.submission_files]
+def is_apport_active():
+    try:
+        result = subprocess.run(
+            ["systemctl", "is-active", "apport.service"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.stdout.strip() == "active"
+    except FileNotFoundError:
+        return False  # systemctl not available
+
+
+
+
+def command_invoke(*, formatter: Formatter, context: TMTContext, show_reason: bool, submission_files: list[str]):
+    actual_files = [os.path.join(os.getcwd(), file) for file in submission_files]
 
     with open(context.path.tmt_recipe) as f:
         recipe = parse_recipe_data(f.readlines())
@@ -147,7 +161,7 @@ def command_invoke(context: TMTContext, args):
 
             formatter.print_checker_status(solution_result)
 
-        formatter.print_checker_verdict(solution_result, print_reason=args.show_reason)
+        formatter.print_checker_verdict(solution_result, print_reason=show_reason)
         formatter.println()
 
         if solution_result.output_file is not None:

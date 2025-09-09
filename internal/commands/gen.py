@@ -1,9 +1,10 @@
 import pathlib
 import os
 import shutil
+import hashlib
+import json
 
 from internal.recipe_parser import parse_recipe_data
-from internal.utils import is_apport_active
 from internal.formatting import Formatter
 from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
 from internal.outcome import (
@@ -20,14 +21,10 @@ from internal.steps.checker.icpc import ICPCCheckerStep
 
 
 
-def command_gen(context: TMTContext, args):
+def command_gen(*, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool):
     """Generate test cases in the given directory."""
-    import hashlib
-    import json
 
-    formatter = Formatter()
-
-    if args.verify_hash and not (
+    if verify_hash and not (
         os.path.exists(context.path.testcases_hashes)
         and os.path.isfile(context.path.testcases_hashes)
     ):
@@ -215,7 +212,7 @@ def command_gen(context: TMTContext, args):
                 else:
                     result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
 
-                if args.show_reason:
+                if show_reason:
                     formatter.print_reason(result.reason)
 
                 formatter.println()
@@ -241,7 +238,7 @@ def command_gen(context: TMTContext, args):
                                 f.read()
                             ).hexdigest()
 
-        if args.verify_hash:
+        if verify_hash:
             formatter.println()
             with open(context.path.testcases_hashes, "r") as f:
                 official_testcase_hashes: dict = json.load(f)

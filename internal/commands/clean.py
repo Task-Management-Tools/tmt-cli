@@ -1,8 +1,27 @@
-def command_clean(context: TMTContext, args):
-    formatter = Formatter()
+import pathlib
+import os
+import shutil
+
+from internal.recipe_parser import parse_recipe_data
+from internal.formatting import Formatter
+from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
+from internal.outcome import (
+    EvaluationResult,
+    ExecutionOutcome,
+    eval_outcome_to_grade_outcome,
+    eval_outcome_to_run_outcome,
+)
+
+from internal.steps.generation import GenerationStep
+from internal.steps.validation import ValidationStep
+from internal.steps.solution import SolutionStep, make_solution_step
+from internal.steps.checker.icpc import ICPCCheckerStep
+
+
+def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bool):
 
     def confirm(message: str) -> bool:
-        if args.yes:
+        if skip_confirm:
             formatter.println(message + ".")
             return True
 
