@@ -3,7 +3,7 @@ import pathlib
 import os
 import shutil
 
-from internal.recipe_parser import parse_contest_data
+from internal.recipe_parser import parse_recipe_data
 from internal.utils import is_apport_active
 from internal.formatting import Formatter
 from internal.context import CheckerType, TMTContext, ProblemType, find_problem_dir
@@ -19,26 +19,6 @@ from internal.steps.validation import ValidationStep
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
 
-# from internal.config import CheckerType, ProblemType, TMTConfig
-# from internal.context import TMTContext
-# from internal.paths import ProblemDirectoryHelper
-# from internal.step_generation import GenerationStep
-# from internal.step_validation import ValidationStep
-# from internal.outcome import EvaluationResult, ExecutionOutcome, eval_outcome_to_grade_outcome, eval_outcome_to_run_outcome
-# from internal.step_checker_icpc import ICPCCheckerStep
-
-
-def command_init(root_dir: pathlib.Path):
-    """Initialize the given directory for tmt tasks."""
-
-    if not root_dir.exists():
-        raise FileNotFoundError(f"Directory {root_dir} does not exist.")
-    if not root_dir.is_dir():
-        raise NotADirectoryError(f"{root_dir} is not a directory.")
-    if any(root_dir.iterdir()):
-        raise ValueError(f"Directory {root_dir} is not empty.")
-
-    raise NotImplementedError("Directory initialization is not implemented yet.")
 
 
 def command_gen(context: TMTContext, args):
@@ -128,7 +108,7 @@ def command_gen(context: TMTContext, args):
             )
 
     with open(context.path.tmt_recipe) as f:
-        recipe = parse_contest_data(f.readlines())
+        recipe = parse_recipe_data(f.readlines())
 
     # TODO: in case of update testcases, these should be mkdir instead of mkdir_clean.
     context.path.clean_testcases()
@@ -310,7 +290,7 @@ def command_invoke(context: TMTContext, args):
     actual_files = [os.path.join(os.getcwd(), file) for file in args.submission_files]
 
     with open(context.path.tmt_recipe) as f:
-        recipe = parse_contest_data(f.readlines())
+        recipe = parse_recipe_data(f.readlines())
 
     if not (
         os.path.exists(context.path.testcases_summary)
@@ -370,7 +350,7 @@ def command_invoke(context: TMTContext, args):
                     formatter.ANSI_RESET,
                 )
 
-    recipe = parse_contest_data(open(context.path.tmt_recipe).readlines())
+    recipe = parse_recipe_data(open(context.path.tmt_recipe).readlines())
     all_testcases = [
         test.test_name for testset in recipe.testsets.values() for test in testset.tests
     ]
@@ -521,7 +501,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "init":
-        command_init(pathlib.Path.cwd())
+        raise NotImplementedError("Directory initialization is not implemented yet.")
         return
 
     script_dir = str(pathlib.Path(__file__).parent.resolve())

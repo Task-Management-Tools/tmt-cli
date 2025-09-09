@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Contest Test Data Parser
+Recipe Data Parser
 
-This module parses a custom format file to generate contest test data structure objects.
+This module parses a custom format file to generate recipe data structure objects.
 The parsed data includes testsets, subtasks, and validation rules for programming contests.
 """
 
@@ -45,8 +45,7 @@ class Executable:
             if not parts:
                 raise ValueError("Invalid command format")
 
-            # Get the actual executable name using the external function
-            executable_name = get_executable_name(parts[0])
+            executable_name = parts[0]
             command_list = [executable_name] + parts[1:]
             self.commands.append(command_list)
 
@@ -93,7 +92,7 @@ class Testcase:
 
 class Testset:
     """
-    Represents a set of test cases for contest problems.
+    Represents a set of test cases for problems.
 
     Contains metadata about the testset and a list of test generation commands.
     """
@@ -189,7 +188,7 @@ class Testset:
 
 class Subtask:
     """
-    Represents a subtask in a contest problem.
+    Represents a subtask in a problem.
 
     Contains scoring information, validation rules, and associated testsets.
     """
@@ -198,10 +197,10 @@ class Subtask:
         self.subtask_name: str = subtask_name
         self.subtask_index: int = subtask_index
         self.score: int = score
-        self.description: Optional[str] = None
+        self.description: str | None = None
         self.validation: List[Executable] = []
         self.tests: Set[str] = set()
-        self.independent_testset: Optional[Testset] = None
+        self.independent_testset: Testset | None = None
 
     def add_validation(self, command: str, *args):
         """
@@ -260,7 +259,7 @@ class Subtask:
                 f"Independent testset already set for subtask '{self.subtask_name}'"
             )
         self.independent_testset = Testset(self.subtask_name, context.testset_counter)
-        context.contest_data.testsets[self.subtask_name] = self.independent_testset
+        context.recipe_data.testsets[self.subtask_name] = self.independent_testset
         self.tests.add(self.subtask_name)
         context.testset_counter += 1
 
@@ -294,9 +293,9 @@ class Subtask:
         self.independent_testset.extra_file.add(extension)
 
 
-class ContestData:
+class RecipeData:
     """
-    Main container for all contest test data information.
+    Main container for all recipe data information.
 
     Includes testsets, subtasks, and global validation rules.
     """
@@ -364,35 +363,17 @@ class ContestData:
                 for validation in self.global_validation:
                     test.add_validation(validation)
 
-
-def get_executable_name(command: str) -> str:
-    """
-    Convert command name to actual executable name.
-
-    This function should be implemented by the user to handle
-    command name mapping and resolution.
-
-    Args:
-        command (str): Command name from the input file
-
-    Returns:
-        str: Actual executable name to use
-    """
-    # Placeholder implementation - user should override this
-    return command
-
-
 class ParserContext:
     """
     Manages the parsing context and state during file processing.
 
     This class serves as a shared context for all handlers, allowing them
     to access and modify parsing state, share information, and store
-    temporary data that doesn't belong in the final ContestData object.
+    temporary data that doesn't belong in the final RecipeData object.
     """
 
     def __init__(self):
-        self.contest_data = ContestData()
+        self.recipe_data = RecipeData()
         self.current_context = None
         self.current_object = None
         self.testset_counter = 1  # 1-based counter
@@ -543,7 +524,7 @@ class TestsetHandler(CommandHandler):
 
         self.context.used_names.add(testset_name)
         testset = Testset(testset_name, self.context.testset_counter)
-        self.context.contest_data.testsets[testset_name] = testset
+        self.context.recipe_data.testsets[testset_name] = testset
         self.context.current_context = "testset"
         self.context.current_object = testset
         self.context.testset_counter += 1
@@ -566,7 +547,7 @@ class SubtaskHandler(CommandHandler):
 
         self.context.used_names.add(subtask_name)
         subtask = Subtask(subtask_name, self.context.subtask_counter, score)
-        self.context.contest_data.subtasks[subtask_name] = subtask
+        self.context.recipe_data.subtasks[subtask_name] = subtask
         self.context.current_context = "subtask"
         self.context.current_object = subtask
         self.context.subtask_counter += 1
@@ -581,7 +562,7 @@ class GlobalValidationHandler(CommandHandler):
         self.context.list_expand_constants(parts)
         command_sequence = " ".join(parts[1:])
         executable = Executable(command_sequence)
-        self.context.contest_data.global_validation.append(executable)
+        self.context.recipe_data.global_validation.append(executable)
         self.context.current_context = None
         self.context.current_object = None
 
@@ -614,11 +595,11 @@ class IncludeHandler(CommandHandler):
         include_name = parts[1]
 
         # Check if it's a testset or subtask
-        if include_name in self.context.contest_data.testsets:
+        if include_name in self.context.recipe_data.testsets:
             self.context.current_object.include_testset(include_name)
-        elif include_name in self.context.contest_data.subtasks:
+        elif include_name in self.context.recipe_data.subtasks:
             # Include all testsets from the referenced subtask
-            referenced_subtask = self.context.contest_data.subtasks[include_name]
+            referenced_subtask = self.context.recipe_data.subtasks[include_name]
             for testset_name in referenced_subtask.tests:
                 self.context.current_object.include_testset(testset_name)
         else:
@@ -715,7 +696,7 @@ class CommandRegistry:
         self.handlers[command] = handler
 
 
-def parse_contest_data(recipe_lines: List[str]) -> ContestData:
+def parse_recipe_data(recipe_lines: List[str]) -> RecipeData:
     """
     Parse recipe and return the structured data.
 
@@ -723,7 +704,7 @@ def parse_contest_data(recipe_lines: List[str]) -> ContestData:
         recipe_lines (list of str): List of lines in a recipe file
 
     Returns:
-        ContestData: Parsed contest data structure
+        RecipeData: Parsed recipe data structure
 
     Raises:
         ValueError: If the recipe format is invalid
@@ -768,12 +749,12 @@ def parse_contest_data(recipe_lines: List[str]) -> ContestData:
             raise ValueError(f"Error on line {line_num}: {e}")
 
     # Generate test names after parsing is complete
-    parser_context.contest_data.generate_all_test_names()
+    parser_context.recipe_data.generate_all_test_names()
 
     # Push validations to all test cases after parsing is complete
-    parser_context.contest_data.push_validation_to_testcases()
+    parser_context.recipe_data.push_validation_to_testcases()
 
-    return parser_context.contest_data
+    return parser_context.recipe_data
 
 
 if __name__ == "__main__":
@@ -827,11 +808,11 @@ extra --N=5 --note=${NOTE} seed=1
 
     try:
         # Parse the sample data
-        contest_data = parse_contest_data(sample_data.split("\n"))
+        recipe_data = parse_recipe_data(sample_data.split("\n"))
 
         # Print parsed results
         print("=== TESTSETS ===")
-        for name, testset in contest_data.testsets.items():
+        for name, testset in recipe_data.testsets.items():
             print(f"Testset '{name}' (index: {testset.testset_index})")
             if len(testset.extra_file) != 0:
                 print(f"  Extra files: {list(testset.extra_file)}")
@@ -851,12 +832,12 @@ extra --N=5 --note=${NOTE} seed=1
                     print(f"        Validator {j + 1}: {validation.commands}")
 
         print("\n=== GLOBAL VALIDATION ===")
-        print(f"Global validation: {len(contest_data.global_validation)} validators")
-        for i, validation in enumerate(contest_data.global_validation):
+        print(f"Global validation: {len(recipe_data.global_validation)} validators")
+        for i, validation in enumerate(recipe_data.global_validation):
             print(f"  Global validation {i + 1}: {validation.commands}")
 
         print("\n=== SUBTASKS ===")
-        for name, subtask in contest_data.subtasks.items():
+        for name, subtask in recipe_data.subtasks.items():
             print(
                 f"Subtask '{name}' (index: {subtask.subtask_index}, score: {subtask.score})"
             )
