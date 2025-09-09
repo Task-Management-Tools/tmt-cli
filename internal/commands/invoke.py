@@ -1,5 +1,6 @@
 import pathlib
 import os
+import subprocess
 
 from internal.recipe_parser import parse_recipe_data
 from internal.formatting import Formatter
@@ -7,8 +8,6 @@ from internal.context import CheckerType, TMTContext
 from internal.outcome import eval_outcome_to_run_outcome
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
-
-import subprocess
 
 
 def is_apport_active():

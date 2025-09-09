@@ -488,7 +488,7 @@ class CommandHandler:
     def __init__(self, parser_context: ParserContext):
         self.context = parser_context
 
-    def validate_args(self, parts: List[str], min_args: int, max_args: int = None):
+    def validate_args(self, parts: List[str], min_args: int, max_args: int | None = None):
         """
         Validate the number of arguments for a command.
 

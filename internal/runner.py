@@ -196,8 +196,9 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
     This procedures assumes SIGCHILD is blocked before any creation of child processes.
     """
     # Block SIGCHLD so we can wait for it explicitly
-    pid_to_proc = {p.pid: p for p in procs}
-    remaining = set(p.pid for p in procs)
+    pid_to_proc: dict[int, Process] = {p.pid: p for p in procs}
+    remaining: set[int] = set(p.pid for p in procs)
+    still_alive: set[int] = set()
     try:
         # For macOS, sigwaitinfo is not available, we use kqueue here to avoid busy waiting
         if platform.system() == "Darwin":
@@ -205,7 +206,7 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
 
             kq = select.kqueue()
             events = []
-            still_alive: set[int] = set()
+            still_alive = set()
             for pid in remaining:
                 if pid_to_proc[pid].wait4() is None:
                     kev = select.kevent(
@@ -232,7 +233,7 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
                 signal.sigwaitinfo({signal.SIGCHLD})
 
                 # Poll with wait4
-                still_alive: set[int] = set()
+                still_alive = set()
                 for pid in remaining:
                     if pid_to_proc[pid].wait4() is None:
                         still_alive.add(pid)

@@ -16,6 +16,6 @@ def make_solution_step(problem_type: ProblemType, *args, **kwargs) -> SolutionSt
 
 
 __all__ = [
-    SolutionStep,
-    make_solution_step,
+    "SolutionStep",
+    "make_solution_step",
 ]
