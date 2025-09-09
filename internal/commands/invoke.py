@@ -2,7 +2,6 @@ import pathlib
 import os
 import subprocess
 
-from internal.recipe_parser import parse_recipe_data
 from internal.formatting import Formatter
 from internal.context import CheckerType, TMTContext
 from internal.outcome import eval_outcome_to_run_outcome
@@ -32,9 +31,6 @@ def command_invoke(
 ):
     actual_files = [os.path.join(os.getcwd(), file) for file in submission_files]
 
-    with open(context.path.tmt_recipe) as f:
-        recipe = parse_recipe_data(f.readlines())
-
     if not (
         os.path.exists(context.path.testcases_summary)
         and os.path.isfile(context.path.testcases_summary)
@@ -49,7 +45,7 @@ def command_invoke(
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
     unavailable_testcases = [
         testcase
-        for testcase in recipe.get_all_test_names()
+        for testcase in context.recipe.get_all_test_names()
         if available_testcases.count(testcase) == 0
     ]
 
@@ -97,9 +93,10 @@ def command_invoke(
                     formatter.ANSI_RESET,
                 )
 
-    recipe = parse_recipe_data(open(context.path.tmt_recipe).readlines())
     all_testcases = [
-        test.test_name for testset in recipe.testsets.values() for test in testset.tests
+        test.test_name
+        for testset in context.recipe.testsets.values()
+        for test in testset.tests
     ]
     with open(context.path.testcases_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]

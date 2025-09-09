@@ -228,3 +228,33 @@ class Formatter:
             return print_result(self.ANSI_RED)
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
+
+    def print_hash_diff(
+        self, official_testcase_hashes: dict[str, str], testcase_hashes: dict[str, str]
+    ) -> None:
+        if testcase_hashes == official_testcase_hashes:
+            self.println(self.ANSI_GREEN, "Hash matches!", self.ANSI_RESET)
+            return
+
+        tab = " " * 4
+        # Hash mismatch
+        self.println(self.ANSI_RED, "Hash mismatches:", self.ANSI_RESET)
+        common_files = official_testcase_hashes.keys() & testcase_hashes.keys()
+        for filename in sorted(common_files):
+            if official_testcase_hashes[filename] != testcase_hashes[filename]:
+                self.println(
+                    tab,
+                    f"{filename}: {official_testcase_hashes[filename]} (found {testcase_hashes[filename]})",
+                )
+        # Missing files
+        missing_files = official_testcase_hashes.keys() - testcase_hashes.keys()
+        if len(missing_files) > 0:
+            self.println(self.ANSI_RED, "Missing files:", self.ANSI_RESET)
+            for file in sorted(missing_files):
+                self.println(tab, file)
+        # Extra files
+        extra_files = testcase_hashes.keys() - official_testcase_hashes.keys()
+        if len(extra_files) > 0:
+            self.println(self.ANSI_RED, "Extra files:", self.ANSI_RESET)
+            for file in sorted(extra_files):
+                self.println(tab, file)
