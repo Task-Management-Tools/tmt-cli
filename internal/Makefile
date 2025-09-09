@@ -1,10 +1,10 @@
 # Expect external environment variables:
 # - CXX: real C++ compiler name, default to g++
 # - CXXFLAGS: C++ compilation flags
-# - INCPATHS: include paths (absolute path preferred)
+# - INCLUDE_PATHS: include paths (absolute path preferred)
 
 CXX ?= g++
-CXXFLAGS := $(foreach dir, $(INCPATHS), -I $(dir)) $(CXXFLAGS)
+CXXFLAGS := $(foreach dir, $(INCLUDE_PATHS), -I $(dir)) $(CXXFLAGS)
 SHELL := /bin/bash
 
 # Find all C++ source files with different extensions

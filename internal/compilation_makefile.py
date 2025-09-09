@@ -39,7 +39,7 @@ def compile_with_make(
         "env": {
             "CXX": compiler,
             "CXXFLAGS": " ".join(compile_flags),
-            "INCPATHS": " ".join(include_paths),
+            "INCLUDE_PATHS": " ".join(include_paths),
         }
         | env | os.environ,
     }
@@ -92,7 +92,7 @@ def clean_with_make(*, makefile_path: str, directory: str, context: TMTContext) 
         "env": {
             "CXX": compiler,
             "CXXFLAGS": " ".join(compile_flags),
-            "INCPATHS": " ".join(include_paths),
+            "INCLUDE_PATHS": " ".join(include_paths),
         }
         | os.environ,
     }
