@@ -202,16 +202,20 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
             import select
             kq = select.kqueue()
             events = []
+            still_alive: set[int] = set()
             for pid in remaining:
-                kev = select.kevent(
-                    pid,
-                    filter=select.KQ_FILTER_PROC,
-                    flags=select.KQ_EV_ADD,
-                    fflags=select.KQ_NOTE_EXIT,
-                )
-                events.append(kev)
+                if pid_to_proc[pid].wait4() is None:
+                    kev = select.kevent(
+                        pid,
+                        filter=select.KQ_FILTER_PROC,
+                        flags=select.KQ_EV_ADD,
+                        fflags=select.KQ_NOTE_EXIT,
+                    )
+                    events.append(kev)
+                    still_alive.add(pid)
             kq.control(events, 0, 0)
 
+            remaining = still_alive
             while remaining:
                 triggered = kq.control(None, len(remaining), None)
                 for ev in triggered:
