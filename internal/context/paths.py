@@ -68,8 +68,8 @@ class ProblemDirectoryHelper:
     compiler_yaml = _problem_path_property("compiler.yaml")
     tmt_recipe = _problem_path_property("recipe")
 
-    makefile_normal = _internal_path_property("internal", "Makefile")
-    makefile_checker = _internal_path_property("internal", "CheckerMakefile")
+    makefile_normal = _internal_path_property("internal", "resources", "Makefile")
+    makefile_checker = _internal_path_property("internal", "resources", "CheckerMakefile")
 
     def clean_testcases(self, keep_hash=True):
         testcase_hash_exists = os.path.exists(self.testcases_hashes)

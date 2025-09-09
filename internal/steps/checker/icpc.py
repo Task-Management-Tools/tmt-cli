@@ -37,7 +37,7 @@ class ICPCCheckerStep(CheckerStep):
         else:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
-            checker_name = "internal/checkers/icpc_default_validator.cc"
+            checker_name = "internal/resources/checkers/icpc_default_validator.cc"
 
             checker_path = (
                 pathlib.Path(self.context.path.script_dir) / checker_name
