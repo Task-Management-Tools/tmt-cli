@@ -1,4 +1,5 @@
 # Expect external environment variables:
+# - SRCS: checker files
 # - CXX: real C++ compiler name, default to g++
 # - CXXFLAGS: C++ compilation flags
 # - INCPATHS: include paths (absolute path preferred)
@@ -8,26 +9,24 @@ CXX ?= g++
 CXXFLAGS := $(foreach dir, $(INCPATHS), -I $(dir)) $(CXXFLAGS)
 SHELL := /bin/bash
 
-# Find all C++ source files with different extensions
-# TODO should we search for **/*.cpp ?
-CPP_SOURCES = $(wildcard *.cpp) $(wildcard *.cc)
-
-SRCS = $(CPP_SOURCES) $(CC_SOURCES)
 DEP = checker.d
 EXE = checker
 LOG = checker.compile.log
 
 all: $(EXE)
 
-$(DEP): $(CPP_SOURCES)
+$(DEP): $(SRCS)
 	$(CXX) $(CXXFLAGS) -MM $^ -MT $(EXE) -MF $@
 
 include $(DEP)
 
-$(EXE): $(CPP_SOURCES)
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(CPP_SOURCES) -o $(EXE) 2> $(LOG)
+$(EXE): $(SRCS)
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(SRCS) -o $(EXE) 2> $(LOG)
 
 clean:
 	rm -f $(EXE) $(DEP) $(LOG)
 
+logs: 
+	@echo $(abspath $(LOG))
+	
 .PHONY: all clean

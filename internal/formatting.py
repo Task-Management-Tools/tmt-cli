@@ -63,7 +63,7 @@ class Formatter:
 
         self.print(*args, pad, endl=endl)
 
-    def print_compile_string(self, result: CompilationResult) -> None:
+    def print_compile_string(self, result: CompilationResult, endl: bool = True) -> None:
         """
         Prints the compilation output in formatted result.
         """
@@ -90,18 +90,18 @@ class Formatter:
                 )
                 self.print(result.standard_error, endl=True)
         elif result.verdict is CompilationOutcome.SKIPPED:
-            self.print("[", self.ANSI_GREY, "SKIP", self.ANSI_RESET, "]", endl=True)
+            self.print("[", self.ANSI_GREY, "SKIP", self.ANSI_RESET, "]", endl=endl)
         elif result.standard_error.find("warning") > 0:
-            self.print("[", self.ANSI_YELLOW, "WARN", self.ANSI_RESET, "]", endl=True)
+            self.print("[", self.ANSI_YELLOW, "WARN", self.ANSI_RESET, "]", endl=endl)
         else:
-            self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]", endl=True)
+            self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]", endl=endl)
 
-    def print_compile_string_with_exit(self, result: CompilationResult) -> None:
+    def print_compile_string_with_exit(self, result: CompilationResult, endl: bool = True) -> None:
         """
         Prints the compilation output in formatted result. This function can exit the whole program if the
         CompilationResult is failure.
         """
-        self.print_compile_string(result)
+        self.print_compile_string(result, endl)
         if result.verdict not in [
             CompilationOutcome.SUCCESS,
             CompilationOutcome.SKIPPED,

@@ -16,6 +16,7 @@ def compile_with_make(
     directory: str,
     context: TMTContext,
     executable_stack_size_mib: int,
+    env: dict = {},
 ) -> CompilationResult:
     command = [MAKE, "-C", directory, "-f", makefile_path]
 
@@ -40,7 +41,7 @@ def compile_with_make(
             "CXXFLAGS": " ".join(compile_flags),
             "INCPATHS": " ".join(include_paths),
         }
-        | os.environ,
+        | env | os.environ,
     }
 
     compile_process = Process(command, **sandbox_setting)

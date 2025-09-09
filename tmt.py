@@ -111,7 +111,21 @@ def command_gen(context: TMTContext, args):
     if run_checker:
         formatter.print("Checker     compile ")
         checker_step.prepare_sandbox()
-        formatter.print_compile_string_with_exit(checker_step.compile())
+        formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
+
+        formatter.print(' ' * 2,
+                        "(default)" if context.config.checker_type is CheckerType.DEFAULT else
+                        context.config.checker_filename, endl=True)
+
+        if (
+            context.path.has_checker_directory()
+            and context.config.checker_type is CheckerType.DEFAULT
+        ):
+            formatter.println(
+                formatter.ANSI_YELLOW,
+                "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
+                formatter.ANSI_RESET,
+            )
 
     with open(context.path.tmt_recipe) as f:
         recipe = parse_contest_data(f.readlines())
@@ -340,7 +354,12 @@ def command_invoke(context: TMTContext, args):
         if not solution_step.skip_checker():
             formatter.print("Checker     compile ")
             checker_step.prepare_sandbox()
-            formatter.print_compile_string_with_exit(checker_step.compile())
+            formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
+
+            formatter.print(' ' * 2,
+                            "(default)" if context.config.checker_type is CheckerType.DEFAULT else
+                            context.config.checker_filename, endl=True)
+
             if (
                 context.path.has_checker_directory()
                 and context.config.checker_type is CheckerType.DEFAULT
