@@ -6,7 +6,12 @@ import pathlib
 from internal.context import CheckerType, TMTContext
 from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.runner import Process, pre_wait_procs, wait_procs
-from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationOutcome, CompilationResult
+from internal.outcome import (
+    EvaluationOutcome,
+    EvaluationResult,
+    CompilationOutcome,
+    CompilationResult,
+)
 
 from .base import CheckerStep
 
@@ -26,7 +31,7 @@ class ICPCCheckerStep(CheckerStep):
                 directory=self.context.path.checker,
                 context=self.context,
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
-                env={"SRCS": self.context.config.checker_filename}
+                env={"SRCS": self.context.config.checker_filename},
             )
 
             if compile_result.verdict is CompilationOutcome.SUCCESS:
@@ -37,11 +42,9 @@ class ICPCCheckerStep(CheckerStep):
         else:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
-            checker_name = "internal/checkers/icpc_default_validator.cc"
+            checker_name = "internal/resources/checkers/icpc_default_validator.cc"
 
-            checker_path = (
-                pathlib.Path(self.context.path.script_dir) / checker_name
-            )
+            checker_path = pathlib.Path(self.context.path.script_dir) / checker_name
             shutil.copy(checker_path, self.context.path.sandbox_checker)
 
             compile_result = compile_with_make(
@@ -49,7 +52,7 @@ class ICPCCheckerStep(CheckerStep):
                 directory=self.context.path.sandbox_checker,
                 context=self.context,
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
-                env={"SRCS": "icpc_default_validator.cc"}
+                env={"SRCS": "icpc_default_validator.cc"},
             )
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
@@ -122,8 +125,10 @@ class ICPCCheckerStep(CheckerStep):
             evaluation_record.verdict = EvaluationOutcome.ACCEPTED
         else:
             evaluation_record.verdict = EvaluationOutcome.WRONG
-            if (evaluation_record.output_file is None
-                    or os.path.getsize(evaluation_record.output_file) == 0):
+            if (
+                evaluation_record.output_file is None
+                or os.path.getsize(evaluation_record.output_file) == 0
+            ):
                 evaluation_record.verdict = EvaluationOutcome.NO_OUTPUT
 
         return evaluation_record

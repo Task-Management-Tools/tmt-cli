@@ -28,8 +28,11 @@ def compile_with_make(
 
     # On MacOS, this has to be set during compile time
     if platform.system() == "Darwin":
-        executable_stack_size_mib = min(executable_stack_size_mib, 512) 
-        compile_flags += ["-Wl,-stack_size", f"-Wl,{executable_stack_size_mib * 1024 * 1024:x}"]
+        executable_stack_size_mib = min(executable_stack_size_mib, 512)
+        compile_flags += [
+            "-Wl,-stack_size",
+            f"-Wl,{executable_stack_size_mib * 1024 * 1024:x}",
+        ]
 
     sandbox_setting = {
         "stdout": subprocess.PIPE,
@@ -39,9 +42,10 @@ def compile_with_make(
         "env": {
             "CXX": compiler,
             "CXXFLAGS": " ".join(compile_flags),
-            "INCPATHS": " ".join(include_paths),
+            "INCLUDE_PATHS": " ".join(include_paths),
         }
-        | env | os.environ,
+        | env
+        | os.environ,
     }
 
     compile_process = Process(command, **sandbox_setting)
@@ -92,7 +96,7 @@ def clean_with_make(*, makefile_path: str, directory: str, context: TMTContext) 
         "env": {
             "CXX": compiler,
             "CXXFLAGS": " ".join(compile_flags),
-            "INCPATHS": " ".join(include_paths),
+            "INCLUDE_PATHS": " ".join(include_paths),
         }
         | os.environ,
     }

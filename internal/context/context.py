@@ -5,6 +5,8 @@ import yaml
 
 from enum import Enum
 
+from internal.recipe_parser import parse_recipe_data
+
 from .paths import ProblemDirectoryHelper
 
 
@@ -140,6 +142,14 @@ class TMTContext:
 
         with open(self.path.compiler_yaml, "r") as file:
             self.compiler_yaml = yaml.safe_load(file)
+        with open(self.path.tmt_recipe) as file:
+            self.recipe = parse_recipe_data(file.readlines())
+
+        self.should_run_checker: bool = (
+            self.config.problem_type is ProblemType.BATCH
+            and self.config.checker_type is not CheckerType.DEFAULT
+            and (self.config.check_forced_output or self.config.check_generated_output)
+        )
 
     def compiler(self, language: str) -> str:
         if language == "cpp":

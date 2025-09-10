@@ -14,17 +14,19 @@ def _problem_path_property(*kwargs):
 
 def _extend_path_property(parent_prop: property, *kwargs):
     def combine_path(self: "ProblemDirectoryHelper") -> str:
-        if parent_prop.fget is None: 
-            raise ValueError(f"_extend_path_property: parent_prop.fget is None")
+        if parent_prop.fget is None:
+            raise ValueError("_extend_path_property: parent_prop.fget is None")
         return os.path.join(parent_prop.fget(self), *kwargs)
-    
+
     return property(combine_path)
+
 
 def _internal_path_property(*kwargs):
     def combine_path(self: "ProblemDirectoryHelper"):
         return os.path.join(self.script_dir, *kwargs)
 
     return property(combine_path)
+
 
 class ProblemDirectoryHelper:
     """
@@ -68,8 +70,10 @@ class ProblemDirectoryHelper:
     compiler_yaml = _problem_path_property("compiler.yaml")
     tmt_recipe = _problem_path_property("recipe")
 
-    makefile_normal = _internal_path_property("internal", "Makefile")
-    makefile_checker = _internal_path_property("internal", "CheckerMakefile")
+    makefile_normal = _internal_path_property("internal", "resources", "Makefile")
+    makefile_checker = _internal_path_property(
+        "internal", "resources", "CheckerMakefile"
+    )
 
     def clean_testcases(self, keep_hash=True):
         testcase_hash_exists = os.path.exists(self.testcases_hashes)
