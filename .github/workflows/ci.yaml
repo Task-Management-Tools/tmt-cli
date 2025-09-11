@@ -1,0 +1,24 @@
+name: Auto-run pytest
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.13"]
+    steps:
+    - uses: actions/checkout@v5
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies # TODO: put it in requirements.txt or pyproject.yaml
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyyaml pytest
+    - name: Run pytest
+      run: |
+        python -m pytest
