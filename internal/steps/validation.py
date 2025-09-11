@@ -5,7 +5,7 @@ from pathlib import Path
 from internal.context import JudgeConvention, TMTContext
 from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
-from internal.runner import Process, pre_wait_procs, wait_procs
+from internal.runner import Process, wait_procs
 
 
 class ValidationStep:
@@ -95,7 +95,6 @@ class ValidationStep:
                         sandbox_extra_files.append(sandbox_extra_file)
 
                     # Run validator
-                    sigset = pre_wait_procs()
                     validator = Process(
                         command,
                         preexec_fn=lambda: os.chdir(self.workdir),
@@ -106,7 +105,7 @@ class ValidationStep:
                         memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
                     )
 
-                    wait_procs([validator], sigset)
+                    wait_procs([validator])
 
                     # Clean up input and extra files
                     for file in [sandbox_input_file] + sandbox_extra_files:

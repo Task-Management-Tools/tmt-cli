@@ -56,7 +56,7 @@ class Process(subprocess.Popen):
         wall_time_limit_sec: float = (
             time_limit_sec + 1.0
         )  # add one second on top of that
-        self.wall_clock_deadline = self.popen_time + wall_time_limit_sec
+        self.timer = Timer(wall_time_limit_sec, self.timer_kill)
 
         self.status: int
         self.rusage: resource.struct_rusage
@@ -112,6 +112,10 @@ class Process(subprocess.Popen):
             traceback.print_exc()
             raise e
 
+    def timer_kill(self):
+        if self.returncode is None:
+            self.kill()
+
     def safe_kill(self):
         # While this has a potential race condition, in practice I don't think the PID will be used
         # up so fast that the ID cycles back to the same one, and that has to occur during the race
@@ -120,9 +124,10 @@ class Process(subprocess.Popen):
         if self.returncode is None:
             try:
                 self.kill()
-                # self.wait4()
+                self.wait4()
             except ChildProcessError:
                 pass
+        self.timer.cancel()
 
     def post_wait(self, poll_time, status, rusage):
         assert self.returncode is None
@@ -130,6 +135,7 @@ class Process(subprocess.Popen):
         self.rusage = rusage
         self.returncode = os.waitstatus_to_exitcode(status)
         self.poll_time = poll_time
+        self.timer.cancel()
 
     def wait4(self) -> int | None:
         if self.returncode is None:
@@ -186,30 +192,16 @@ class Process(subprocess.Popen):
         return self.is_cpu_timedout or self.is_wall_clock_timedout
 
 
-def pre_wait_procs() -> set:
-    return None
-    # return signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
-
-
-def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
+def wait_procs(procs: list[Process]) -> None:
     """
     Wait until all processes either terminate or meet their deadlines.
     This procedures assumes SIGCHILD is blocked before any creation of child processes.
     """
     # Block SIGCHLD so we can wait for it explicitly
     pid_to_proc: dict[int, Process] = {p.pid: p for p in procs}
-    pid_to_timer: dict[int, Timer] = {}
     remaining_pids: set[int] = set(p.pid for p in procs)
     try:
-        for pid in remaining_pids:
-            now = time.monotonic()
-            pid_to_timer[pid] = Timer(
-                pid_to_proc[pid].wall_clock_deadline - now, pid_to_proc[pid].safe_kill
-            )
-            pid_to_timer[pid].start()
-
         while remaining_pids:
-            # signal.sigwait({signal.SIGCHLD})
             poll_time = time.monotonic()
             pid = -1
             while pid == -1:
@@ -217,20 +209,14 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
                 pid, status, rusage = os.wait3(0)
                 poll_time = time.monotonic()
             assert pid in remaining_pids
-            pid_to_timer[pid].cancel()
             pid_to_proc[pid].post_wait(poll_time, status, rusage)
             remaining_pids.remove(pid)
-    except (KeyboardInterrupt, InterruptedError) as exception:
+    except (KeyboardInterrupt, InterruptedError):
         # Force kill the children to prevent orphans
         # We should never recieve other singals other than SIGINT (and SIGKILL)
         for pid in remaining_pids:
             pid_to_proc[pid].safe_kill()
-            pid_to_timer[pid].cancel()
-        raise exception  # this exception should be unhandled, since the user asked that
-    finally:
-        # restore sigmask
-        # signal.pthread_sigmask(signal.SIG_SETMASK, pre_wait_proc_set)
-        pass
+        raise
 
 
 def wait_for_outputs(proc: Process) -> tuple[str, str]:

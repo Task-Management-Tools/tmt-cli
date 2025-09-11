@@ -4,7 +4,7 @@ import subprocess
 
 from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.context import TMTContext
-from internal.runner import Process, pre_wait_procs, wait_procs
+from internal.runner import Process, wait_procs
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
 
 
@@ -104,7 +104,6 @@ class GenerationStep:
             generator_processes: list[Process] = []
             prev_proc = None
 
-            sigset = pre_wait_procs()
             try:
                 for i, command in enumerate(commands, 1):
                     sandbox_err_file = os.path.join(
@@ -151,7 +150,7 @@ class GenerationStep:
 
             assert generator_processes[-1].stdout is not None
             generator_processes[-1].stdout.close()
-            wait_procs(generator_processes, sigset)
+            wait_procs(generator_processes)
 
             # Move testcase input
             shutil.move(

@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from internal.context import TMTContext
-from internal.runner import Process, pre_wait_procs, wait_procs
+from internal.runner import Process, wait_procs
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.outcome import (
     EvaluationOutcome,
@@ -85,7 +85,6 @@ class BatchSolutionStep(SolutionStep):
         try:
             shutil.copy(testcase_input, sandbox_input_file)
 
-            sigset = pre_wait_procs()
             # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
             # currently, for convenience, it is from file but we should support both modes.
             solution = Process(
@@ -98,7 +97,7 @@ class BatchSolutionStep(SolutionStep):
                 memory_limit_mib=self.memory_limit_mib,
                 output_limit_mib=self.output_limit_mib,
             )
-            wait_procs([solution], sigset)
+            wait_procs([solution])
 
             if Path(sandbox_input_file).exists():
                 os.unlink(sandbox_input_file)
