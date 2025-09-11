@@ -1,7 +1,6 @@
 import math
 import time
 import os
-import signal
 import select
 import subprocess
 import resource
@@ -54,12 +53,11 @@ class Process(subprocess.Popen):
         super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
-        self.wall_time_limit_sec: float = (
+        wall_time_limit_sec: float = (
             time_limit_sec + 1.0
         )  # add one second on top of that
+        self.wall_clock_deadline = self.popen_time + wall_time_limit_sec
 
-        self.timer = Timer(self.wall_time_limit_sec, self.safe_kill)
-        self.timer.start()
         self.status: int
         self.rusage: resource.struct_rusage
 
@@ -125,7 +123,6 @@ class Process(subprocess.Popen):
                 # self.wait4()
             except ChildProcessError:
                 pass
-        self.timer.cancel()
 
     def post_wait(self, poll_time, status, rusage):
         assert self.returncode is None
@@ -133,7 +130,6 @@ class Process(subprocess.Popen):
         self.rusage = rusage
         self.returncode = os.waitstatus_to_exitcode(status)
         self.poll_time = poll_time
-        self.timer.cancel()
 
     def wait4(self) -> int | None:
         if self.returncode is None:
@@ -191,8 +187,8 @@ class Process(subprocess.Popen):
 
 
 def pre_wait_procs() -> set:
-    # return None
-    return signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
+    return None
+    # return signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
 
 
 def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
@@ -202,57 +198,39 @@ def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
     """
     # Block SIGCHLD so we can wait for it explicitly
     pid_to_proc: dict[int, Process] = {p.pid: p for p in procs}
-    remaining: set[int] = set(p.pid for p in procs)
-    # still_alive: set[int] = set()
+    pid_to_timer: dict[int, Timer] = {}
+    remaining_pids: set[int] = set(p.pid for p in procs)
     try:
-        # # For macOS, sigwaitinfo is not available, we use kqueue here to avoid busy waiting
-        # if platform.system() == "Darwin":
-        #     import select
+        for pid in remaining_pids:
+            now = time.monotonic()
+            pid_to_timer[pid] = Timer(
+                pid_to_proc[pid].wall_clock_deadline - now, pid_to_proc[pid].safe_kill
+            )
+            pid_to_timer[pid].start()
 
-        #     kq = select.kqueue()
-        #     events = []
-        #     still_alive = set()
-        #     for pid in remaining:
-        #         if pid_to_proc[pid].wait4() is None:
-        #             kev = select.kevent(
-        #                 pid,
-        #                 filter=select.KQ_FILTER_PROC,
-        #                 flags=select.KQ_EV_ADD,
-        #                 fflags=select.KQ_NOTE_EXIT,
-        #             )
-        #             events.append(kev)
-        #             still_alive.add(pid)
-        #     kq.control(events, 0, 0)
-
-        #     remaining = still_alive
-        #     while remaining:
-        #         triggered = kq.control(None, len(remaining), None)
-        #         for ev in triggered:
-        #             pid = ev.ident
-        #             if pid in remaining:
-        #                 pid_to_proc[pid].wait4()
-        #                 remaining.remove(pid)
-        # else:
-        while remaining:
-            signal.sigwait({signal.SIGCHLD})
+        while remaining_pids:
+            # signal.sigwait({signal.SIGCHLD})
             poll_time = time.monotonic()
             pid = -1
             while pid == -1:
                 # here calling wait3() should block, so no busy waiting
-                poll_time = time.monotonic()
                 pid, status, rusage = os.wait3(0)
-            assert pid in remaining
+                poll_time = time.monotonic()
+            assert pid in remaining_pids
+            pid_to_timer[pid].cancel()
             pid_to_proc[pid].post_wait(poll_time, status, rusage)
-            remaining.remove(pid)
+            remaining_pids.remove(pid)
     except (KeyboardInterrupt, InterruptedError) as exception:
         # Force kill the children to prevent orphans
         # We should never recieve other singals other than SIGINT (and SIGKILL)
-        for pid in remaining:
+        for pid in remaining_pids:
             pid_to_proc[pid].safe_kill()
+            pid_to_timer[pid].cancel()
         raise exception  # this exception should be unhandled, since the user asked that
     finally:
         # restore sigmask
-        signal.pthread_sigmask(signal.SIG_SETMASK, pre_wait_proc_set)
+        # signal.pthread_sigmask(signal.SIG_SETMASK, pre_wait_proc_set)
+        pass
 
 
 def wait_for_outputs(proc: Process) -> tuple[str, str]:
