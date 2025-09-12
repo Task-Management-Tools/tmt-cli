@@ -6,6 +6,7 @@ import yaml
 from enum import Enum
 
 from internal.recipe_parser import parse_recipe_data
+from internal.errors import TMTMissingFileError, TMTInvalidConfigError
 
 from .paths import ProblemDirectoryHelper
 
@@ -33,7 +34,7 @@ class TMTConfig:
     def parse_time_to_second(cls, field_name: str, input: str) -> float:
         match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", input)
         if match is None:
-            raise ValueError(f'{field_name} "{input}" is invalid.')
+            raise TMTInvalidConfigError(f'{field_name} "{input}" is invalid.')
         if match.group(2) == "ms":
             return float(match.group(1)) / 1000.0
         else:
@@ -43,7 +44,7 @@ class TMTConfig:
     def parse_bytes_to_mib(cls, field_name: str, input: str) -> int:
         match = re.fullmatch(r"(\d+)\s*(G|GB|GiB|M|MB|MiB)", input)
         if match is None:
-            raise ValueError(f'{field_name} "{input}" is invalid.')
+            raise TMTInvalidConfigError(f'{field_name} "{input}" is invalid.')
         if match.group(2).startswith("G"):
             return int(match.group(1)) * 1024
         else:
@@ -90,7 +91,7 @@ class TMTConfig:
 
         # input_validation: (str)
         if yaml["input_validation"] != "default":
-            raise ValueError(
+            raise TMTInvalidConfigError(
                 "Unsupported input validation mode " + yaml["input_validation"]
             )
 
@@ -110,14 +111,14 @@ class TMTConfig:
             )
         else:
             if "output_validation" in yaml:
-                raise ValueError(
+                raise TMTInvalidConfigError(
                     "Output validation should not be specified when the problem type is not batch."
                 )
 
         if yaml["answer_generation"]["type"] == "solution":
             self.model_solution_path = yaml["answer_generation"]["filename"]
         else:  # TODO: support "generator" mode
-            raise ValueError(
+            raise TMTInvalidConfigError(
                 yaml["answer_generation"]["type"]
                 + " is not a valid answer generation mode"
             )
@@ -135,15 +136,31 @@ class TMTContext:
         # context.path constructs absolute paths.
         self.path = ProblemDirectoryHelper(problem_dir, script_root)
 
-        with open(self.path.problem_yaml, "r") as file:
-            problem_yaml = yaml.safe_load(file)
-        # self.config stores the parsed config from problem.yaml
-        self.config = TMTConfig(problem_yaml)
+        try:
+            with open(self.path.problem_yaml, "r") as file:
+                problem_yaml = yaml.safe_load(file)
+            # self.config stores the parsed config from problem.yaml
+            self.config = TMTConfig(problem_yaml)
+        except (FileNotFoundError, IsADirectoryError, PermissionError) as e:
+            raise TMTMissingFileError("config", self.path.problem_yaml) from e
+        except yaml.YAMLError as e:
+            raise TMTInvalidConfigError(self.path.problem_yaml) from e
 
-        with open(self.path.compiler_yaml, "r") as file:
-            self.compiler_yaml = yaml.safe_load(file)
-        with open(self.path.tmt_recipe) as file:
-            self.recipe = parse_recipe_data(file.readlines())
+        try:
+            with open(self.path.compiler_yaml, "r") as file:
+                self.compiler_yaml = yaml.safe_load(file)
+        except (FileNotFoundError, IsADirectoryError, PermissionError) as e:
+            raise TMTMissingFileError("config", self.path.compiler_yaml) from e
+        except yaml.YAMLError as e:
+            raise TMTInvalidConfigError(self.path.compiler_yaml) from e
+
+        try:
+            with open(self.path.tmt_recipe) as file:
+                self.recipe = parse_recipe_data(file.readlines())
+        except OSError as e:
+            raise TMTMissingFileError("config", self.path.tmt_recipe) from e
+        except ValueError as e:
+            raise TMTInvalidConfigError(self.path.tmt_recipe) from e
 
         self.should_run_checker: bool = (
             self.config.problem_type is ProblemType.BATCH
@@ -154,7 +171,7 @@ class TMTContext:
     def compiler(self, language: str) -> str:
         if language == "cpp":
             return "g++"
-        raise NotImplementedError("Not supported now")
+        raise ValueError("Not yet supported now")
 
     def compile_flags(self, language: str) -> list[str]:
         return self.compiler_yaml[language]["flags"]
@@ -176,8 +193,8 @@ def find_problem_dir(script_root: str) -> str:
     for directory in [cwd] + list(cwd.parents):
         if (directory / ProblemDirectoryHelper.PROBLEM_YAML).exists():
             return str(directory.resolve())
-    raise FileNotFoundError(
-        "Cannot find "
-        + ProblemDirectoryHelper.PROBLEM_YAML
-        + " in the current directory or any of its parent directories."
+    raise TMTMissingFileError(
+        "config",
+        ProblemDirectoryHelper.PROBLEM_YAML,
+        "the current directory or any of its parent directories",
     )

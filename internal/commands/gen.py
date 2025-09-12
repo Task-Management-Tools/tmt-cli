@@ -12,6 +12,7 @@ from internal.outcome import (
     eval_outcome_to_grade_outcome,
     eval_outcome_to_run_outcome,
 )
+from internal.errors import TMTInvalidConfigError
 
 from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
@@ -54,7 +55,7 @@ def gen_single(
         validation_commands = []
         for exe in test.validation:
             if len(exe.commands) != 1:
-                raise ValueError("Validation with pipe is not supported.")
+                raise TMTInvalidConfigError("Validation with pipe is not supported.")
             validation_commands.append(exe.commands[0])
         validation_step.run_validator(
             result, validation_commands, codename, list(testset.extra_file)

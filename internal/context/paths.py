@@ -1,7 +1,9 @@
 import os
-import errno
 import shutil
 import stat
+
+from internal.errors import TMTMissingFileError
+# from internal.errors import TMTParsingError
 
 
 # Subdirectories properties creation helper
@@ -98,9 +100,6 @@ class ProblemDirectoryHelper:
     def empty_directory(self, path: str):
         """Empties a directory."""
 
-        if not os.path.exists(path) or not os.path.isdir(path):
-            raise ValueError(f"{path} is not a directory")
-
         for filename in os.listdir(path):
             file_path = os.path.join(path, filename)
             if os.path.isfile(file_path) or os.path.islink(file_path):
@@ -140,9 +139,7 @@ class ProblemDirectoryHelper:
         for test_file in test_files:
             if self._is_executable(test_file):
                 return test_file
-        raise FileNotFoundError(
-            errno.ENOENT, f"Generator {file} could not be found.", file
-        )
+        raise TMTMissingFileError("generator", file, ", ".join(test_files))
 
     def replace_with_validator(self, file: str):
         test_files = [
@@ -152,36 +149,20 @@ class ProblemDirectoryHelper:
         for test_file in test_files:
             if self._is_executable(test_file):
                 return test_file
-        raise FileNotFoundError(
-            errno.ENOENT, f"Validator {file} could not be found.", file
-        )
+        raise TMTMissingFileError("validator", file, ", ".join(test_files))
 
-    def replace_with_solution(self, file: str):
+    def replace_with_solution(self, full_filename: str):
         test_files = [
-            os.path.join(self.solutions, file),
+            os.path.join(self.solutions, full_filename),
         ]
         for test_file in test_files:
             if self._is_regular_file(test_file):
                 return test_file
-        raise FileNotFoundError(
-            errno.ENOENT, f"Solution {file} could not be found.", file
-        )
+        raise TMTMissingFileError("solution", full_filename)
 
     # def replace_with_grader(self, file: str):
-    #     test_files = [
-    #         os.path.join(self.graders, file),
-    #     ]
-    #     for test_file in test_files:
-    #         if self._is_regular_file(test_file):
-    #             return test_file
-    #     raise FileNotFoundError(
-    #         errno.ENOENT, f"Grader {file} could not be found.", file
-    #     )
 
-    def replace_with_manual(self, file: str):
-        if self._is_regular_file(os.path.join(self.generator_manuals, file)):
-            return os.path.join(self.generator_manuals, file)
-        else:
-            raise FileNotFoundError(
-                errno.ENOENT, f"Manual {file} could not be found.", file
-            )
+    def replace_with_manual(self, full_filename: str):
+        if self._is_regular_file(os.path.join(self.generator_manuals, full_filename)):
+            return os.path.join(self.generator_manuals, full_filename)
+        raise TMTMissingFileError("manual", full_filename)

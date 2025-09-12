@@ -82,46 +82,38 @@ class BatchSolutionStep(SolutionStep):
 
         no_output_file = False
 
-        try:
-            shutil.copy(testcase_input, sandbox_input_file)
+        shutil.copy(testcase_input, sandbox_input_file)
 
-            # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
-            # currently, for convenience, it is from file but we should support both modes.
-            solution = Process(
-                os.path.join(self.context.path.sandbox_solution, self.executable_name),
-                preexec_fn=lambda: os.chdir(self.context.path.sandbox_solution),
-                stdin_redirect=sandbox_input_file,
-                stdout_redirect=sandbox_output_file,
-                stderr_redirect=sandbox_error_file,
-                time_limit_sec=self.time_limit_sec,
-                memory_limit_mib=self.memory_limit_mib,
-                output_limit_mib=self.output_limit_mib,
-            )
-            wait_procs([solution])
+        # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
+        # currently, for convenience, it is from file but we should support both modes.
+        solution = Process(
+            os.path.join(self.context.path.sandbox_solution, self.executable_name),
+            preexec_fn=lambda: os.chdir(self.context.path.sandbox_solution),
+            stdin_redirect=sandbox_input_file,
+            stdout_redirect=sandbox_output_file,
+            stderr_redirect=sandbox_error_file,
+            time_limit_sec=self.time_limit_sec,
+            memory_limit_mib=self.memory_limit_mib,
+            output_limit_mib=self.output_limit_mib,
+        )
+        wait_procs([solution])
 
-            if Path(sandbox_input_file).exists():
-                os.unlink(sandbox_input_file)
+        if Path(sandbox_input_file).exists():
+            os.unlink(sandbox_input_file)
 
-            # Move logs
-            Path(sandbox_error_file).touch()
-            shutil.move(
-                sandbox_error_file, os.path.join(self.log_directory, file_err_name)
-            )
+        # Move logs
+        Path(sandbox_error_file).touch()
+        shutil.move(sandbox_error_file, os.path.join(self.log_directory, file_err_name))
 
-            # Move output
-            if self.is_generation:
-                if Path(sandbox_output_file).exists():
-                    shutil.move(
-                        sandbox_output_file,
-                        os.path.join(self.context.path.testcases, file_out_name),
-                    )
-                else:
-                    no_output_file = True
-
-        except FileNotFoundError as exception:
-            # We can simply raise, since there will be no processes left
-            # This should be treated as internal error
-            raise exception
+        # Move output
+        if self.is_generation:
+            if Path(sandbox_output_file).exists():
+                shutil.move(
+                    sandbox_output_file,
+                    os.path.join(self.context.path.testcases, file_out_name),
+                )
+            else:
+                no_output_file = True
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,

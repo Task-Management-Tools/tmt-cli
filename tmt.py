@@ -4,6 +4,7 @@ import pathlib
 from internal.formatting import Formatter
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import command_gen, command_invoke, command_clean
+from internal.errors import TMTMissingFileError, TMTInvalidConfigError
 
 
 def main():
@@ -45,7 +46,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "init":
-        raise NotImplementedError("Directory initialization is not implemented yet.")
+        print("Directory initialization is not implemented yet.")
         return
 
     formatter = Formatter()
@@ -77,4 +78,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except TMTMissingFileError as e:
+        print()
+        print(e)
+    except TMTInvalidConfigError as e:
+        print()
+        print(f'Invalid config, at: "{e}"')
+        print(e.__cause__)

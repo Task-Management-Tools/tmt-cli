@@ -505,15 +505,6 @@ class CommandHandler:
         if max_args is not None and arg_count > max_args:
             raise ValueError(f"@{parts[0]} requires at most {max_args} argument(s)")
 
-    def handle(self, parts: List[str]):
-        """
-        Handle the command. Must be implemented by subclasses.
-
-        Args:
-            parts (List[str]): Command parts including the command name
-        """
-        raise NotImplementedError
-
 
 class TestsetHandler(CommandHandler):
     """Handler for @testset commands."""

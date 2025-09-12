@@ -128,90 +128,84 @@ class InteractiveICPCSolutionStep(SolutionStep):
             with open(testcase_answer, "w+b"):
                 pass  # Truncate the file
 
-        try:
-            shutil.copy(testcase_input, sandbox_checker_input_file)
-            shutil.copy(testcase_answer, sandbox_checker_answer_file)
+        shutil.copy(testcase_input, sandbox_checker_input_file)
+        shutil.copy(testcase_answer, sandbox_checker_answer_file)
 
-            if not os.path.isdir(sandbox_checker_feedback_dir):
-                os.mkdir(sandbox_checker_feedback_dir)
-            self.context.path.empty_directory(sandbox_checker_feedback_dir)
+        if not os.path.isdir(sandbox_checker_feedback_dir):
+            os.mkdir(sandbox_checker_feedback_dir)
+        self.context.path.empty_directory(sandbox_checker_feedback_dir)
 
-            def solution_preexec_fn():
-                os.chdir(self.context.path.sandbox_solution)
-                signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+        def solution_preexec_fn():
+            os.chdir(self.context.path.sandbox_solution)
+            signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
-            solution = Process(
-                os.path.join(self.context.path.sandbox_solution, self.executable_name),
-                preexec_fn=solution_preexec_fn,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr_redirect=sandbox_solution_err_file,
-                time_limit_sec=self.time_limit_sec,
-                memory_limit_mib=self.memory_limit_mib,
-                output_limit_mib=self.output_limit_mib,
-            )
+        solution = Process(
+            os.path.join(self.context.path.sandbox_solution, self.executable_name),
+            preexec_fn=solution_preexec_fn,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr_redirect=sandbox_solution_err_file,
+            time_limit_sec=self.time_limit_sec,
+            memory_limit_mib=self.memory_limit_mib,
+            output_limit_mib=self.output_limit_mib,
+        )
 
-            def interactor_preexec_fn():
-                os.chdir(self.context.path.sandbox_checker)
-                signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+        def interactor_preexec_fn():
+            os.chdir(self.context.path.sandbox_checker)
+            signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
-            interactor = Process(
-                [
-                    os.path.join(self.context.path.sandbox_checker, "checker"),
-                    sandbox_checker_input_file,
-                    sandbox_checker_answer_file,
-                    sandbox_checker_feedback_dir,
-                ],
-                preexec_fn=interactor_preexec_fn,
-                stdin=solution.stdout,
-                stdout=solution.stdin,
-                stderr_redirect=sandbox_checker_err_file,
-                time_limit_sec=max(
-                    self.time_limit_sec * 2,
-                    self.context.config.trusted_step_time_limit_sec,
-                )
-                + 1,
-                memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-                output_limit_mib=self.context.config.trusted_step_output_limit_mib,
-            )
-
-            assert solution.stdin is not None and solution.stdout is not None
-            solution.stdin.close()
-            solution.stdout.close()
-
-            wait_procs([solution, interactor])
-
-            if Path(sandbox_checker_input_file).exists():
-                os.unlink(sandbox_checker_input_file)
-            if Path(sandbox_checker_answer_file).exists():
-                os.unlink(sandbox_checker_answer_file)
-
-            # Move logs
-            Path(sandbox_checker_err_file).touch()
-            shutil.move(
-                sandbox_checker_err_file,
-                os.path.join(self.log_directory, file_checker_err_name),
-            )
-            Path(sandbox_solution_err_file).touch()
-            shutil.move(
-                sandbox_solution_err_file,
-                os.path.join(self.log_directory, file_sol_err_name),
-            )
-
-            checker_feedback_logs = os.path.join(
-                self.log_directory, f"{code_name}.checker.feedback"
-            )
-            if os.path.isdir(checker_feedback_logs):
-                shutil.rmtree(checker_feedback_logs)
-            shutil.copytree(
+        interactor = Process(
+            [
+                os.path.join(self.context.path.sandbox_checker, "checker"),
+                sandbox_checker_input_file,
+                sandbox_checker_answer_file,
                 sandbox_checker_feedback_dir,
-                os.path.join(self.log_directory, f"{code_name}.checker.feedback"),
+            ],
+            preexec_fn=interactor_preexec_fn,
+            stdin=solution.stdout,
+            stdout=solution.stdin,
+            stderr_redirect=sandbox_checker_err_file,
+            time_limit_sec=max(
+                self.time_limit_sec * 2,
+                self.context.config.trusted_step_time_limit_sec,
             )
+            + 1,
+            memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
+            output_limit_mib=self.context.config.trusted_step_output_limit_mib,
+        )
 
-        except FileNotFoundError as exception:
-            # We can simply raise, since there will be no processes left
-            # This should be treated as internal error
-            raise exception
+        assert solution.stdin is not None and solution.stdout is not None
+        solution.stdin.close()
+        solution.stdout.close()
+
+        wait_procs([solution, interactor])
+
+        if Path(sandbox_checker_input_file).exists():
+            os.unlink(sandbox_checker_input_file)
+        if Path(sandbox_checker_answer_file).exists():
+            os.unlink(sandbox_checker_answer_file)
+
+        # Move logs
+        Path(sandbox_checker_err_file).touch()
+        shutil.move(
+            sandbox_checker_err_file,
+            os.path.join(self.log_directory, file_checker_err_name),
+        )
+        Path(sandbox_solution_err_file).touch()
+        shutil.move(
+            sandbox_solution_err_file,
+            os.path.join(self.log_directory, file_sol_err_name),
+        )
+
+        checker_feedback_logs = os.path.join(
+            self.log_directory, f"{code_name}.checker.feedback"
+        )
+        if os.path.isdir(checker_feedback_logs):
+            shutil.rmtree(checker_feedback_logs)
+        shutil.copytree(
+            sandbox_checker_feedback_dir,
+            os.path.join(self.log_directory, f"{code_name}.checker.feedback"),
+        )
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS, output_file=None
