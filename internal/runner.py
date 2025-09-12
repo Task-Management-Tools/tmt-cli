@@ -57,6 +57,7 @@ class Process(subprocess.Popen):
             time_limit_sec + 1.0
         )  # add one second on top of that
         self.timer = Timer(wall_time_limit_sec, self.timer_kill)
+        self.timer.start()
 
         self.status: int
         self.rusage: resource.struct_rusage
