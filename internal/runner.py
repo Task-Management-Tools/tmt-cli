@@ -1,4 +1,3 @@
-import math
 import time
 import os
 import select
@@ -134,7 +133,7 @@ class Process(subprocess.Popen):
                 pass
         self.timer.cancel()
 
-    def post_wait(self, poll_time, status, rusage):
+    def post_wait(self, poll_time: float, status: int, rusage: resource.struct_rusage):
         assert self.returncode is None
         self.status = status
         self.rusage = rusage
@@ -144,8 +143,8 @@ class Process(subprocess.Popen):
 
     def wait4(self) -> int | None:
         if self.returncode is None:
-            poll_time = time.monotonic()
             pid, status, rusage = os.wait4(self.pid, os.WNOHANG)
+            poll_time = time.monotonic()
             if pid != 0:
                 self.post_wait(poll_time, status, rusage)
         elif not isinstance(self.returncode, int):
@@ -207,7 +206,6 @@ def wait_procs(procs: list[Process]) -> None:
     remaining_pids: set[int] = set(p.pid for p in procs)
     try:
         while remaining_pids:
-            poll_time = time.monotonic()
             pid = -1
             while pid == -1:
                 # here calling wait3() should block, so no busy waiting
