@@ -1,7 +1,5 @@
-import math
 import time
 import os
-import signal
 import select
 import subprocess
 import resource
@@ -54,19 +52,23 @@ class Process(subprocess.Popen):
         super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
-        self.wall_time_limit_sec: float = (
-            time_limit_sec + 1.0
-        )  # add one second on top of that
 
-        self.timer = Timer(self.wall_time_limit_sec, self.safe_kill)
+        wall_time_limit_sec: float
+        if platform.system() == "Darwin":
+            wall_time_limit_sec = time_limit_sec + 2.0
+        else:
+            wall_time_limit_sec = time_limit_sec + 1.0
+        self.timer = Timer(wall_time_limit_sec, self.timer_kill)
         self.timer.start()
+
         self.status: int
         self.rusage: resource.struct_rusage
 
     def prepare(self):
         try:
-            cpu_time = int(math.ceil(self.time_limit_sec)) + 1
-            resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
+            # skip this as it sometimes get wrong on macos
+            # cpu_time = int(math.ceil(self.time_limit_sec)) + 1
+            # resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
             resource.setrlimit(
                 resource.RLIMIT_FSIZE,
@@ -114,6 +116,10 @@ class Process(subprocess.Popen):
             traceback.print_exc()
             raise e
 
+    def timer_kill(self):
+        if self.returncode is None:
+            self.kill()
+
     def safe_kill(self):
         # While this has a potential race condition, in practice I don't think the PID will be used
         # up so fast that the ID cycles back to the same one, and that has to occur during the race
@@ -122,21 +128,25 @@ class Process(subprocess.Popen):
         if self.returncode is None:
             try:
                 self.kill()
-                # self.wait4()
+                self.wait4()
             except ChildProcessError:
                 pass
         self.timer.cancel()
 
+    def post_wait(self, poll_time: float, status: int, rusage: resource.struct_rusage):
+        assert self.returncode is None
+        self.status = status
+        self.rusage = rusage
+        self.returncode = os.waitstatus_to_exitcode(status)
+        self.poll_time = poll_time
+        self.timer.cancel()
+
     def wait4(self) -> int | None:
         if self.returncode is None:
-            poll_time = time.monotonic()
             pid, status, rusage = os.wait4(self.pid, os.WNOHANG)
+            poll_time = time.monotonic()
             if pid != 0:
-                self.status = status
-                self.rusage = rusage
-                self.returncode = os.waitstatus_to_exitcode(status)
-                self.poll_time = poll_time
-                self.timer.cancel()
+                self.post_wait(poll_time, status, rusage)
         elif not isinstance(self.returncode, int):
             raise ValueError("Process returncode is not int nor None")
         return self.returncode
@@ -186,69 +196,29 @@ class Process(subprocess.Popen):
         return self.is_cpu_timedout or self.is_wall_clock_timedout
 
 
-def pre_wait_procs() -> set:
-    return signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGCHLD})
-
-
-def wait_procs(procs: list[Process], pre_wait_proc_set: set) -> None:
+def wait_procs(procs: list[Process]) -> None:
     """
     Wait until all processes either terminate or meet their deadlines.
     This procedures assumes SIGCHILD is blocked before any creation of child processes.
     """
     # Block SIGCHLD so we can wait for it explicitly
     pid_to_proc: dict[int, Process] = {p.pid: p for p in procs}
-    remaining: set[int] = set(p.pid for p in procs)
-    still_alive: set[int] = set()
+    remaining_pids: set[int] = set(p.pid for p in procs)
     try:
-        # For macOS, sigwaitinfo is not available, we use kqueue here to avoid busy waiting
-        if platform.system() == "Darwin":
-            import select
-
-            kq = select.kqueue()
-            events = []
-            still_alive = set()
-            for pid in remaining:
-                if pid_to_proc[pid].wait4() is None:
-                    kev = select.kevent(
-                        pid,
-                        filter=select.KQ_FILTER_PROC,
-                        flags=select.KQ_EV_ADD,
-                        fflags=select.KQ_NOTE_EXIT,
-                    )
-                    events.append(kev)
-                    still_alive.add(pid)
-            kq.control(events, 0, 0)
-
-            remaining = still_alive
-            while remaining:
-                triggered = kq.control(None, len(remaining), None)
-                for ev in triggered:
-                    pid = ev.ident
-                    if pid in remaining:
-                        pid_to_proc[pid].wait4()
-                        remaining.remove(pid)
-        else:
-            while remaining:
-                # Wait for a SIGCHLD
-                signal.sigwaitinfo({signal.SIGCHLD})
-
-                # Poll with wait4
-                still_alive = set()
-                for pid in remaining:
-                    if pid_to_proc[pid].wait4() is None:
-                        still_alive.add(pid)
-
-                remaining = still_alive
-
-    except (KeyboardInterrupt, InterruptedError) as exception:
+        while remaining_pids:
+            pid = -1
+            while pid == -1:
+                # here calling wait3() should block, so no busy waiting
+                pid, status, rusage = os.wait3(0)
+                poll_time = time.monotonic()
+            assert pid in remaining_pids
+            pid_to_proc[pid].post_wait(poll_time, status, rusage)
+            remaining_pids.remove(pid)
+    finally:
         # Force kill the children to prevent orphans
         # We should never recieve other singals other than SIGINT (and SIGKILL)
-        for pid in remaining:
+        for pid in remaining_pids:
             pid_to_proc[pid].safe_kill()
-        raise exception  # this exception should be unhandled, since the user asked that
-    finally:
-        # restore sigmask
-        signal.pthread_sigmask(signal.SIG_SETMASK, pre_wait_proc_set)
 
 
 def wait_for_outputs(proc: Process) -> tuple[str, str]:
@@ -295,8 +265,7 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
             while content := proc.stderr.read(8 * 1024):
                 stderr += content.decode()
 
-    except KeyboardInterrupt:
+    finally:
         proc.safe_kill()
-        raise
 
     return stdout, stderr

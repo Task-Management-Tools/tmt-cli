@@ -38,7 +38,9 @@ def main():
     parser_clean = subparsers.add_parser(
         "clean", help="Clean-up a TMT problem directory."
     )
-    parser_clean.add_argument("-y", "--yes", action="store_true", help="Automatic yes to prompts.")
+    parser_clean.add_argument(
+        "-y", "--yes", action="store_true", help="Automatic yes to prompts."
+    )
 
     args = parser.parse_args()
 

@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 from internal.context import TMTContext
-from internal.runner import Process, pre_wait_procs, wait_procs
+from internal.runner import Process, wait_procs
 from internal.compilation_makefile import compile_with_make, clean_with_make
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.outcome import (
@@ -136,8 +136,6 @@ class InteractiveICPCSolutionStep(SolutionStep):
                 os.mkdir(sandbox_checker_feedback_dir)
             self.context.path.empty_directory(sandbox_checker_feedback_dir)
 
-            sigset = pre_wait_procs()
-
             def solution_preexec_fn():
                 os.chdir(self.context.path.sandbox_solution)
                 signal.signal(signal.SIGPIPE, signal.SIG_IGN)
@@ -181,7 +179,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
             solution.stdin.close()
             solution.stdout.close()
 
-            wait_procs([solution, interactor], sigset)
+            wait_procs([solution, interactor])
 
             if Path(sandbox_checker_input_file).exists():
                 os.unlink(sandbox_checker_input_file)

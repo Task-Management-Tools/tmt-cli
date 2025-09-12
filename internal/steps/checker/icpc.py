@@ -5,7 +5,7 @@ import pathlib
 
 from internal.context import CheckerType, TMTContext
 from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.runner import Process, pre_wait_procs, wait_procs
+from internal.runner import Process, wait_procs
 from internal.outcome import (
     EvaluationOutcome,
     EvaluationResult,
@@ -93,7 +93,6 @@ class ICPCCheckerStep(CheckerStep):
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
 
-        sigset = pre_wait_procs()
         checker_process = Process(
             [checker, input_file, answer_file, feedback_dir] + arguments,
             stdin_redirect=evaluation_record.output_file,
@@ -103,7 +102,7 @@ class ICPCCheckerStep(CheckerStep):
             memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
             output_limit_mib=self.limits.trusted_step_output_limit_mib,
         )
-        wait_procs([checker_process], sigset)
+        wait_procs([checker_process])
 
         # the interesting files in the directory are:
         #  - nextpass.in: the input for the next pass, the checker must succeed to run the next pass
