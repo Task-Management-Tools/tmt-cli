@@ -143,14 +143,10 @@ class GenerationStep:
                     generator_processes.append(proc)
                     prev_proc = proc
 
-            except FileNotFoundError as exception:
-                for proc in generator_processes:
-                    proc.safe_kill()
-                raise exception
-
-            assert generator_processes[-1].stdout is not None
-            generator_processes[-1].stdout.close()
-            wait_procs(generator_processes)
+                assert generator_processes[-1].stdout is not None
+                generator_processes[-1].stdout.close()
+            finally:
+                wait_procs(generator_processes)
 
             # Move testcase input
             shutil.move(

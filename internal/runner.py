@@ -214,12 +214,11 @@ def wait_procs(procs: list[Process]) -> None:
             assert pid in remaining_pids
             pid_to_proc[pid].post_wait(poll_time, status, rusage)
             remaining_pids.remove(pid)
-    except (KeyboardInterrupt, InterruptedError):
+    finally:
         # Force kill the children to prevent orphans
         # We should never recieve other singals other than SIGINT (and SIGKILL)
         for pid in remaining_pids:
             pid_to_proc[pid].safe_kill()
-        raise
 
 
 def wait_for_outputs(proc: Process) -> tuple[str, str]:
@@ -266,8 +265,7 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
             while content := proc.stderr.read(8 * 1024):
                 stderr += content.decode()
 
-    except KeyboardInterrupt:
+    finally:
         proc.safe_kill()
-        raise
 
     return stdout, stderr
