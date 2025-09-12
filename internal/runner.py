@@ -63,8 +63,9 @@ class Process(subprocess.Popen):
 
     def prepare(self):
         try:
-            cpu_time = int(math.ceil(self.time_limit_sec)) + 1
-            resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
+            # skip this as it sometimes get wrong on macos
+            # cpu_time = int(math.ceil(self.time_limit_sec)) + 1
+            # resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time))
             # Single file size limit
             resource.setrlimit(
                 resource.RLIMIT_FSIZE,
