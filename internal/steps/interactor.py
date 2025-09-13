@@ -1,21 +1,13 @@
 import os
 import shutil
-import signal
-import subprocess
-from pathlib import Path
 
 from internal.context import TMTContext
-from internal.runner import Process, wait_procs
 from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.compilation_cpp_single import compile_cpp_single
 from internal.outcome import (
-    EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
 )
-
-from internal.steps.solution import SolutionStep
 
 
 class InteractorStep:
@@ -24,23 +16,35 @@ class InteractorStep:
     def __init__(self, *, context: TMTContext):
         self.context = context
 
-    def compile(self) -> CompilationResult:
-        if self.context.path.has_checker_directory():
+    def prepare_sandbox(self) -> None:
+        os.makedirs(self.context.path.sandbox_interactor, exist_ok=True)
+
+    def clean_up(self) -> None:
+        clean_with_make(
+            makefile_path=self.context.path.makefile_checker,
+            directory=self.context.path.interactor,
+            context=self.context,
+            env={"SRCS": self.context.config.interactor.filename},
+        )
+
+    def compile_interactor(self) -> CompilationResult:
+        if self.context.path.has_interactor_directory():
             comp_result = compile_with_make(
                 makefile_path=self.context.path.makefile_checker,
-                directory=self.context.path.checker,
+                directory=self.context.path.interactor,
                 context=self.context,
                 executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+                env={"SRCS": self.context.config.interactor.filename},
             )
 
             shutil.copy(
-                os.path.join(self.context.path.checker, "checker"),
-                self.context.path.sandbox_checker,
+                os.path.join(self.context.path.interactor, "checker"),
+                self.context.path.sandbox_interactor,
             )
 
             return comp_result
         return CompilationResult(
-            CompilationOutcome.FAILED, "`checker' directory not found."
+            CompilationOutcome.FAILED, "`interactor' directory not found."
         )
 
     def run_interactor(

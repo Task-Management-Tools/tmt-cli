@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 
 from internal.context import TMTContext
 from internal.outcome import (
-    CompilationOutcome,
     EvaluationResult,
     EvaluationOutcome,
     CompilationResult,

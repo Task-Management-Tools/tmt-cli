@@ -34,8 +34,7 @@ class ICPCCheckerStep(CheckerStep):
             # in sandbox/checker instead
             checker_name = "internal/resources/checkers/icpc_default_validator.cc"
 
-            checker_path = pathlib.Path(
-                self.context.path.script_dir) / checker_name
+            checker_path = pathlib.Path(self.context.path.script_dir) / checker_name
             shutil.copy(checker_path, self.context.path.sandbox_checker)
 
             compile_result = compile_with_make(
@@ -116,8 +115,7 @@ class ICPCCheckerStep(CheckerStep):
             testcase_input,
             testcase_answer,
         )
-        result.output_validation = eval_outcome_to_grade_outcome(
-            checker_result)
+        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
         result.reason = checker_result.checker_reason
         return checker_result
 
@@ -136,8 +134,7 @@ class ICPCCheckerStep(CheckerStep):
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
         feedback_dir = (
-            os.path.join(self.context.path.sandbox_solution,
-                         "feedback_dir") + os.sep
+            os.path.join(self.context.path.sandbox_solution, "feedback_dir") + os.sep
         )
         if not os.path.isdir(feedback_dir):
             os.mkdir(feedback_dir)

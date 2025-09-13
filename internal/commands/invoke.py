@@ -3,10 +3,11 @@ import os
 import subprocess
 
 from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext
+from internal.context import TMTContext
 from internal.outcome import eval_outcome_to_run_outcome
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
+from internal.steps.interactor import InteractorStep
 
 
 def is_apport_active():
@@ -61,6 +62,7 @@ def command_invoke(
     formatter.print_compile_string_with_exit(solution_step.compile_solution())
 
     if context.config.interactor is not None:
+        interactor_step = InteractorStep(context=context)
         formatter.print("Interactor  compile ")
         formatter.print_compile_string_with_exit(interactor_step.compile_interactor())
 
@@ -80,10 +82,7 @@ def command_invoke(
         endl=True,
     )
 
-    if (
-        context.path.has_checker_directory()
-        and checker_step.use_default_checker
-    ):
+    if context.path.has_checker_directory() and checker_step.use_default_checker:
         formatter.println(
             formatter.ANSI_YELLOW,
             "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",

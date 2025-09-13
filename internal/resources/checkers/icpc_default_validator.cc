@@ -200,8 +200,8 @@ int main(int argc, char **argv) {
 				wrong_answer("String tokens mismatch\nJudge: \"%s\"\nUser: \"%s\"", judge.c_str(), team.c_str());
 			}
 		}
-		judgeans_pos += judge.length();
-		stdin_pos += team.length();
+		judgeans_pos += (int)judge.length();
+		stdin_pos += (int)team.length();
 	}
 
 	if (std::cin >> team) {

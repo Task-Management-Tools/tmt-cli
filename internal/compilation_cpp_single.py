@@ -2,7 +2,6 @@ import os
 import platform
 import subprocess
 
-from pathlib import Path
 
 from internal.outcome import CompilationResult, CompilationOutcome
 from internal.runner import Process, wait_for_outputs

@@ -9,7 +9,7 @@ def make_solution_step(solution_type: SolutionType, *args, **kwargs) -> Solution
         case SolutionType.DEFAULT:
             return BatchSolutionStep(*args, **kwargs)
         case _:
-            raise ValueError(str(problem_type) + " is not a valid problem type.")
+            raise ValueError(str(solution_type) + " is not a valid problem type.")
 
 
 __all__ = [
