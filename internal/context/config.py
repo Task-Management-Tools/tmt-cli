@@ -27,9 +27,16 @@ class CheckerType(enum.Enum):
 class Checker:
     type: CheckerType
     filename: str | None = None
-    arguments: str | None = None
+    arguments: list[str] | None = None
     check_forced_output: bool = True
     check_generated_output: bool = True
+
+    def __post_init__(self):
+        self.type = CheckerType(self.type)
+        if self.arguments is None:
+            self.arguments = []
+        else:
+            self.arguments = self.arguments.split()
 
 
 class ValidatorType(enum.Enum):

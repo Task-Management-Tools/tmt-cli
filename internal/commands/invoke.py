@@ -49,49 +49,46 @@ def command_invoke(
         if available_testcases.count(testcase) == 0
     ]
 
-    if pathlib.Path(context.path.testcases_summary).exists():
-        solution_step: SolutionStep = make_solution_step(
-            problem_type=context.config.problem_type,
-            context=context,
-            is_generation=False,
-            submission_files=actual_files,
+    assert pathlib.Path(context.path.testcases_summary).exists()
+    solution_step: SolutionStep = make_solution_step(
+        solution_type=context.config.solution.type,
+        context=context,
+        is_generation=False,
+        submission_files=actual_files,
+    )
+    formatter.print("Solution    compile ")
+    solution_step.prepare_sandbox()
+    formatter.print_compile_string_with_exit(solution_step.compile_solution())
+
+    if context.config.interactor is not None:
+        formatter.print("Interactor  compile ")
+        formatter.print_compile_string_with_exit(interactor_step.compile_interactor())
+
+    # TODO manager
+
+    # TODO option to skip_checker:
+    checker_step = ICPCCheckerStep(context)
+    formatter.print("Checker     compile ")
+    checker_step.prepare_sandbox()
+    formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
+
+    formatter.print(
+        " " * 2,
+        "(default)"
+        if checker_step.use_default_checker
+        else context.config.checker.filename,
+        endl=True,
+    )
+
+    if (
+        context.path.has_checker_directory()
+        and checker_step.use_default_checker
+    ):
+        formatter.println(
+            formatter.ANSI_YELLOW,
+            "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
+            formatter.ANSI_RESET,
         )
-        checker_step = ICPCCheckerStep(context)
-
-        formatter.print("Solution    compile ")
-        solution_step.prepare_sandbox()
-        formatter.print_compile_string_with_exit(solution_step.compile_solution())
-
-        if solution_step.has_interactor():
-            formatter.print("Interactor  compile ")
-            formatter.print_compile_string_with_exit(solution_step.compile_interactor())
-
-        if solution_step.has_manager():
-            formatter.print("Manager     compile ")
-            formatter.print_compile_string_with_exit(solution_step.compile_manager())
-
-        if not solution_step.skip_checker():
-            formatter.print("Checker     compile ")
-            checker_step.prepare_sandbox()
-            formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
-
-            formatter.print(
-                " " * 2,
-                "(default)"
-                if context.config.checker_type is CheckerType.DEFAULT
-                else context.config.checker_filename,
-                endl=True,
-            )
-
-            if (
-                context.path.has_checker_directory()
-                and context.config.checker_type is CheckerType.DEFAULT
-            ):
-                formatter.println(
-                    formatter.ANSI_YELLOW,
-                    "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
-                    formatter.ANSI_RESET,
-                )
 
     all_testcases = [
         test.test_name
@@ -139,22 +136,28 @@ def command_invoke(
         ) as f:
             f.write(solution_result.checker_reason)
 
-        if not solution_step.skip_checker():
-            formatter.print("check ")
-            testcase_input = os.path.join(
-                context.path.testcases, context.construct_input_filename(testcase)
-            )
-            testcase_answer = os.path.join(
-                context.path.testcases, context.construct_output_filename(testcase)
-            )
-            solution_result = checker_step.run_checker(
-                context.config.checker_arguments,
-                solution_result,
-                testcase_input,
-                testcase_answer,
-            )
+        # TODO option to skip_checker
+        # if context.config.checker is not None:
+        formatter.print("check ")
+        testcase_input = os.path.join(
+            context.path.testcases, context.construct_input_filename(testcase)
+        )
+        testcase_answer = os.path.join(
+            context.path.testcases, context.construct_output_filename(testcase)
+        )
+        checker_arguments = (
+            context.config.checker.arguments
+            if context.config.checker is not None
+            else []
+        )
+        solution_result = checker_step.run_checker(
+            checker_arguments,
+            solution_result,
+            testcase_input,
+            testcase_answer,
+        )
 
-            formatter.print_checker_status(solution_result)
+        formatter.print_checker_status(solution_result)
 
         formatter.print_checker_verdict(solution_result, print_reason=show_reason)
         formatter.println()

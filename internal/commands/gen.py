@@ -146,8 +146,8 @@ def command_gen(
         formatter.print(
             " " * 2,
             "(default)"
-            if context.config.checker_type is CheckerType.DEFAULT
-            else context.config.checker_filename,
+            if context.config.checker.type is CheckerType.DEFAULT
+            else context.config.checker.filename,
             endl=True,
         )
 

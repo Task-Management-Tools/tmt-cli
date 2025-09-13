@@ -22,31 +22,20 @@ class ICPCCheckerStep(CheckerStep):
     def __init__(self, context: TMTContext):
         super().__init__(context)
         self.limits = context.config  # shorthand
+        self.use_default_checker = (
+            context.config.checker is None
+            or context.config.checker.type == CheckerType.DEFAULT
+            or not context.path.has_checker_directory()
+        )
 
     def compile(self) -> CompilationResult:
-        if self.context.config.checker_type is CheckerType.CUSTOM:
-            if not self.context.path.has_checker_directory():
-                raise FileNotFoundError("Directory `checker` is not present.")
-
-            compile_result = compile_with_make(
-                makefile_path=self.context.path.makefile_checker,
-                directory=self.context.path.checker,
-                context=self.context,
-                executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
-                env={"SRCS": self.context.config.checker_filename},
-            )
-
-            if compile_result.verdict is CompilationOutcome.SUCCESS:
-                shutil.copy(
-                    os.path.join(self.context.path.checker, "checker"),
-                    self.context.path.sandbox_checker,
-                )
-        else:
+        if self.use_default_checker:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
             checker_name = "internal/resources/checkers/icpc_default_validator.cc"
 
-            checker_path = pathlib.Path(self.context.path.script_dir) / checker_name
+            checker_path = pathlib.Path(
+                self.context.path.script_dir) / checker_name
             shutil.copy(checker_path, self.context.path.sandbox_checker)
 
             compile_result = compile_with_make(
@@ -56,6 +45,23 @@ class ICPCCheckerStep(CheckerStep):
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
                 env={"SRCS": "icpc_default_validator.cc"},
             )
+        else:
+            if not self.context.path.has_checker_directory():
+                raise FileNotFoundError("Directory `checker` is not present.")
+
+            compile_result = compile_with_make(
+                makefile_path=self.context.path.makefile_checker,
+                directory=self.context.path.checker,
+                context=self.context,
+                executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
+                env={"SRCS": self.context.config.checker.filename},
+            )
+
+            if compile_result.verdict is CompilationOutcome.SUCCESS:
+                shutil.copy(
+                    os.path.join(self.context.path.checker, "checker"),
+                    self.context.path.sandbox_checker,
+                )
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
         return compile_result
@@ -82,11 +88,11 @@ class ICPCCheckerStep(CheckerStep):
             return
 
         if result.is_output_forced:
-            if not self.context.config.check_forced_output:
+            if not self.context.config.checker.check_forced_output:
                 result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
                 return
         else:  # generated output
-            if not self.context.config.check_generated_output:
+            if not self.context.config.checker.check_generated_output:
                 result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
                 return
         testcase_input = os.path.join(
@@ -105,12 +111,13 @@ class ICPCCheckerStep(CheckerStep):
         shutil.copy(testcase_answer, copied_testcase_output)
 
         checker_result = self.run_checker(
-            self.context.config.checker_arguments,
+            self.context.config.checker.arguments,
             EvaluationResult(output_file=copied_testcase_output),
             testcase_input,
             testcase_answer,
         )
-        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
+        result.output_validation = eval_outcome_to_grade_outcome(
+            checker_result)
         result.reason = checker_result.checker_reason
         return checker_result
 
@@ -129,7 +136,8 @@ class ICPCCheckerStep(CheckerStep):
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
         feedback_dir = (
-            os.path.join(self.context.path.sandbox_solution, "feedback_dir") + os.sep
+            os.path.join(self.context.path.sandbox_solution,
+                         "feedback_dir") + os.sep
         )
         if not os.path.isdir(feedback_dir):
             os.mkdir(feedback_dir)
