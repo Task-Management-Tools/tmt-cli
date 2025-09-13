@@ -13,8 +13,9 @@ judge_convention: icpc
 problem_type: batch
 solution_compilation: default
 input_validation: default
-output_validation:
-  type: default
 answer_generation: 
   type: solution
   filename: sol.cpp
+
+checker:
+  type: default

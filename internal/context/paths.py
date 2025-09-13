@@ -51,6 +51,7 @@ class ProblemDirectoryHelper:
     solutions = _problem_path_property("solutions")
 
     checker = _problem_path_property("checker")
+    interactor = _problem_path_property("interactor")
 
     testcases = _problem_path_property("testcases")
     testcases_summary = _extend_path_property(testcases, "summary")
@@ -61,6 +62,7 @@ class ProblemDirectoryHelper:
     sandbox_validation = _extend_path_property(sandbox, "validation")
     sandbox_solution = _extend_path_property(sandbox, "solution")
     sandbox_checker = _extend_path_property(sandbox, "checker")
+    sandbox_interactor = _extend_path_property(sandbox, "interactor")
     sandbox_manager = _extend_path_property(sandbox, "manager")
 
     logs = _problem_path_property("logs")
@@ -130,6 +132,9 @@ class ProblemDirectoryHelper:
 
     def has_checker_directory(self):
         return self._is_directory(self.checker)
+
+    def has_interactor_directory(self):
+        return self._is_directory(self.interactor)
 
     def replace_with_generator(self, file: str):
         test_files = [

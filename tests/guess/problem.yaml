@@ -16,3 +16,6 @@ input_validation: default
 answer_generation: 
   type: solution
   filename: sol.cpp
+
+interactor:
+  filename: checker.cc

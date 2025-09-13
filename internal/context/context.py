@@ -95,24 +95,32 @@ class TMTConfig:
                 "Unsupported input validation mode " + yaml["input_validation"]
             )
 
-        # output_validation:
+        # checker:
         if self.problem_type is ProblemType.BATCH:
-            self.checker_type = CheckerType(yaml["output_validation"]["type"])
+            self.checker_type = CheckerType(yaml["checker"]["type"])
             if self.checker_type is CheckerType.CUSTOM:
-                self.checker_filename = yaml["output_validation"]["filename"]
+                self.checker_filename = yaml["checker"]["filename"]
             self.checker_arguments = (
-                yaml["output_validation"].get("arguments", "").split()
+                yaml["checker"].get("arguments", "").split()
             )
             self.check_forced_output = bool(
-                yaml["output_validation"].get("check_forced_output", True)
+                yaml["checker"].get("check_forced_output", True)
             )
             self.check_generated_output = bool(
-                yaml["output_validation"].get("check_generated_output", True)
+                yaml["checker"].get("check_generated_output", True)
             )
         else:
-            if "output_validation" in yaml:
+            if "checker" in yaml:
                 raise TMTInvalidConfigError(
-                    "Output validation should not be specified when the problem type is not batch."
+                    "Checker should not be specified when the problem type is not batch."
+                )
+
+        if self.problem_type is ProblemType.INTERACTIVE:
+            self.interactor_filename = yaml["interactor"]["filename"]
+        else:
+            if "interactor" in yaml:
+                raise TMTInvalidConfigError(
+                    "Interactor should not be specified when the problem type is not interactive."
                 )
 
         if yaml["answer_generation"]["type"] == "solution":

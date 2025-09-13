@@ -40,12 +40,12 @@ class InteractiveICPCSolutionStep(SolutionStep):
 
     def prepare_sandbox(self):
         os.makedirs(self.context.path.sandbox_solution, exist_ok=True)
-        os.makedirs(self.context.path.sandbox_checker, exist_ok=True)
+        os.makedirs(self.context.path.sandbox_interactor, exist_ok=True)
 
     def clean_up(self):
         clean_with_make(
             makefile_path=self.context.path.makefile_checker,
-            directory=self.context.path.checker,
+            directory=self.context.path.interactor,
             context=self.context,
         )
 
@@ -73,23 +73,25 @@ class InteractiveICPCSolutionStep(SolutionStep):
         return comp_result
 
     def compile_interactor(self) -> CompilationResult:
-        if self.context.path.has_checker_directory():
+        if self.context.path.has_interactor_directory():
             comp_result = compile_with_make(
                 makefile_path=self.context.path.makefile_checker,
-                directory=self.context.path.checker,
+                directory=self.context.path.interactor,
                 context=self.context,
                 executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+                env={"SRCS": self.context.config.interactor_filename},
             )
 
-            shutil.copy(
-                os.path.join(self.context.path.checker, "checker"),
-                self.context.path.sandbox_checker,
-            )
+            if comp_result.verdict is CompilationOutcome.SUCCESS:
+                shutil.copy(
+                    os.path.join(self.context.path.interactor, "checker"),
+                    self.context.path.sandbox_interactor,
+                )
 
             comp_result.dump_to_logs(self.log_directory, "interactor")
             return comp_result
         return CompilationResult(
-            CompilationOutcome.FAILED, "`checker' directory not found."
+            CompilationOutcome.FAILED, "`interactor' directory not found."
         )
 
     def run_solution(self, code_name: str) -> EvaluationResult:
@@ -103,21 +105,21 @@ class InteractiveICPCSolutionStep(SolutionStep):
         file_in_name = self.context.construct_input_filename(code_name)
         file_out_name = self.context.construct_output_filename(code_name)
         file_sol_err_name = f"{code_name}.sol.err"
-        file_checker_err_name = f"{code_name}.checker.err"
+        file_interactor_err_name = f"{code_name}.interactor.err"
 
         testcase_input = os.path.join(self.context.path.testcases, file_in_name)
         testcase_answer = os.path.join(self.context.path.testcases, file_out_name)
-        sandbox_checker_input_file = os.path.join(
-            self.context.path.sandbox_checker, file_in_name
+        sandbox_interactor_input_file = os.path.join(
+            self.context.path.sandbox_interactor, file_in_name
         )
-        sandbox_checker_answer_file = os.path.join(
-            self.context.path.sandbox_checker, file_out_name
+        sandbox_interactor_answer_file = os.path.join(
+            self.context.path.sandbox_interactor, file_out_name
         )
-        sandbox_checker_err_file = os.path.join(
-            self.context.path.sandbox_checker, file_checker_err_name
+        sandbox_interactor_err_file = os.path.join(
+            self.context.path.sandbox_interactor, file_interactor_err_name
         )
-        sandbox_checker_feedback_dir = (
-            os.path.join(self.context.path.sandbox_checker, "feedback_dir") + os.sep
+        sandbox_interactor_feedback_dir = (
+            os.path.join(self.context.path.sandbox_interactor, "feedback_dir") + os.sep
         )
         sandbox_solution_err_file = os.path.join(
             self.context.path.sandbox_solution, file_sol_err_name
@@ -128,12 +130,12 @@ class InteractiveICPCSolutionStep(SolutionStep):
             with open(testcase_answer, "w+b"):
                 pass  # Truncate the file
 
-        shutil.copy(testcase_input, sandbox_checker_input_file)
-        shutil.copy(testcase_answer, sandbox_checker_answer_file)
+        shutil.copy(testcase_input, sandbox_interactor_input_file)
+        shutil.copy(testcase_answer, sandbox_interactor_answer_file)
 
-        if not os.path.isdir(sandbox_checker_feedback_dir):
-            os.mkdir(sandbox_checker_feedback_dir)
-        self.context.path.empty_directory(sandbox_checker_feedback_dir)
+        if not os.path.isdir(sandbox_interactor_feedback_dir):
+            os.mkdir(sandbox_interactor_feedback_dir)
+        self.context.path.empty_directory(sandbox_interactor_feedback_dir)
 
         def solution_preexec_fn():
             os.chdir(self.context.path.sandbox_solution)
@@ -151,20 +153,20 @@ class InteractiveICPCSolutionStep(SolutionStep):
         )
 
         def interactor_preexec_fn():
-            os.chdir(self.context.path.sandbox_checker)
+            os.chdir(self.context.path.sandbox_interactor)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
         interactor = Process(
             [
-                os.path.join(self.context.path.sandbox_checker, "checker"),
-                sandbox_checker_input_file,
-                sandbox_checker_answer_file,
-                sandbox_checker_feedback_dir,
+                os.path.join(self.context.path.sandbox_interactor, "checker"),
+                sandbox_interactor_input_file,
+                sandbox_interactor_answer_file,
+                sandbox_interactor_feedback_dir,
             ],
             preexec_fn=interactor_preexec_fn,
             stdin=solution.stdout,
             stdout=solution.stdin,
-            stderr_redirect=sandbox_checker_err_file,
+            stderr_redirect=sandbox_interactor_err_file,
             time_limit_sec=max(
                 self.time_limit_sec * 2,
                 self.context.config.trusted_step_time_limit_sec,
@@ -180,16 +182,16 @@ class InteractiveICPCSolutionStep(SolutionStep):
 
         wait_procs([solution, interactor])
 
-        if Path(sandbox_checker_input_file).exists():
-            os.unlink(sandbox_checker_input_file)
-        if Path(sandbox_checker_answer_file).exists():
-            os.unlink(sandbox_checker_answer_file)
+        if Path(sandbox_interactor_input_file).exists():
+            os.unlink(sandbox_interactor_input_file)
+        if Path(sandbox_interactor_answer_file).exists():
+            os.unlink(sandbox_interactor_answer_file)
 
         # Move logs
-        Path(sandbox_checker_err_file).touch()
+        Path(sandbox_interactor_err_file).touch()
         shutil.move(
-            sandbox_checker_err_file,
-            os.path.join(self.log_directory, file_checker_err_name),
+            sandbox_interactor_err_file,
+            os.path.join(self.log_directory, file_interactor_err_name),
         )
         Path(sandbox_solution_err_file).touch()
         shutil.move(
@@ -197,14 +199,14 @@ class InteractiveICPCSolutionStep(SolutionStep):
             os.path.join(self.log_directory, file_sol_err_name),
         )
 
-        checker_feedback_logs = os.path.join(
-            self.log_directory, f"{code_name}.checker.feedback"
+        interactor_feedback_logs = os.path.join(
+            self.log_directory, f"{code_name}.interactor.feedback"
         )
-        if os.path.isdir(checker_feedback_logs):
-            shutil.rmtree(checker_feedback_logs)
+        if os.path.isdir(interactor_feedback_logs):
+            shutil.rmtree(interactor_feedback_logs)
         shutil.copytree(
-            sandbox_checker_feedback_dir,
-            os.path.join(self.log_directory, f"{code_name}.checker.feedback"),
+            sandbox_interactor_feedback_dir,
+            os.path.join(self.log_directory, f"{code_name}.interactor.feedback"),
         )
 
         result = EvaluationResult(
@@ -228,12 +230,12 @@ class InteractiveICPCSolutionStep(SolutionStep):
 
             # See ICPCCheckerStep.
             checker_feedback_file = (
-                Path(sandbox_checker_feedback_dir) / "judgemessage.txt"
+                Path(sandbox_interactor_feedback_dir) / "judgemessage.txt"
             )
             if checker_feedback_file.is_file():
                 with open(checker_feedback_file, "r") as f:
                     result.checker_reason = f.readline().strip()
 
-        shutil.rmtree(sandbox_checker_feedback_dir)
+        shutil.rmtree(sandbox_interactor_feedback_dir)
 
         return result
