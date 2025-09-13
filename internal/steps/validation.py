@@ -3,7 +3,8 @@ import shutil
 from pathlib import Path
 
 from internal.context import JudgeConvention, TMTContext
-from internal.compilation_makefile import compile_with_make, clean_with_make
+from internal.compilation_makefile import clean_with_make
+from internal.compilation import compile_wildcard_make
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.runner import Process, wait_procs
 
@@ -15,8 +16,7 @@ class ValidationStep:
         self.workdir = self.context.path.sandbox_validation
 
     def compile(self) -> CompilationResult:
-        comp_result = compile_with_make(
-            makefile_path=self.context.path.makefile_normal,
+        comp_result = compile_wildcard_make(
             directory=self.context.path.validator,
             context=self.context,
             executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,

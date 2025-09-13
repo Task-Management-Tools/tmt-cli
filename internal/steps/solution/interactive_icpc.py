@@ -6,7 +6,8 @@ from pathlib import Path
 
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
-from internal.compilation_makefile import compile_with_make, clean_with_make
+from internal.compilation_makefile import clean_with_make
+from internal.compilation import compile_targets_make
 from internal.compilation_cpp_single import compile_cpp_single
 from internal.outcome import (
     EvaluationOutcome,
@@ -74,19 +75,18 @@ class InteractiveICPCSolutionStep(SolutionStep):
 
     def compile_interactor(self) -> CompilationResult:
         if self.context.path.has_interactor_directory():
-            comp_result = compile_with_make(
-                makefile_path=self.context.path.makefile_checker,
-                directory=self.context.path.interactor,
+            comp_result = compile_targets_make(
                 context=self.context,
+                directory=self.context.path.interactor,
+                sources=[self.context.config.interactor_filename],
+                target="interactor",
                 executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
-                env={"SRCS": self.context.config.interactor_filename},
             )
 
-            if comp_result.verdict is CompilationOutcome.SUCCESS:
-                shutil.copy(
-                    os.path.join(self.context.path.interactor, "checker"),
-                    self.context.path.sandbox_interactor,
-                )
+            shutil.copy(
+                os.path.join(self.context.path.interactor, "interactor"),
+                self.context.path.sandbox_interactor,
+            )
 
             comp_result.dump_to_logs(self.log_directory, "interactor")
             return comp_result
@@ -158,7 +158,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
 
         interactor = Process(
             [
-                os.path.join(self.context.path.sandbox_interactor, "checker"),
+                os.path.join(self.context.path.sandbox_interactor, "interactor"),
                 sandbox_interactor_input_file,
                 sandbox_interactor_answer_file,
                 sandbox_interactor_feedback_dir,
@@ -229,11 +229,11 @@ class InteractiveICPCSolutionStep(SolutionStep):
             result.verdict = EvaluationOutcome.WRONG
 
             # See ICPCCheckerStep.
-            checker_feedback_file = (
+            interactor_feedback_file = (
                 Path(sandbox_interactor_feedback_dir) / "judgemessage.txt"
             )
-            if checker_feedback_file.is_file():
-                with open(checker_feedback_file, "r") as f:
+            if interactor_feedback_file.is_file():
+                with open(interactor_feedback_file, "r") as f:
                     result.checker_reason = f.readline().strip()
 
         shutil.rmtree(sandbox_interactor_feedback_dir)

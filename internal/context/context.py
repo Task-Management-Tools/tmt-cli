@@ -100,9 +100,7 @@ class TMTConfig:
             self.checker_type = CheckerType(yaml["checker"]["type"])
             if self.checker_type is CheckerType.CUSTOM:
                 self.checker_filename = yaml["checker"]["filename"]
-            self.checker_arguments = (
-                yaml["checker"].get("arguments", "").split()
-            )
+            self.checker_arguments = yaml["checker"].get("arguments", "").split()
             self.check_forced_output = bool(
                 yaml["checker"].get("check_forced_output", True)
             )

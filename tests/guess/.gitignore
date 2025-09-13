@@ -2,6 +2,7 @@
 generator/*.d
 validator/*.d
 checker/*.d
+interactor/*.d
 
 # Compilation logs
 generator/*.compile.log
@@ -13,6 +14,8 @@ generator/*.exe
 validator/*.exe
 checker/*.exe
 checker/checker
+interactor/*.exe
+interactor/interactor
 
 # Testcases
 testcases/

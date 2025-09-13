@@ -2,7 +2,8 @@ import os
 import shutil
 import subprocess
 
-from internal.compilation_makefile import compile_with_make, clean_with_make
+from internal.compilation_makefile import clean_with_make
+from internal.compilation import compile_wildcard_make
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
@@ -15,8 +16,7 @@ class GenerationStep:
         self.workdir = self.context.path.sandbox_generation
 
     def compile(self) -> CompilationResult:
-        comp_result = compile_with_make(
-            makefile_path=self.context.path.makefile_normal,
+        comp_result = compile_wildcard_make(
             directory=self.context.path.generator,
             context=self.context,
             executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,

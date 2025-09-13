@@ -4,7 +4,8 @@ import pathlib
 
 
 from internal.context import CheckerType, TMTContext
-from internal.compilation_makefile import compile_with_make, clean_with_make
+from internal.compilation_makefile import clean_with_make
+from internal.compilation import compile_targets_make
 from internal.runner import Process, wait_procs
 from internal.outcome import (
     EvaluationOutcome,
@@ -14,6 +15,8 @@ from internal.outcome import (
 )
 
 from .base import CheckerStep
+
+CHECKER = "checker"
 
 
 class ICPCCheckerStep(CheckerStep):
@@ -26,17 +29,17 @@ class ICPCCheckerStep(CheckerStep):
             if not self.context.path.has_checker_directory():
                 raise FileNotFoundError("Directory `checker` is not present.")
 
-            compile_result = compile_with_make(
-                makefile_path=self.context.path.makefile_checker,
-                directory=self.context.path.checker,
+            compile_result = compile_targets_make(
                 context=self.context,
+                directory=self.context.path.checker,
+                sources=[self.context.config.checker_filename],
+                target=CHECKER,
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
-                env={"SRCS": self.context.config.checker_filename},
             )
 
             if compile_result.verdict is CompilationOutcome.SUCCESS:
                 shutil.copy(
-                    os.path.join(self.context.path.checker, "checker"),
+                    os.path.join(self.context.path.checker, CHECKER),
                     self.context.path.sandbox_checker,
                 )
         else:
@@ -47,12 +50,12 @@ class ICPCCheckerStep(CheckerStep):
             checker_path = pathlib.Path(self.context.path.script_dir) / checker_name
             shutil.copy(checker_path, self.context.path.sandbox_checker)
 
-            compile_result = compile_with_make(
-                makefile_path=self.context.path.makefile_checker,
-                directory=self.context.path.sandbox_checker,
+            compile_result = compile_targets_make(
                 context=self.context,
+                directory=self.context.path.sandbox_checker,
+                sources=["icpc_default_validator.cc"],
+                target=CHECKER,
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
-                env={"SRCS": "icpc_default_validator.cc"},
             )
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
