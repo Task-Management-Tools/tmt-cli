@@ -3,8 +3,6 @@ import resource
 import re
 import dataclasses
 
-from internal.errors import TMTInvalidConfigError
-
 
 class JudgeConvention(enum.Enum):
     ICPC = "icpc"
@@ -51,9 +49,7 @@ class Validator:
     def __post_init__(self):
         self.type = ValidatorType(self.type)
         if self.type is not ValidatorType.DEFAULT:
-            raise TMTInvalidConfigError(
-                f"Validator type {self.type} is not supported yet."
-            )
+            raise ValueError(f"Validator type {self.type} is not supported yet.")
 
 
 @dataclasses.dataclass
@@ -66,7 +62,7 @@ class Interactor:
 def parse_time_to_second(field_name: str, input_str: str) -> float:
     match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", input_str)
     if match is None:
-        raise TMTInvalidConfigError(f'{field_name} "{input_str}" is invalid.')
+        raise ValueError(f'{field_name} "{input_str}" is invalid.')
     if match.group(2) == "ms":
         return float(match.group(1)) / 1000.0
     else:
@@ -76,7 +72,7 @@ def parse_time_to_second(field_name: str, input_str: str) -> float:
 def parse_bytes_to_mib(field_name: str, input_str: str) -> int:
     match = re.fullmatch(r"(\d+)\s*(G|GB|GiB|M|MB|MiB)", input_str)
     if match is None:
-        raise TMTInvalidConfigError(f'{field_name} "{input_str}" is invalid.')
+        raise ValueError(f'{field_name} "{input_str}" is invalid.')
     if match.group(2).startswith("G"):
         return int(match.group(1)) * 1024
     else:
@@ -117,9 +113,7 @@ class Solution:
         self.parse_limits()
 
         if self.type is not SolutionType.DEFAULT:
-            raise TMTInvalidConfigError(
-                f"solution.type {self.type} is not supported yet."
-            )
+            raise ValueError(f"solution.type {self.type} is not supported yet.")
 
 
 class AnswerGenerationType(enum.Enum):
@@ -135,13 +129,13 @@ class AnswerGeneration:
     def __post_init__(self):
         self.type = AnswerGenerationType(self.type)
         if self.type is not AnswerGenerationType.SOLUTION:
-            raise TMTInvalidConfigError(
+            raise ValueError(
                 f"answer_generation.type {self.type} is not supported yet."
             )
 
         if self.type is AnswerGenerationType.SOLUTION:
             if self.filename is None:
-                raise TMTInvalidConfigError(
+                raise ValueError(
                     "answer_generation.filename must be specified "
                     "when type is 'solution'."
                 )
@@ -168,6 +162,11 @@ class TMTConfig:
     # TODO: manager
 
     def __post_init__(self):
+        if not self.input_extension.startswith("."):
+            raise ValueError('input_extension should start with ".".')
+        if not self.output_extension.startswith("."):
+            raise ValueError('output_extension should start with ".".')
+
         self.judge_convention = JudgeConvention(self.judge_convention)
         self.problem_type = ProblemType(self.problem_type)
 
@@ -182,9 +181,21 @@ class TMTConfig:
 
         # TODO: validate the fields,
         # e.g. batch problem should not have interactor
+        if self.problem_type is ProblemType.BATCH:
+            if self.interactor is not None:
+                raise ValueError(
+                    "Interactor should not be specified when the problem type is batch."
+                )
+        elif self.problem_type is ProblemType.INTERACTIVE:
+            if self.interactor is None:
+                raise ValueError(
+                    "Interactor should be specified "
+                    "when the problem type is interactive."
+                )
+
         if self.problem_type is not ProblemType.BATCH:
             if self.checker is not None:
-                raise TMTInvalidConfigError(
+                raise ValueError(
                     "Checker should not be specified "
                     "when the problem type is not batch."
                 )
