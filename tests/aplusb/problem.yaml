@@ -21,8 +21,3 @@ answer_generation:
   type: solution
   filename: sol.cpp
   # time_limit: 100 s
-
-# checker:
-#   type: default
-#   # check_generated_output: true/false (default true)
-#   # check_forced_output: true/false (default true)
