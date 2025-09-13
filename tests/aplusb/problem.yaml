@@ -20,4 +20,3 @@ solution:
 answer_generation: 
   type: solution
   filename: sol.cpp
-  # time_limit: 100 s
