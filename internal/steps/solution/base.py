@@ -45,10 +45,10 @@ class SolutionStep(ABC):
     # @classmethod
     # def skip_checker(cls):
     #     return False
-    #
-    # @abstractmethod
-    # def prepare_sandbox(self):
-    #     pass
+
+    @abstractmethod
+    def prepare_sandbox(self):
+        pass
 
     @abstractmethod
     def clean_up(self):
