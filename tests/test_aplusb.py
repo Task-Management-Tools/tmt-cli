@@ -1,7 +1,7 @@
 import pathlib
 
 from internal.formatting import Formatter
-from internal.context import TMTContext
+from internal.context import TMTContext, AnswerGenerationType
 from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
 from internal.steps.solution import SolutionStep, make_solution_step
@@ -25,16 +25,14 @@ def test_aplusb_gen():
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
 
-    model_solution_full_path = context.path.replace_with_solution(
-        context.config.model_solution_path
-    )
     generation_step = GenerationStep(context)
     validation_step = ValidationStep(context)
+    assert context.config.answer_generation.type is AnswerGenerationType.SOLUTION
     solution_step: SolutionStep = make_solution_step(
-        problem_type=context.config.problem_type,
+        solution_type=context.config.solution.type,
         context=context,
         is_generation=True,
-        submission_files=[model_solution_full_path],
+        submission_files=[context.config.answer_generation.filename],
     )
 
     generation_step.prepare_sandbox()
@@ -84,12 +82,12 @@ def test_aplusb_gen():
             codename = test.test_name
             result = gen_single(
                 formatter=formatter,
-                context=context,
                 codename_display_width=100,
                 generation_step=generation_step,
                 validation_step=validation_step,
                 solution_step=solution_step,
                 checker_step=None,
+                interactor_step=None,
                 show_reason=False,
                 testset=testset,
                 test=test,
