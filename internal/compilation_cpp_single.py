@@ -27,13 +27,13 @@ def compile_cpp_single(
     The integer will be -1 if one of the files does not exist.
     """
 
-    for file in files:
-        if not Path(file).exists():
-            return CompilationResult(
-                verdict=CompilationOutcome.FAILED,
-                standard_error=f"File {file} could not be found.",
-                exit_status=-1,
-            )
+    # for file in files:
+    #     if not Path(file).exists():
+    #         return CompilationResult(
+    #             verdict=CompilationOutcome.FAILED,
+    #             standard_error=f"File {file} could not be found.",
+    #             exit_status=-1,
+    #         )
 
     # On MacOS, this has to be set during compile time
     if platform.system() == "Darwin":

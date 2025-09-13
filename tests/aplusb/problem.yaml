@@ -2,20 +2,27 @@ title: A + B Problem
 short_name: aplusb
 description: A + B Problem
 
-time_limit: 1000 ms
-memory_limit: 1 G
-output_limit: unlimited
-input_extension: in
-output_extension: out
+input_extension: .in # "." is required
+output_extension: .out
 
 judge_convention: icpc
-
 problem_type: batch
-solution_compilation: default
-input_validation: default
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GB
+  output_limit: unlimited
+
 answer_generation: 
   type: solution
   filename: sol.cpp
+  # time_limit: 100 s
 
-checker:
-  type: default
+# checker:
+#   type: default
+#   # check_generated_output: true/false (default true)
+#   # check_forced_output: true/false (default true)

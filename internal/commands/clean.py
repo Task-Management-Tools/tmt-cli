@@ -38,12 +38,12 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
         GenerationStep(context).clean_up()
         ValidationStep(context).clean_up()
         if (
-            context.config.problem_type is ProblemType.BATCH
-            and context.config.checker_type is not CheckerType.DEFAULT
+            context.config.checker is not None
+            and context.config.checker.type is not CheckerType.DEFAULT
         ):
             ICPCCheckerStep(context).clean_up()
         make_solution_step(
-            problem_type=context.config.problem_type,
+            solution_type=context.config.solution.type,
             context=context,
             is_generation=False,
             submission_files=[],

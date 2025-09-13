@@ -1,5 +1,12 @@
 from .context import TMTContext, find_problem_dir
-from .context import JudgeConvention, ProblemType, CheckerType
+from .config import (
+    JudgeConvention,
+    ProblemType,
+    CheckerType,
+    ValidatorType,
+    SolutionType,
+    AnswerGenerationType,
+)
 
 __all__ = [
     "TMTContext",
@@ -7,4 +14,7 @@ __all__ = [
     "JudgeConvention",
     "ProblemType",
     "CheckerType",
+    "ValidatorType",
+    "SolutionType",
+    "AnswerGenerationType",
 ]

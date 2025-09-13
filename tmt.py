@@ -50,8 +50,9 @@ def main():
         return
 
     formatter = Formatter()
+    cwd = pathlib.Path.cwd()
+    problem_dir = find_problem_dir(cwd)  # TODO specify it in args
     script_dir = str(pathlib.Path(__file__).parent.resolve())
-    problem_dir = find_problem_dir(script_dir)
     context = TMTContext(problem_dir, script_dir)
 
     if args.command == "gen":

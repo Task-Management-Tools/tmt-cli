@@ -43,6 +43,7 @@ class BatchSolutionStep(SolutionStep):
         files = self.submission_files
         if self.grader is not None:
             files.append(self.context.path.replace_with_grader(self.grader))
+        files = [self.context.path.replace_with_solution(f) for f in files]
 
         comp_result = compile_cpp_single(
             working_dir=self.context.path.sandbox_solution,

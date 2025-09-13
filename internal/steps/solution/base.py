@@ -26,9 +26,9 @@ class SolutionStep(ABC):
             self.is_generation = True
             self.log_directory = context.path.logs_generation
         else:
-            self.time_limit_sec = self.context.config.time_limit_sec
-            self.memory_limit_mib = self.context.config.memory_limit_mib
-            self.output_limit_mib = self.context.config.output_limit_mib
+            self.time_limit_sec = self.context.config.solution.time_limit_sec
+            self.memory_limit_mib = self.context.config.solution.memory_limit_mib
+            self.output_limit_mib = self.context.config.solution.output_limit_mib
             self.is_generation = False
             self.log_directory = context.path.logs_invocation
 

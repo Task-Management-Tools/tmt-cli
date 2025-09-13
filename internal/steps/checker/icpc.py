@@ -11,6 +11,8 @@ from internal.outcome import (
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
+    ExecutionOutcome,
+    eval_outcome_to_grade_outcome,
 )
 
 from .base import CheckerStep
@@ -67,6 +69,50 @@ class ICPCCheckerStep(CheckerStep):
             directory=self.context.path.checker,
             context=self.context,
         )
+
+    def run_checker_during_gen(self, result, codename):
+        if result.output_generation not in [
+            ExecutionOutcome.SUCCESS,
+            ExecutionOutcome.SKIPPED_SUCCESS,
+        ] or result.input_validation not in [
+            ExecutionOutcome.SUCCESS,
+            ExecutionOutcome.SKIPPED_SUCCESS,
+        ]:
+            result.output_validation = ExecutionOutcome.SKIPPED
+            return
+
+        if result.is_output_forced:
+            if not self.context.config.check_forced_output:
+                result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+                return
+        else:  # generated output
+            if not self.context.config.check_generated_output:
+                result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+                return
+        testcase_input = os.path.join(
+            self.context.path.testcases,
+            self.context.construct_input_filename(codename),
+        )
+        testcase_answer = os.path.join(
+            self.context.path.testcases,
+            self.context.construct_output_filename(codename),
+        )
+
+        copied_testcase_output = os.path.join(
+            self.context.path.sandbox_checker,
+            os.path.basename(testcase_answer),
+        )
+        shutil.copy(testcase_answer, copied_testcase_output)
+
+        checker_result = self.run_checker(
+            self.context.config.checker_arguments,
+            EvaluationResult(output_file=copied_testcase_output),
+            testcase_input,
+            testcase_answer,
+        )
+        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
+        result.reason = checker_result.checker_reason
+        return checker_result
 
     def run_checker(
         self,
