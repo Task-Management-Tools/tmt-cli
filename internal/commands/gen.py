@@ -68,7 +68,13 @@ def gen_single(
     elif result.output_generation is ExecutionOutcome.SKIPPED_SUCCESS:
         pass
     else:
-        solution_result = solution_step.run_solution(codename)
+        if interactor_step is None:
+            solution_result = solution_step.run_solution(codename)
+        else:
+            solution_result = interactor_step.run_solution(
+                solution_step,
+                codename,
+            )
         result.output_generation = eval_outcome_to_run_outcome(solution_result)
         result.reason = solution_result.checker_reason
     formatter.print_exec_result(result.output_generation)
@@ -154,7 +160,7 @@ def command_gen(
     interactor_step: InteractorStep | None = None
     if context.config.interactor is not None:
         formatter.print("Interactor  compile ")
-        interactor_step = InteractorStep(context=context)
+        interactor_step = InteractorStep(context=context, is_generation=True)
         interactor_step.prepare_sandbox()
         interactor_compilation = interactor_step.compile_interactor()
         formatter.print_compile_string_with_exit(interactor_compilation)

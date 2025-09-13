@@ -61,8 +61,9 @@ def command_invoke(
     solution_step.prepare_sandbox()
     formatter.print_compile_string_with_exit(solution_step.compile_solution())
 
+    interactor_step = None
     if context.config.interactor is not None:
-        interactor_step = InteractorStep(context=context)
+        interactor_step = InteractorStep(context=context, is_generation=False)
         formatter.print("Interactor  compile ")
         formatter.print_compile_string_with_exit(interactor_step.compile_interactor())
 
@@ -119,19 +120,25 @@ def command_invoke(
 
     codename_length = max(map(len, available_testcases)) + 2
 
-    for testcase in available_testcases:
+    for codename in available_testcases:
         formatter.print(" " * 4)
-        formatter.print_fixed_width(testcase, width=codename_length)
+        formatter.print_fixed_width(codename, width=codename_length)
 
         formatter.print("sol ")
-        solution_result = solution_step.run_solution(testcase)
+        if interactor_step is None:
+            solution_result = solution_step.run_solution(codename)
+        else:
+            solution_result = interactor_step.run_solution(
+                solution_step,
+                codename,
+            )
         formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
         formatter.print(
             f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  "
         )
 
         with open(
-            os.path.join(context.path.logs_invocation, f"{testcase}.sol.log"), "w+"
+            os.path.join(context.path.logs_invocation, f"{codename}.sol.log"), "w+"
         ) as f:
             f.write(solution_result.checker_reason)
 
@@ -139,10 +146,10 @@ def command_invoke(
         # if context.config.checker is not None:
         formatter.print("check ")
         testcase_input = os.path.join(
-            context.path.testcases, context.construct_input_filename(testcase)
+            context.path.testcases, context.construct_input_filename(codename)
         )
         testcase_answer = os.path.join(
-            context.path.testcases, context.construct_output_filename(testcase)
+            context.path.testcases, context.construct_output_filename(codename)
         )
         checker_arguments = (
             context.config.checker.arguments
