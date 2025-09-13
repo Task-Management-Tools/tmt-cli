@@ -1,18 +1,18 @@
 import pathlib
 
-from internal.formatting import Formatter
-from internal.context import TMTContext
-from internal.steps.generation import GenerationStep
-from internal.steps.validation import ValidationStep
-from internal.steps.solution import SolutionStep, make_solution_step
-from internal.outcome import (
+from tmt.formatting import Formatter
+from tmt.context import TMTContext
+from tmt.steps.generation import GenerationStep
+from tmt.steps.validation import ValidationStep
+from tmt.steps.solution import SolutionStep, make_solution_step
+from tmt.outcome import (
     CompilationOutcome,
     CompilationResult,
     GenerationResult,
     ExecutionOutcome,
 )
-from internal.commands import command_clean
-from internal.commands.gen import gen_single
+from tmt.commands import command_clean
+from tmt.commands.gen import gen_single
 
 
 script_dir = pathlib.Path(__file__).parent.parent.resolve()

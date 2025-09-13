@@ -3,10 +3,10 @@ import shutil
 import pathlib
 
 
-from internal.context import CheckerType, TMTContext
-from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.runner import Process, wait_procs
-from internal.outcome import (
+from tmt.context import CheckerType, TMTContext
+from tmt.compilation_makefile import compile_with_make, clean_with_make
+from tmt.runner import Process, wait_procs
+from tmt.outcome import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,

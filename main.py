@@ -1,14 +1,14 @@
 import argparse
 import pathlib
 
-from internal.formatting import Formatter
-from internal.context import TMTContext, find_problem_dir
-from internal.commands import command_gen, command_invoke, command_clean
-from internal.errors import TMTMissingFileError, TMTInvalidConfigError
+from tmt.formatting import Formatter
+from tmt.context import TMTContext, find_problem_dir
+from tmt.commands import command_gen, command_invoke, command_clean
+from tmt.errors import TMTMissingFileError, TMTInvalidConfigError
 
 
 def main():
-    parser = argparse.ArgumentParser(description="TMT - Task Management Tools")
+    parser = argparse.ArgumentParser(prog="tmt", description="TMT - Task Management Tools")
     parser.add_argument(
         "--version",
         action="version",

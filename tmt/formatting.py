@@ -1,7 +1,7 @@
 import sys
 import os
 
-from internal.outcome import (
+from tmt.outcome import (
     CompilationResult,
     CompilationOutcome,
     ExecutionOutcome,

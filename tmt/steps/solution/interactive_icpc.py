@@ -4,11 +4,11 @@ import signal
 import subprocess
 from pathlib import Path
 
-from internal.context import TMTContext
-from internal.runner import Process, wait_procs
-from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.compilation_cpp_single import compile_cpp_single
-from internal.outcome import (
+from tmt.context import TMTContext
+from tmt.runner import Process, wait_procs
+from tmt.compilation_makefile import compile_with_make, clean_with_make
+from tmt.compilation_cpp_single import compile_cpp_single
+from tmt.outcome import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,

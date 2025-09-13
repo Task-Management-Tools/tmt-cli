@@ -2,10 +2,10 @@ import os
 import shutil
 import subprocess
 
-from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.context import TMTContext
-from internal.runner import Process, wait_procs
-from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
+from tmt.compilation_makefile import compile_with_make, clean_with_make
+from tmt.context import TMTContext
+from tmt.runner import Process, wait_procs
+from tmt.outcome import CompilationResult, GenerationResult, ExecutionOutcome
 
 
 class GenerationStep:

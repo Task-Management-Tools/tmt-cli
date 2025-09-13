@@ -4,8 +4,8 @@ import subprocess
 
 from pathlib import Path
 
-from internal.outcome import CompilationResult, CompilationOutcome
-from internal.runner import Process, wait_for_outputs
+from tmt.outcome import CompilationResult, CompilationOutcome
+from tmt.runner import Process, wait_for_outputs
 
 # TODO: this should be a class when we extend language supports
 

@@ -5,8 +5,8 @@ import yaml
 
 from enum import Enum
 
-from internal.recipe_parser import parse_recipe_data
-from internal.errors import TMTMissingFileError, TMTInvalidConfigError
+from tmt.recipe_parser import parse_recipe_data
+from tmt.errors import TMTMissingFileError, TMTInvalidConfigError
 
 from .paths import ProblemDirectoryHelper
 

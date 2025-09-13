@@ -1,4 +1,4 @@
-from internal.outcome import (
+from tmt.outcome import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,

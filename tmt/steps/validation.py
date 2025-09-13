@@ -2,10 +2,10 @@ import os
 import shutil
 from pathlib import Path
 
-from internal.context import JudgeConvention, TMTContext
-from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
-from internal.runner import Process, wait_procs
+from tmt.context import JudgeConvention, TMTContext
+from tmt.compilation_makefile import compile_with_make, clean_with_make
+from tmt.outcome import CompilationResult, GenerationResult, ExecutionOutcome
+from tmt.runner import Process, wait_procs
 
 
 class ValidationStep:

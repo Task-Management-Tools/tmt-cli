@@ -3,9 +3,9 @@ import subprocess
 import platform
 
 
-from internal.runner import Process, wait_for_outputs
-from internal.outcome import CompilationOutcome, CompilationResult
-from internal.context import TMTContext
+from tmt.runner import Process, wait_for_outputs
+from tmt.outcome import CompilationOutcome, CompilationResult
+from tmt.context import TMTContext
 
 MAKE = "make"
 

@@ -1,4 +1,4 @@
-from internal.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
+from tmt.outcome import EvaluationOutcome, EvaluationResult, CompilationResult
 
 from .base import CheckerStep
 

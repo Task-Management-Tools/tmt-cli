@@ -1,12 +1,12 @@
 import os
 import shutil
 
-from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext, ProblemType
-from internal.steps.generation import GenerationStep
-from internal.steps.validation import ValidationStep
-from internal.steps.solution import make_solution_step
-from internal.steps.checker.icpc import ICPCCheckerStep
+from tmt.formatting import Formatter
+from tmt.context import CheckerType, TMTContext, ProblemType
+from tmt.steps.generation import GenerationStep
+from tmt.steps.validation import ValidationStep
+from tmt.steps.solution import make_solution_step
+from tmt.steps.checker.icpc import ICPCCheckerStep
 
 
 def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bool):

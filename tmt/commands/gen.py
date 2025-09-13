@@ -4,20 +4,20 @@ import shutil
 import hashlib
 import json
 
-from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext
-from internal.outcome import (
+from tmt.formatting import Formatter
+from tmt.context import CheckerType, TMTContext
+from tmt.outcome import (
     EvaluationResult,
     ExecutionOutcome,
     eval_outcome_to_grade_outcome,
     eval_outcome_to_run_outcome,
 )
-from internal.errors import TMTInvalidConfigError
+from tmt.errors import TMTInvalidConfigError
 
-from internal.steps.generation import GenerationStep
-from internal.steps.validation import ValidationStep
-from internal.steps.solution import SolutionStep, make_solution_step
-from internal.steps.checker.icpc import ICPCCheckerStep
+from tmt.steps.generation import GenerationStep
+from tmt.steps.validation import ValidationStep
+from tmt.steps.solution import SolutionStep, make_solution_step
+from tmt.steps.checker.icpc import ICPCCheckerStep
 
 
 def gen_single(

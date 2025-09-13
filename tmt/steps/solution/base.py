@@ -1,14 +1,14 @@
 import signal
 from abc import ABC, abstractmethod
 
-from internal.context import TMTContext
-from internal.outcome import (
+from tmt.context import TMTContext
+from tmt.outcome import (
     CompilationOutcome,
     EvaluationResult,
     EvaluationOutcome,
     CompilationResult,
 )
-from internal.runner import Process
+from tmt.runner import Process
 
 
 class SolutionStep(ABC):

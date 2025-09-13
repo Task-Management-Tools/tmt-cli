@@ -1,8 +1,8 @@
 import os
 from abc import ABC, abstractmethod
 
-from internal.context import TMTContext
-from internal.outcome import EvaluationResult, CompilationResult
+from tmt.context import TMTContext
+from tmt.outcome import EvaluationResult, CompilationResult
 
 
 class CheckerStep(ABC):

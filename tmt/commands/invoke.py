@@ -2,11 +2,11 @@ import pathlib
 import os
 import subprocess
 
-from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext
-from internal.outcome import eval_outcome_to_run_outcome
-from internal.steps.solution import SolutionStep, make_solution_step
-from internal.steps.checker.icpc import ICPCCheckerStep
+from tmt.formatting import Formatter
+from tmt.context import CheckerType, TMTContext
+from tmt.outcome import eval_outcome_to_run_outcome
+from tmt.steps.solution import SolutionStep, make_solution_step
+from tmt.steps.checker.icpc import ICPCCheckerStep
 
 
 def is_apport_active():

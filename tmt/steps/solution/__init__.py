@@ -2,7 +2,7 @@ from .base import SolutionStep
 from .batch import BatchSolutionStep
 from .interactive_icpc import InteractiveICPCSolutionStep
 
-from internal.context import ProblemType
+from tmt.context import ProblemType
 
 
 def make_solution_step(problem_type: ProblemType, *args, **kwargs) -> SolutionStep:
