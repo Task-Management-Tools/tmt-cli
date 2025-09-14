@@ -12,8 +12,7 @@ from internal.runner import Process, wait_for_outputs
 
 from .languages import languages
 
-MAKE = "make"
-
+MAKE = "gmake"
 
 def make_compile_wildcard(
     *, context: TMTContext, directory: str, executable_stack_size_mib: int
