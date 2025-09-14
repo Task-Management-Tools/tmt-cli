@@ -162,7 +162,7 @@ def command_gen(
         formatter.print("Interactor  compile ")
         interactor_step = InteractorStep(context=context)
         interactor_step.prepare_sandbox()
-        interactor_compilation = interactor_step.compile_interactor()
+        interactor_compilation = interactor_step.compile()
         formatter.print_compile_string_with_exit(interactor_compilation)
 
     # TODO: in case of update testcases, these should be mkdir

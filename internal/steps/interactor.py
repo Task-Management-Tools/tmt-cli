@@ -33,7 +33,7 @@ class InteractorStep:
             env={"SRCS": self.context.config.interactor.filename},
         )
 
-    def compile_interactor(self) -> CompilationResult:
+    def compile(self) -> CompilationResult:
         if self.context.path.has_interactor_directory():
             comp_result = compile_with_make(
                 makefile_path=self.context.path.makefile_checker,
