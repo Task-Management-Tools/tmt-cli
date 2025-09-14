@@ -14,10 +14,10 @@ from internal.runner import Process, wait_for_outputs
 from .languages import languages
 
 
-if platform.system() == "Darwin":
-    MAKE = "gmake"
-else:
-    MAKE = "make"
+# if platform.system() == "Darwin":
+#     MAKE = "make"
+# else:
+MAKE = "make"
 
 
 def make_compile_wildcard(
