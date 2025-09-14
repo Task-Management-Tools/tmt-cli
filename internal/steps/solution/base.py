@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 
 from internal.context import TMTContext
 from internal.outcome import (
-    CompilationOutcome,
     EvaluationResult,
     EvaluationOutcome,
     CompilationResult,
@@ -26,26 +25,26 @@ class SolutionStep(ABC):
             self.is_generation = True
             self.log_directory = context.path.logs_generation
         else:
-            self.time_limit_sec = self.context.config.time_limit_sec
-            self.memory_limit_mib = self.context.config.memory_limit_mib
-            self.output_limit_mib = self.context.config.output_limit_mib
+            self.time_limit_sec = self.context.config.solution.time_limit_sec
+            self.memory_limit_mib = self.context.config.solution.memory_limit_mib
+            self.output_limit_mib = self.context.config.solution.output_limit_mib
             self.is_generation = False
             self.log_directory = context.path.logs_invocation
 
         self.submission_files = submission_files
         self.grader = None  # TODO: infer from config file (context)
 
-    @classmethod
-    def has_interactor(cls):
-        return False
-
-    @classmethod
-    def has_manager(cls):
-        return False
-
-    @classmethod
-    def skip_checker(cls):
-        return False
+    # @classmethod
+    # def has_interactor(cls):
+    #     return False
+    #
+    # @classmethod
+    # def has_manager(cls):
+    #     return False
+    #
+    # @classmethod
+    # def skip_checker(cls):
+    #     return False
 
     @abstractmethod
     def prepare_sandbox(self):
@@ -59,11 +58,11 @@ class SolutionStep(ABC):
     def compile_solution(self) -> CompilationResult:
         pass
 
-    def compile_interactor(self) -> CompilationResult:
-        return CompilationResult(CompilationOutcome.SKIPPED)
-
-    def compile_manager(self) -> CompilationResult:
-        return CompilationResult(CompilationOutcome.SKIPPED)
+    # def compile_interactor(self) -> CompilationResult:
+    #     return CompilationResult(CompilationOutcome.SKIPPED)
+    #
+    # def compile_manager(self) -> CompilationResult:
+    #     return CompilationResult(CompilationOutcome.SKIPPED)
 
     @abstractmethod
     def run_solution(self, code_name: str) -> EvaluationResult:

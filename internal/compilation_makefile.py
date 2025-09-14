@@ -79,7 +79,9 @@ def compile_with_make(
     )
 
 
-def clean_with_make(*, makefile_path: str, directory: str, context: TMTContext) -> None:
+def clean_with_make(
+    *, makefile_path: str, directory: str, context: TMTContext, env: dict = {}
+) -> None:
     command = [MAKE, "-C", directory, "-f", makefile_path, "clean"]
 
     compilation_time_limit_sec = context.config.trusted_compile_time_limit_sec
@@ -98,6 +100,7 @@ def clean_with_make(*, makefile_path: str, directory: str, context: TMTContext) 
             "CXXFLAGS": " ".join(compile_flags),
             "INCLUDE_PATHS": " ".join(include_paths),
         }
+        | env
         | os.environ,
     }
 

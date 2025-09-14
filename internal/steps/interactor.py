@@ -7,7 +7,7 @@ from pathlib import Path
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
 from internal.compilation_makefile import compile_with_make, clean_with_make
-from internal.compilation_cpp_single import compile_cpp_single
+from internal.steps.solution import SolutionStep
 from internal.outcome import (
     EvaluationOutcome,
     EvaluationResult,
@@ -15,92 +15,54 @@ from internal.outcome import (
     CompilationResult,
 )
 
-from .base import SolutionStep
 
+class InteractorStep:
+    """Implements ICPC interactor compilation and execution."""
 
-class InteractiveICPCSolutionStep(SolutionStep):
-    """Implements ICPC interactive problem evaluation."""
+    def __init__(self, *, context: TMTContext):
+        self.context = context
 
-    def __init__(
-        self, *, context: TMTContext, is_generation: bool, submission_files: list[str]
-    ):
-        super().__init__(
-            context=context,
-            is_generation=is_generation,
-            submission_files=submission_files,
-        )
-
-    @classmethod
-    def has_interactor(cls):
-        return True
-
-    @classmethod
-    def skip_checker(cls):
-        return True
-
-    def prepare_sandbox(self):
-        os.makedirs(self.context.path.sandbox_solution, exist_ok=True)
+    def prepare_sandbox(self) -> None:
         os.makedirs(self.context.path.sandbox_interactor, exist_ok=True)
 
-    def clean_up(self):
+    def clean_up(self) -> None:
         clean_with_make(
             makefile_path=self.context.path.makefile_checker,
             directory=self.context.path.interactor,
             context=self.context,
+            env={"SRCS": self.context.config.interactor.filename},
         )
 
-    def compile_solution(self) -> CompilationResult:
-        if len(self.submission_files) != 1:
-            return CompilationResult(
-                verdict=CompilationOutcome.FAILED,
-                exit_status=-1,
-                standard_error="ICPC-style interactive task only supports single file submission.",
-            )
-
-        comp_result = compile_cpp_single(
-            working_dir=self.context.path.sandbox_solution,
-            files=self.submission_files,
-            compiler=self.context.compiler("cpp"),
-            compile_flags=self.context.compile_flags("cpp"),
-            # these parameters are intended trusted step time limit instead of compile limit,
-            # since they will occur on judge, so they should have more restrictive limits
-            compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
-            compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-            executable_stack_size_mib=self.memory_limit_mib,
-            executable_name=self.executable_name,
-        )
-        comp_result.dump_to_logs(self.log_directory, "solution")
-        return comp_result
-
-    def compile_interactor(self) -> CompilationResult:
+    def compile(self) -> CompilationResult:
         if self.context.path.has_interactor_directory():
             comp_result = compile_with_make(
                 makefile_path=self.context.path.makefile_checker,
                 directory=self.context.path.interactor,
                 context=self.context,
                 executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
-                env={"SRCS": self.context.config.interactor_filename},
+                env={"SRCS": self.context.config.interactor.filename},
             )
 
-            if comp_result.verdict is CompilationOutcome.SUCCESS:
-                shutil.copy(
-                    os.path.join(self.context.path.interactor, "checker"),
-                    self.context.path.sandbox_interactor,
-                )
+            shutil.copy(
+                os.path.join(self.context.path.interactor, "checker"),
+                self.context.path.sandbox_interactor,
+            )
 
-            comp_result.dump_to_logs(self.log_directory, "interactor")
             return comp_result
         return CompilationResult(
             CompilationOutcome.FAILED, "`interactor' directory not found."
         )
 
-    def run_solution(self, code_name: str) -> EvaluationResult:
+    def run_solution(
+        self,
+        solution_step: SolutionStep,
+        code_name: str,
+    ) -> EvaluationResult:
+        # TODO use solution_step.xxx instead of self.context.config.soution xxx
         """
         This function only returns FileNotFoundError for execution error.
-
-        If store_output is specified, then we create an empty file as dummy output file.
         """
-        os.makedirs(self.log_directory, exist_ok=True)
+        os.makedirs(solution_step.log_directory, exist_ok=True)
 
         file_in_name = self.context.construct_input_filename(code_name)
         file_out_name = self.context.construct_output_filename(code_name)
@@ -126,7 +88,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
         )
 
         # Create dummy output
-        if self.is_generation:
+        if solution_step.is_generation:
             with open(testcase_answer, "w+b"):
                 pass  # Truncate the file
 
@@ -142,14 +104,16 @@ class InteractiveICPCSolutionStep(SolutionStep):
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
         solution = Process(
-            os.path.join(self.context.path.sandbox_solution, self.executable_name),
+            os.path.join(
+                self.context.path.sandbox_solution, solution_step.executable_name
+            ),
             preexec_fn=solution_preexec_fn,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr_redirect=sandbox_solution_err_file,
-            time_limit_sec=self.time_limit_sec,
-            memory_limit_mib=self.memory_limit_mib,
-            output_limit_mib=self.output_limit_mib,
+            time_limit_sec=solution_step.time_limit_sec,
+            memory_limit_mib=solution_step.memory_limit_mib,
+            output_limit_mib=solution_step.output_limit_mib,
         )
 
         def interactor_preexec_fn():
@@ -168,7 +132,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
             stdout=solution.stdin,
             stderr_redirect=sandbox_interactor_err_file,
             time_limit_sec=max(
-                self.time_limit_sec * 2,
+                solution_step.time_limit_sec * 2,
                 self.context.config.trusted_step_time_limit_sec,
             )
             + 1,
@@ -191,22 +155,24 @@ class InteractiveICPCSolutionStep(SolutionStep):
         Path(sandbox_interactor_err_file).touch()
         shutil.move(
             sandbox_interactor_err_file,
-            os.path.join(self.log_directory, file_interactor_err_name),
+            os.path.join(solution_step.log_directory, file_interactor_err_name),
         )
         Path(sandbox_solution_err_file).touch()
         shutil.move(
             sandbox_solution_err_file,
-            os.path.join(self.log_directory, file_sol_err_name),
+            os.path.join(solution_step.log_directory, file_sol_err_name),
         )
 
         interactor_feedback_logs = os.path.join(
-            self.log_directory, f"{code_name}.interactor.feedback"
+            solution_step.log_directory, f"{code_name}.interactor.feedback"
         )
         if os.path.isdir(interactor_feedback_logs):
             shutil.rmtree(interactor_feedback_logs)
         shutil.copytree(
             sandbox_interactor_feedback_dir,
-            os.path.join(self.log_directory, f"{code_name}.interactor.feedback"),
+            os.path.join(
+                solution_step.log_directory, f"{code_name}.interactor.feedback"
+            ),
         )
 
         result = EvaluationResult(
@@ -220,7 +186,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
         elif interactor.is_signaled_exit:
             result.verdict = EvaluationOutcome.CHECKER_CRASHED
         # else, we check if solution executed successfully
-        elif self.is_solution_abormal_exit(solution, result):
+        elif solution_step.is_solution_abormal_exit(solution, result):
             pass
         # Noe, we can check if solution is actually correct
         elif interactor.exit_code == 42:

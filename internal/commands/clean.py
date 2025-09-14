@@ -2,11 +2,12 @@ import os
 import shutil
 
 from internal.formatting import Formatter
-from internal.context import CheckerType, TMTContext, ProblemType
+from internal.context import CheckerType, TMTContext
 from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
 from internal.steps.solution import make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
+from internal.steps.interactor import InteractorStep
 
 
 def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bool):
@@ -38,12 +39,14 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
         GenerationStep(context).clean_up()
         ValidationStep(context).clean_up()
         if (
-            context.config.problem_type is ProblemType.BATCH
-            and context.config.checker_type is not CheckerType.DEFAULT
+            context.config.checker is not None
+            and context.config.checker.type is not CheckerType.DEFAULT
         ):
             ICPCCheckerStep(context).clean_up()
+        if context.config.interactor is not None:
+            InteractorStep(context=context).clean_up()
         make_solution_step(
-            problem_type=context.config.problem_type,
+            solution_type=context.config.solution.type,
             context=context,
             is_generation=False,
             submission_files=[],
