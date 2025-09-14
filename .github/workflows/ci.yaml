@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-14]
         python-version: ["3.10", "3.13"]
     steps:
     - uses: actions/checkout@v5
@@ -21,4 +21,4 @@ jobs:
         pip install pyyaml pytest
     - name: Run pytest
       run: |
-        python -m pytest
+        timeout 180 python -m pytest
