@@ -221,7 +221,7 @@ def wait_procs(procs: list[Process]) -> None:
             pid_to_proc[pid].safe_kill()
 
 
-def wait_for_outputs(proc: Process) -> tuple[str, str]:
+def wait_for_outputs(proc: Process, truncate_length: int = 16384) -> tuple[str, str]:
     """
     Wait for the conclusion of the processes in the list, avoiding
     starving for input and output.
@@ -237,6 +237,17 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
     # much memory). Unix specific.
 
     stdout, stderr = b"", b""
+
+    import os
+    import fcntl
+
+    fd = proc.stdout.fileno()
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+    fd = proc.stderr.fileno()
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
     try:
         while proc.wait4() is None:
             to_read = (
@@ -250,7 +261,7 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
                 break
             available_read = select.select(to_read, [], [], 1.0)[0]
             for file in available_read:
-                content = file.read(8 * 1024)
+                content = file.read(8192)
                 if type(content) is str:
                     content = content.encode()
                 if file is proc.stdout:
@@ -259,16 +270,16 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
                     stderr += content
 
         if proc.stdout is not None:
-            while content := proc.stdout.read(8 * 1024):
+            while (content := proc.stdout.read(8192)) and len(stdout) < truncate_length:
                 if type(content) is str:
                     content = content.encode()
                 stdout += content
         if proc.stderr is not None:
-            while content := proc.stderr.read(8 * 1024):
+            while (content := proc.stderr.read(8192)) and len(stderr) < truncate_length:
                 if type(content) is str:
                     content = content.encode()
                 stderr += content
-
     finally:
         proc.safe_kill()
-    return stdout.decode(), stderr.decode()
+    return (stdout[:truncate_length].decode(errors="ignore"),
+            stderr[:truncate_length].decode(errors="ignore"))

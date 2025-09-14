@@ -26,7 +26,7 @@ endif
 all: build $(EXE) emit-log
 
 $(DEP): build
-	$(CXX) $(CXXFLAGS) -MM $(SRCS) -MT $(EXE) -MF $@
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $(SRCS) -MT $(EXE) -MF $@
 include $(DEP)
 
 $(EXE): $(SRCS)

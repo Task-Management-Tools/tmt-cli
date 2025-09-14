@@ -44,17 +44,15 @@ def make_compile_wildcard(
                 memory_limit_mib=compilation_memory_limit_mib,
                 env=os.environ | make_info.env,
             )
-
             stdout, stderr = wait_for_outputs(compile_process)
+            allout += stdout
+            allerr += stderr
         finally:
             if compile_process is not None:
                 compile_process.safe_kill()
 
         if compile_process.status != 0 or compile_process.is_timedout:
             break
-
-        allout += stdout
-        allerr += stderr
 
     verdict: CompilationOutcome
     if compile_process is None:

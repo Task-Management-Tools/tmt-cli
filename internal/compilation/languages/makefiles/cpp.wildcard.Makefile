@@ -22,14 +22,14 @@ LOGS = $(CPP_SOURCES:%.cpp=build/%.compile.log) $(CC_SOURCES:%.cc=build/%.compil
 all: build $(EXES) emit-log
 
 build/%.d: %.cpp build
-	$(CXX) $(CXXFLAGS) -MM $< -MT $* -MF $@
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $< -MT $* -MF $@
 
 build/%.d: %.cc build
-	$(CXX) $(CXXFLAGS) -MM $< -MT $* -MF $@
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $< -MT $* -MF $@
 
 include $(DEPS)
 
-build/%: %.cpp 
+build/%: %.cpp
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> build/$*.compile.log
 
 build/%: %.cc
