@@ -1,2 +1,0 @@
-cpp:
-  flags: ["-std=gnu++20", "-O2", "-Wall", "-Wextra", "-Wshadow", "-Wconversion"]

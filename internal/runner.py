@@ -241,21 +241,20 @@ def wait_for_outputs(proc: Process, truncate_length: int = 16384) -> tuple[str, 
     import os
     import fcntl
 
-    fd = proc.stdout.fileno()
-    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-    fd = proc.stderr.fileno()
-    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+    if proc.stdout is not None:
+        fd = proc.stdout.fileno()
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+    if proc.stderr is not None:
+        fd = proc.stderr.fileno()
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
     try:
-        while proc.wait4() is None:
+        while True:
             to_read = (
-                [proc.stdout]
-                if proc.stdout is not None and not proc.stdout.closed
-                else [] + [proc.stderr]
-                if proc.stderr is not None and not proc.stderr.closed
-                else []
+                ([proc.stdout] if proc.stdout is not None and not proc.stdout.closed else []) +
+                ([proc.stderr] if proc.stderr is not None and not proc.stderr.closed else [])
             )
             if len(to_read) == 0:
                 break
@@ -264,23 +263,17 @@ def wait_for_outputs(proc: Process, truncate_length: int = 16384) -> tuple[str, 
                 content = file.read(8192)
                 if type(content) is str:
                     content = content.encode()
+                if len(content) == 0: # EOF
+                    file.close()
+                    continue
                 if file is proc.stdout:
                     stdout += content
                 else:
                     stderr += content
-
-        if proc.stdout is not None:
-            while (content := proc.stdout.read(8192)) and len(stdout) < truncate_length:
-                if type(content) is str:
-                    content = content.encode()
-                stdout += content
-            proc.stdout.close()
-        if proc.stderr is not None:
-            while (content := proc.stderr.read(8192)) and len(stderr) < truncate_length:
-                if type(content) is str:
-                    content = content.encode()
-                stderr += content
-            proc.stderr.close()
+                    
+        _, status, rusage = os.wait3(0)
+        poll_time = time.monotonic()
+        proc.post_wait(poll_time, status, rusage)
     finally:
         proc.safe_kill()
     return (stdout[:truncate_length].decode(errors="ignore"),
