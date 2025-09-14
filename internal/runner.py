@@ -274,11 +274,13 @@ def wait_for_outputs(proc: Process, truncate_length: int = 16384) -> tuple[str, 
                 if type(content) is str:
                     content = content.encode()
                 stdout += content
+            proc.stdout.close()
         if proc.stderr is not None:
             while (content := proc.stderr.read(8192)) and len(stderr) < truncate_length:
                 if type(content) is str:
                     content = content.encode()
                 stderr += content
+            proc.stderr.close()
     finally:
         proc.safe_kill()
     return (stdout[:truncate_length].decode(errors="ignore"),
