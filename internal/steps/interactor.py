@@ -19,7 +19,7 @@ from internal.outcome import (
 class InteractorStep:
     """Implements ICPC interactor compilation and execution."""
 
-    def __init__(self, *, context: TMTContext, is_generation: bool):
+    def __init__(self, *, context: TMTContext):
         self.context = context
 
     def prepare_sandbox(self) -> None:

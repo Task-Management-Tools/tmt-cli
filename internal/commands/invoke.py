@@ -63,7 +63,7 @@ def command_invoke(
 
     interactor_step = None
     if context.config.interactor is not None:
-        interactor_step = InteractorStep(context=context, is_generation=False)
+        interactor_step = InteractorStep(context=context)
         formatter.print("Interactor  compile ")
         formatter.print_compile_string_with_exit(interactor_step.compile_interactor())
 

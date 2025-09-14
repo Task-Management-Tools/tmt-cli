@@ -44,7 +44,7 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
         ):
             ICPCCheckerStep(context).clean_up()
         if context.config.interactor is not None:
-            InteractorStep(context=context, is_generation=False).clean_up()
+            InteractorStep(context=context).clean_up()
         make_solution_step(
             solution_type=context.config.solution.type,
             context=context,

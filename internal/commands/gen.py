@@ -160,7 +160,7 @@ def command_gen(
     interactor_step: InteractorStep | None = None
     if context.config.interactor is not None:
         formatter.print("Interactor  compile ")
-        interactor_step = InteractorStep(context=context, is_generation=True)
+        interactor_step = InteractorStep(context=context)
         interactor_step.prepare_sandbox()
         interactor_compilation = interactor_step.compile_interactor()
         formatter.print_compile_string_with_exit(interactor_compilation)
