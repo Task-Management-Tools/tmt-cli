@@ -201,7 +201,7 @@ class TMTConfig:
                 )
 
         # TODO are these required?
-        self.trusted_compile_time_limit_sec = 30.0  # half minute
+        self.trusted_compile_time_limit_sec = 60.0  # one minute
         self.trusted_compile_memory_limit_mib = resource.RLIM_INFINITY
 
         self.trusted_step_time_limit_sec = 10.0
