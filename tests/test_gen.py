@@ -67,6 +67,15 @@ expected_results_parity = {
     "2_override_1":               expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
     "3_override-wrong-answer_1":  expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
 }
+
+expected_results_aplusb_py = {
+    "1_handmade_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_4":       expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+    "1_handmade_5":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_6":       expected_result_helper(gen=OK,   val=OK,   ans=OK)
+}
 # fmt: on
 
 
@@ -74,6 +83,7 @@ expected_results_parity = {
     "problem_shortname, expected_results",
     [
         ("aplusb", expected_results_aplusb),
+        ("aplusb-py", expected_results_aplusb_py),
         ("floatcmp", expected_results_floatcmp),
         ("guess", expected_results_guess),
         ("parity", expected_results_parity),

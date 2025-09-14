@@ -19,4 +19,4 @@ solution:
 
 answer_generation: 
   type: solution
-  filename: sol.cpp
+  filename: sol.py
