@@ -75,8 +75,6 @@ def command_invoke(
     checker_step.prepare_sandbox()
     formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
 
-    assert context.config.checker is not None
-    assert context.config.checker.filename is not None
     formatter.print(
         " " * 2,
         "(default)"
