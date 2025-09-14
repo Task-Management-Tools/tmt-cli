@@ -15,6 +15,8 @@ from internal.outcome import (
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
+    ExecutionOutcome,
+    eval_outcome_to_grade_outcome,
 )
 
 from .base import CheckerStep
@@ -24,20 +26,14 @@ class ICPCCheckerStep(CheckerStep):
     def __init__(self, context: TMTContext):
         super().__init__(context)
         self.limits = context.config  # shorthand
+        self.use_default_checker = (
+            context.config.checker is None
+            or context.config.checker.type == CheckerType.DEFAULT
+            or not context.path.has_checker_directory()
+        )
 
     def compile(self) -> CompilationResult:
-        if self.context.config.checker_type is CheckerType.CUSTOM:
-            if not self.context.path.has_checker_directory():
-                raise FileNotFoundError("Directory `checker` is not present.")
-
-            compile_result = make_compile_targets(
-                context=self.context,
-                directory=self.context.path.checker,
-                sources=[self.context.config.checker_filename],
-                target="checker",
-                executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
-            )
-        else:
+        if self.use_default_checker:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
             checker_name = self.context.path.default_checker_icpc
@@ -50,14 +46,25 @@ class ICPCCheckerStep(CheckerStep):
                 target="checker",
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
             )
+        else:
+            if not self.context.path.has_checker_directory():
+                raise FileNotFoundError("Directory `checker` is not present.")
 
+            compile_result = make_compile_targets(
+                context=self.context,
+                directory=self.context.path.checker,
+                sources=[self.context.config.checker.filename],
+                target="checker",
+                executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
+            )
+
+        # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
         if compile_result.verdict is CompilationOutcome.SUCCESS:
             shutil.copy(
                 compile_result.produced_file,
                 self.context.path.sandbox_checker,
             )
-
-        # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
+            
         return compile_result
 
     def prepare_sandbox(self):
@@ -65,6 +72,50 @@ class ICPCCheckerStep(CheckerStep):
 
     def clean_up(self):
         make_clean(directory=self.context.path.checker)
+
+    def run_checker_during_gen(self, result, codename):
+        if result.output_generation not in [
+            ExecutionOutcome.SUCCESS,
+            ExecutionOutcome.SKIPPED_SUCCESS,
+        ] or result.input_validation not in [
+            ExecutionOutcome.SUCCESS,
+            ExecutionOutcome.SKIPPED_SUCCESS,
+        ]:
+            result.output_validation = ExecutionOutcome.SKIPPED
+            return
+
+        if result.is_output_forced:
+            if not self.context.config.checker.check_forced_output:
+                result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+                return
+        else:  # generated output
+            if not self.context.config.checker.check_generated_output:
+                result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+                return
+        testcase_input = os.path.join(
+            self.context.path.testcases,
+            self.context.construct_input_filename(codename),
+        )
+        testcase_answer = os.path.join(
+            self.context.path.testcases,
+            self.context.construct_output_filename(codename),
+        )
+
+        copied_testcase_output = os.path.join(
+            self.context.path.sandbox_checker,
+            os.path.basename(testcase_answer),
+        )
+        shutil.copy(testcase_answer, copied_testcase_output)
+
+        checker_result = self.run_checker(
+            self.context.config.checker.arguments,
+            EvaluationResult(output_file=copied_testcase_output),
+            testcase_input,
+            testcase_answer,
+        )
+        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
+        result.reason = checker_result.checker_reason
+        return checker_result
 
     def run_checker(
         self,

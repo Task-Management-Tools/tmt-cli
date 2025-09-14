@@ -43,6 +43,7 @@ class BatchSolutionStep(SolutionStep):
         files = self.submission_files
         if self.grader is not None:
             files.append(self.context.path.replace_with_grader(self.grader))
+        files = [self.context.path.replace_with_solution(f) for f in files]
 
         self.context.path.empty_directory(self.context.path.sandbox_solution)
         comp_result = compile_single(

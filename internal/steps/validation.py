@@ -55,7 +55,7 @@ class ValidationStep:
 
         input_filename = self.context.construct_input_filename(code_name)
         expected_exitcode = (
-            42 if self.context.config.judge is JudgeConvention.ICPC else 0
+            42 if self.context.config.judge_convention is JudgeConvention.ICPC else 0
         )
 
         try:
