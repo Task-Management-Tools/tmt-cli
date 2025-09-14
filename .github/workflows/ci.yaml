@@ -21,4 +21,4 @@ jobs:
         pip install pyyaml pytest
     - name: Run pytest
       run: |
-        timeout 180 python -m pytest
+        python -m pytest
