@@ -190,6 +190,7 @@ def command_gen(
                     test=test,
                 )
                 codename = test.test_name
+                assert codename is not None
                 with open(
                     os.path.join(context.path.logs_generation, f"{codename}.gen.log"),
                     "w+",

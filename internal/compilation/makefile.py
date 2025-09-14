@@ -14,6 +14,7 @@ from .languages import languages
 
 MAKE = "make"
 
+
 def make_compile_wildcard(
     *, context: TMTContext, directory: str, executable_stack_size_mib: int
 ) -> CompilationResult:

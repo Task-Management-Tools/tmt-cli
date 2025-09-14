@@ -35,6 +35,12 @@ class InteractorStep:
 
     def compile(self) -> CompilationResult:
         if self.context.path.has_interactor_directory():
+            if (
+                self.context.config.interactor is None
+                or self.context.config.interactor.filename is None
+            ):
+                raise ValueError("Interactor config should be present")
+
             comp_result = make_compile_targets(
                 context=self.context,
                 directory=self.context.path.interactor,
@@ -43,10 +49,13 @@ class InteractorStep:
                 executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
             )
 
-            shutil.copy(
-                comp_result.produced_file,
-                self.context.path.sandbox_interactor,
-            )
+            if comp_result.verdict is CompilationOutcome.SUCCESS:
+                if comp_result.produced_file is None:
+                    raise FileNotFoundError("Compilation did not produce interactor")
+                shutil.copy(
+                    comp_result.produced_file,
+                    self.context.path.sandbox_interactor,
+                )
 
             return comp_result
         return CompilationResult(
@@ -130,6 +139,7 @@ class InteractorStep:
             executable_filename_base="interactor",
             executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
         )
+        assert interactor_exec_command is not None
         interactor_exec_args = [
             sandbox_interactor_input_file,
             sandbox_interactor_answer_file,

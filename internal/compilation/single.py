@@ -54,9 +54,7 @@ def compile_single(
                     if compile_process is not None:
                         compile_process.safe_kill()
 
-            produced_file = executable_filename_base + (
-                lang.executable_extension or ""
-            )
+            produced_file = executable_filename_base + (lang.executable_extension or "")
             break
 
     if compile_process is None:
@@ -79,7 +77,8 @@ def compile_single(
         verdict=verdict,
         standard_output=allout,
         standard_error=allerr,
-        exit_status=produced_file,
+        exit_status=compile_process.status,
+        produced_file=produced_file,
     )
 
 
@@ -105,7 +104,7 @@ def get_run_single_command(
     return None
 
 
-def get_all_executable_ext(*, context: TMTContext) -> list[str] | None:
+def get_all_executable_ext(*, context: TMTContext) -> list[str | None]:
     return list(
         set([lang_type(context).executable_extension for lang_type in languages])
     )

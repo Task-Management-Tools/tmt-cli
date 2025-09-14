@@ -49,6 +49,11 @@ class ICPCCheckerStep(CheckerStep):
         else:
             if not self.context.path.has_checker_directory():
                 raise FileNotFoundError("Directory `checker` is not present.")
+            if (
+                self.context.config.checker is None
+                or self.context.config.checker.filename is None
+            ):
+                raise ValueError("Checker config should be present")
 
             compile_result = make_compile_targets(
                 context=self.context,
@@ -60,11 +65,13 @@ class ICPCCheckerStep(CheckerStep):
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
         if compile_result.verdict is CompilationOutcome.SUCCESS:
+            if compile_result.produced_file is None:
+                raise FileNotFoundError("Compilation did not produce checker")
             shutil.copy(
                 compile_result.produced_file,
                 self.context.path.sandbox_checker,
             )
-            
+
         return compile_result
 
     def prepare_sandbox(self):
@@ -119,7 +126,7 @@ class ICPCCheckerStep(CheckerStep):
 
     def run_checker(
         self,
-        arguments: list[str],
+        arguments: list[str] | None,
         evaluation_record: EvaluationResult,
         input_file: str,
         answer_file: str,
@@ -148,6 +155,8 @@ class ICPCCheckerStep(CheckerStep):
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
 
+        if arguments is None:
+            arguments = []
         checker_process = Process(
             checker_exec_command + [input_file, answer_file, feedback_dir] + arguments,
             stdin_redirect=evaluation_record.output_file,

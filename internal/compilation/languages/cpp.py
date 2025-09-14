@@ -59,7 +59,10 @@ class LanguageCpp(Language):
         executable_stack_mib: int,
     ) -> list[list[str]]:
         compiler = os.getenv("CXX", "g++")
-        compile_flags = os.getenv("CXXFLAGS", self.context.compile_flags(self.name))
+        if "CXXFLAGS" in os.environ:
+            compile_flags = os.getenv("CXXFLAGS", "").split()
+        else:
+            compile_flags = self.context.compile_flags(self.name)
         compile_flags += self._get_stack_size_args(executable_stack_mib)
         command = [compiler]
         command += compile_flags

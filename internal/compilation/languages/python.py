@@ -48,7 +48,11 @@ class LanguagePython3(Language):
         commands.append(["cp"] + source_filenames + ["."])
         commands.append([compiler, "-m", "compileall", "-b", "."])
         commands.append(
-            ["mv", os.path.splitext(os.path.basename(source_filenames[0]))[0] + ".pyc", "__main__.pyc"]
+            [
+                "mv",
+                os.path.splitext(os.path.basename(source_filenames[0]))[0] + ".pyc",
+                "__main__.pyc",
+            ]
         )
         commands.append(
             ["zip", executable_filename_base + self.executable_extension]
