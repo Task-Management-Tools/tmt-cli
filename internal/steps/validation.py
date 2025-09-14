@@ -3,10 +3,10 @@ import shutil
 from pathlib import Path
 
 from internal.context import JudgeConvention, TMTContext
-from internal.compilation_makefile import clean_with_make
-from internal.compilation import compile_wildcard_make
+from internal.compilation import make_compile_wildcard, make_clean, get_run_single_command
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.runner import Process, wait_procs
+from internal.errors import TMTMissingFileError
 
 
 class ValidationStep:
@@ -16,7 +16,7 @@ class ValidationStep:
         self.workdir = self.context.path.sandbox_validation
 
     def compile(self) -> CompilationResult:
-        comp_result = compile_wildcard_make(
+        comp_result = make_compile_wildcard(
             directory=self.context.path.validator,
             context=self.context,
             executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
@@ -25,11 +25,7 @@ class ValidationStep:
         return comp_result
 
     def clean_up(self):
-        clean_with_make(
-            makefile_path=self.context.path.makefile_normal,
-            directory=self.context.path.validator,
-            context=self.context,
-        )
+        make_clean(directory=self.context.path.validator)
 
     def prepare_sandbox(self):
         os.makedirs(self.workdir, exist_ok=True)
@@ -60,8 +56,16 @@ class ValidationStep:
 
         try:
             # Preprocess, could raise FileNotFound error in case validator does not exist
-            for command in commands:
-                command[0] = self.context.path.replace_with_validator(command[0])
+            for i in range(len(commands)):
+                validation_command = get_run_single_command(
+                    context=self.context,
+                    directory=self.context.path.validator_build,
+                    executable_filename_base=commands[i][0],
+                    executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib
+                )
+                if validation_command is None:
+                    raise TMTMissingFileError("validator", file)
+                commands[i] = validation_command + commands[i][1:]
 
             try:
                 for i, command in enumerate(commands, 1):

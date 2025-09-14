@@ -4,8 +4,7 @@ import pathlib
 
 
 from internal.context import CheckerType, TMTContext
-from internal.compilation_makefile import clean_with_make
-from internal.compilation import compile_targets_make
+from internal.compilation import make_compile_targets, make_clean, get_run_single_command
 from internal.runner import Process, wait_procs
 from internal.outcome import (
     EvaluationOutcome,
@@ -15,8 +14,6 @@ from internal.outcome import (
 )
 
 from .base import CheckerStep
-
-CHECKER = "checker"
 
 
 class ICPCCheckerStep(CheckerStep):
@@ -29,33 +26,31 @@ class ICPCCheckerStep(CheckerStep):
             if not self.context.path.has_checker_directory():
                 raise FileNotFoundError("Directory `checker` is not present.")
 
-            compile_result = compile_targets_make(
+            compile_result = make_compile_targets(
                 context=self.context,
                 directory=self.context.path.checker,
                 sources=[self.context.config.checker_filename],
-                target=CHECKER,
+                target="checker",
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
             )
-
-            if compile_result.verdict is CompilationOutcome.SUCCESS:
-                shutil.copy(
-                    os.path.join(self.context.path.checker, CHECKER),
-                    self.context.path.sandbox_checker,
-                )
         else:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
-            checker_name = "internal/resources/checkers/icpc_default_validator.cc"
+            checker_name = self.context.path.default_checker_icpc
+            shutil.copy(checker_name, self.context.path.sandbox_checker)
 
-            checker_path = pathlib.Path(self.context.path.script_dir) / checker_name
-            shutil.copy(checker_path, self.context.path.sandbox_checker)
-
-            compile_result = compile_targets_make(
+            compile_result = make_compile_targets(
                 context=self.context,
                 directory=self.context.path.sandbox_checker,
-                sources=["icpc_default_validator.cc"],
-                target=CHECKER,
+                sources=[os.path.basename(checker_name)],
+                target="checker",
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
+            )
+
+        if compile_result.verdict is CompilationOutcome.SUCCESS:
+            shutil.copy(
+                compile_result.produced_file,
+                self.context.path.sandbox_checker,
             )
 
         # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
@@ -65,11 +60,7 @@ class ICPCCheckerStep(CheckerStep):
         super().prepare_sandbox()
 
     def clean_up(self):
-        clean_with_make(
-            makefile_path=self.context.path.makefile_checker,
-            directory=self.context.path.checker,
-            context=self.context,
-        )
+        make_clean(directory=self.context.path.checker)
 
     def run_checker(
         self,
@@ -91,13 +82,19 @@ class ICPCCheckerStep(CheckerStep):
         if not os.path.isdir(feedback_dir):
             os.mkdir(feedback_dir)
 
-        checker = os.path.join(self.context.path.sandbox_checker, "checker")
+        checker_exec_command = get_run_single_command(
+            context=self.context,
+            directory=self.context.path.sandbox_checker,
+            executable_filename_base="checker",
+            executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
+        )
+        assert checker_exec_command is not None
         # the output validator is invoked via
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
 
         checker_process = Process(
-            [checker, input_file, answer_file, feedback_dir] + arguments,
+            checker_exec_command + [input_file, answer_file, feedback_dir] + arguments,
             stdin_redirect=evaluation_record.output_file,
             stdout=None,
             stderr=None,

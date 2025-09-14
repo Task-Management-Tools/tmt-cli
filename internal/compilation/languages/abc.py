@@ -35,6 +35,15 @@ class Language(ABC):
         """
         return []
 
+    @property
+    @abstractmethod
+    def executable_extension(self) -> str | None:
+        """
+        If the compilation step gives a file that can be directly executed, return None.
+        Otherwise, it should return an unique extension to identify the execution method.
+        """
+        return None
+
     @abstractmethod
     def get_make_wildcard_command(self, executable_stack_mib: int) -> MakeInfo:
         return MakeInfo("", {})
@@ -44,5 +53,18 @@ class Language(ABC):
         return MakeInfo("", {})
 
     @abstractmethod
-    def get_compile_single_commands(self, executable_stack_mib: int) -> list[list[str]]:
+    def get_compile_single_commands(
+        self,
+        source_filenames: list[str],
+        executable_filename_base: str,
+        executable_stack_mib: int,
+    ) -> list[list[str]]:
+        return []
+
+    @abstractmethod
+    def get_execution_command(
+        self,
+        executable_filename_base: str,
+        executable_stack_mib: int,
+    ) -> list[str]:
         return []

@@ -138,7 +138,7 @@ class Formatter:
             raise ValueError(f"Unexpected ExecutionOutcome {result}")
 
     def print_reason(self, reason: str):
-        # TODO: the following terminal width threshold should be configurable via global settings
+        # : the following terminal width threshold should be configurable via global settings
         if self.terminal_width is not None and self.terminal_width >= 96:
             buffer = reason
             cursor_position = self.cursor

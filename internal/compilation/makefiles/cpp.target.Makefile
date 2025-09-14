@@ -12,9 +12,9 @@ SHELL := /bin/bash
 CXX ?= g++
 CXXFLAGS := $(foreach dir, $(INCLUDE_PATHS), -I $(dir)) $(CXXFLAGS)
 
-DEP = $(TARGET_NAME).d
-EXE = $(TARGET_NAME)
-LOG = $(TARGET_NAME).compile.log
+DEP = build/$(TARGET_NAME).d
+EXE = build/$(TARGET_NAME)
+LOG = build/$(TARGET_NAME).compile.log
 
 ifndef SRCS
 $(error SRCS is undefined)
@@ -25,11 +25,11 @@ endif
 
 all: $(EXE) emit-log
 
-$(DEP):
+$(DEP): | build
 	$(CXX) $(CXXFLAGS) -MM $(SRCS) -MT $(EXE) -MF $@
 include $(DEP)
 
-$(EXE): $(SRCS)
+$(EXE): $(SRCS) | build
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(SRCS) -o $(EXE) 2> $(LOG)
 
 emit-log:
@@ -39,7 +39,10 @@ emit-log:
 		 echo "warning: No such file: $$f"; \
 	 fi
 
-clean:
-	rm -f $(EXE) $(DEP) $(LOG)
+build:
+	mkdir -p build
+
+# clean:
+# 	rm -rf build
 	
 .PHONY: all clean emit-log

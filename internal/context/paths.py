@@ -44,14 +44,19 @@ class ProblemDirectoryHelper:
     include = _problem_path_property("include")
 
     validator = _problem_path_property("validator")
+    validator_build = _extend_path_property(validator, "build")
 
     generator = _problem_path_property("generator")
+    generator_build = _extend_path_property(generator, "build")
     generator_manuals = _extend_path_property(generator, "manual")
 
     solutions = _problem_path_property("solutions")
 
     checker = _problem_path_property("checker")
+    checker_build = _extend_path_property(checker, "build")
+
     interactor = _problem_path_property("interactor")
+    interactor_build = _extend_path_property(interactor, "build")
 
     testcases = _problem_path_property("testcases")
     testcases_summary = _extend_path_property(testcases, "summary")
@@ -74,10 +79,7 @@ class ProblemDirectoryHelper:
     compiler_yaml = _problem_path_property("compiler.yaml")
     tmt_recipe = _problem_path_property("recipe")
 
-    makefile_normal = _internal_path_property("internal", "resources", "Makefile")
-    makefile_checker = _internal_path_property(
-        "internal", "resources", "CheckerMakefile"
-    )
+    default_checker_icpc = _internal_path_property("internal", "steps", "checker", "default_checkers", "icpc_default_validator.cc")
 
     def clean_testcases(self, keep_hash=True):
         testcase_hash_exists = os.path.exists(self.testcases_hashes)
@@ -135,26 +137,6 @@ class ProblemDirectoryHelper:
 
     def has_interactor_directory(self):
         return self._is_directory(self.interactor)
-
-    def replace_with_generator(self, file: str):
-        test_files = [
-            os.path.join(self.generator, file),
-            os.path.join(self.generator, file + ".exe"),
-        ]
-        for test_file in test_files:
-            if self._is_executable(test_file):
-                return test_file
-        raise TMTMissingFileError("generator", file, ", ".join(test_files))
-
-    def replace_with_validator(self, file: str):
-        test_files = [
-            os.path.join(self.validator, file),
-            os.path.join(self.validator, file + ".exe"),
-        ]
-        for test_file in test_files:
-            if self._is_executable(test_file):
-                return test_file
-        raise TMTMissingFileError("validator", file, ", ".join(test_files))
 
     def replace_with_solution(self, full_filename: str):
         test_files = [

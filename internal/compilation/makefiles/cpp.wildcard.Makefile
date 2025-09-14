@@ -15,28 +15,31 @@ CPP_SOURCES = $(wildcard *.cpp)
 CC_SOURCES = $(wildcard *.cc)
 
 SRCS = $(CPP_SOURCES) $(CC_SOURCES)
-EXES = $(CPP_SOURCES:.cpp=.exe) $(CC_SOURCES:.cc=.exe)
-DEPS = $(CPP_SOURCES:.cpp=.d) $(CC_SOURCES:.cc=.d)
-LOGS = $(CPP_SOURCES:.cpp=.compile.log) $(CC_SOURCES:.cc=.compile.log)
+EXES = $(CPP_SOURCES:%.cpp=build/%) $(CC_SOURCES:%.cc=build/%)
+DEPS = $(CPP_SOURCES:%.cpp=build/%.d) $(CC_SOURCES:%.cc=build/%.d)
+LOGS = $(CPP_SOURCES:%.cpp=build/%.compile.log) $(CC_SOURCES:%.cc=build/%.compile.log)
 
 all: $(EXES) emit-log
 
-%.d: %.cpp
-	$(CXX) $(CXXFLAGS) -MM $< -MT $*.exe -MF $@
+build/%.d: %.cpp | build
+	$(CXX) $(CXXFLAGS) -MM $< -MT $* -MF $@
 
-%.d: %.cc
-	$(CXX) $(CXXFLAGS) -MM $< -MT $*.exe -MF $@
+build/%.d: %.cc | build
+	$(CXX) $(CXXFLAGS) -MM $< -MT $* -MF $@
 
 include $(DEPS)
 
-%.exe: %.cpp
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> $*.compile.log
+build/%: %.cpp | build
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> build/$*.compile.log
 
-%.exe: %.cc
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> $*.compile.log
+build/%: %.cc | build
+	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> build/$*.compile.log
 
-clean:
-	rm -f $(EXES) $(DEPS) $(LOGS)
+build:
+	mkdir -p build
+
+# clean:
+# 	rm -rf build
 
 emit-log:
 	@for f in $(LOGS); do \
@@ -47,8 +50,5 @@ emit-log:
 			echo "warning: compilation log file $$f does not exist"; \
 		fi; \
 	done
-
-logs: 
-	@echo $(abspath $(LOGS))
 
 .PHONY: all clean emit-log

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
-from internal.compilation_cpp_single import compile_cpp_single
+from internal.compilation import compile_single, get_run_single_command
 from internal.outcome import (
     EvaluationOutcome,
     EvaluationResult,
@@ -44,17 +44,12 @@ class BatchSolutionStep(SolutionStep):
         if self.grader is not None:
             files.append(self.context.path.replace_with_grader(self.grader))
 
-        comp_result = compile_cpp_single(
-            working_dir=self.context.path.sandbox_solution,
-            files=files,
-            compiler=self.context.compiler("cpp"),
-            compile_flags=self.context.compile_flags("cpp"),
-            # these parameters are intended trusted step time limit instead of compile limit,
-            # since they will occur on judge, so they should have more restrictive limits
-            compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
-            compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
+        comp_result = compile_single(
+            context=self.context,
+            directory=self.context.path.sandbox_solution,
+            sources=files,
+            executable_filename_base=self.executable_name_base,
             executable_stack_size_mib=self.memory_limit_mib,
-            executable_name=self.executable_name,
         )
         comp_result.dump_to_logs(self.log_directory, "solution")
         return comp_result
@@ -86,8 +81,14 @@ class BatchSolutionStep(SolutionStep):
 
         # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
         # currently, for convenience, it is from file but we should support both modes.
+        solution_exec_command = get_run_single_command(
+            context=self.context,
+            directory=self.context.path.sandbox_solution,
+            executable_filename_base=self.executable_name_base,
+            executable_stack_size_mib=self.memory_limit_mib,
+        )
         solution = Process(
-            os.path.join(self.context.path.sandbox_solution, self.executable_name),
+            solution_exec_command,
             preexec_fn=lambda: os.chdir(self.context.path.sandbox_solution),
             stdin_redirect=sandbox_input_file,
             stdout_redirect=sandbox_output_file,

@@ -6,9 +6,7 @@ from pathlib import Path
 
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
-from internal.compilation_makefile import clean_with_make
-from internal.compilation import compile_targets_make
-from internal.compilation_cpp_single import compile_cpp_single
+from internal.compilation import make_compile_targets, make_clean, compile_single, get_run_single_command
 from internal.outcome import (
     EvaluationOutcome,
     EvaluationResult,
@@ -44,11 +42,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
         os.makedirs(self.context.path.sandbox_interactor, exist_ok=True)
 
     def clean_up(self):
-        clean_with_make(
-            makefile_path=self.context.path.makefile_checker,
-            directory=self.context.path.interactor,
-            context=self.context,
-        )
+        make_clean(directory=self.context.path.interactor)
 
     def compile_solution(self) -> CompilationResult:
         if len(self.submission_files) != 1:
@@ -58,24 +52,20 @@ class InteractiveICPCSolutionStep(SolutionStep):
                 standard_error="ICPC-style interactive task only supports single file submission.",
             )
 
-        comp_result = compile_cpp_single(
-            working_dir=self.context.path.sandbox_solution,
-            files=self.submission_files,
-            compiler=self.context.compiler("cpp"),
-            compile_flags=self.context.compile_flags("cpp"),
-            # these parameters are intended trusted step time limit instead of compile limit,
-            # since they will occur on judge, so they should have more restrictive limits
-            compile_time_limit_sec=self.context.config.trusted_step_time_limit_sec,
-            compile_memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
+        comp_result = compile_single(
+            context=self.context,
+            directory=self.context.path.sandbox_solution,
+            sources=self.submission_files,
+            executable_filename_base=self.executable_name_base,
             executable_stack_size_mib=self.memory_limit_mib,
-            executable_name=self.executable_name,
         )
         comp_result.dump_to_logs(self.log_directory, "solution")
         return comp_result
 
     def compile_interactor(self) -> CompilationResult:
         if self.context.path.has_interactor_directory():
-            comp_result = compile_targets_make(
+            
+            comp_result = make_compile_targets(
                 context=self.context,
                 directory=self.context.path.interactor,
                 sources=[self.context.config.interactor_filename],
@@ -84,7 +74,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
             )
 
             shutil.copy(
-                os.path.join(self.context.path.interactor, "interactor"),
+                comp_result.produced_file,
                 self.context.path.sandbox_interactor,
             )
 
@@ -141,8 +131,14 @@ class InteractiveICPCSolutionStep(SolutionStep):
             os.chdir(self.context.path.sandbox_solution)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
+        solution_exec_command = get_run_single_command(
+            context=self.context,
+            directory=self.context.path.sandbox_solution,
+            executable_filename_base=self.executable_name_base,
+            executable_stack_size_mib=self.memory_limit_mib,
+        )
         solution = Process(
-            os.path.join(self.context.path.sandbox_solution, self.executable_name),
+            solution_exec_command,
             preexec_fn=solution_preexec_fn,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -156,13 +152,19 @@ class InteractiveICPCSolutionStep(SolutionStep):
             os.chdir(self.context.path.sandbox_interactor)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
+        interactor_exec_command = get_run_single_command(
+            context=self.context,
+            directory=self.context.path.sandbox_interactor,
+            executable_filename_base="interactor",
+            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+        )
+        interactor_exec_args = [
+            sandbox_interactor_input_file,
+            sandbox_interactor_answer_file,
+            sandbox_interactor_feedback_dir,
+        ]
         interactor = Process(
-            [
-                os.path.join(self.context.path.sandbox_interactor, "interactor"),
-                sandbox_interactor_input_file,
-                sandbox_interactor_answer_file,
-                sandbox_interactor_feedback_dir,
-            ],
+            interactor_exec_command + interactor_exec_args,
             preexec_fn=interactor_preexec_fn,
             stdin=solution.stdout,
             stdout=solution.stdin,
@@ -222,7 +224,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
         # else, we check if solution executed successfully
         elif self.is_solution_abormal_exit(solution, result):
             pass
-        # Noe, we can check if solution is actually correct
+        # Now, we can check if the solution is actually correct
         elif interactor.exit_code == 42:
             result.verdict = EvaluationOutcome.ACCEPTED
         else:

@@ -97,6 +97,11 @@ class CompilationResult:
             f.write(self.standard_error)
 
 
+@dataclass
+class SingleCompilationResult(CompilationResult):
+    produced_file: str | None = None
+
+
 class ExecutionOutcome(Enum):
     # The execution has not been run yet.
     UNKNOWN = "(unknown)"
