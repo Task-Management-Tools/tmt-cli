@@ -3,7 +3,7 @@ short_name: parity
 description: Print a number with the same parity.
 
 input_extension: .in # "." is required
-output_extension: out
+output_extension: .out
 
 judge_convention: icpc
 problem_type: batch
