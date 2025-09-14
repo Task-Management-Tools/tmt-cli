@@ -23,13 +23,13 @@ ifndef TARGET_NAME
 $(error TARGET_NAME is undefined)
 endif
 
-all: $(EXE) emit-log
+all: build $(EXE) emit-log
 
-$(DEP): | build
+$(DEP): build
 	$(CXX) $(CXXFLAGS) -MM $(SRCS) -MT $(EXE) -MF $@
 include $(DEP)
 
-$(EXE): $(SRCS) | build
+$(EXE): $(SRCS)
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(SRCS) -o $(EXE) 2> $(LOG)
 
 emit-log:
@@ -40,7 +40,7 @@ emit-log:
 	 fi
 
 build:
-	mkdir -p build
+	[ -d build ] || mkdir build
 
 # clean:
 # 	rm -rf build

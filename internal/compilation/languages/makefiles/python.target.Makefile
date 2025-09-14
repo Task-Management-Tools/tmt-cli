@@ -29,9 +29,6 @@ $(EXE): $(SRCS)
 	zip $@ build/python/*.pyc
 	rm -rf build/python/
 
-$(EXE): $(SRCS) | build
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(SRCS) -o $(EXE) 2> $(LOG)
-
 emit-log:
 	@if [[ -f $(LOG) ]]; then \
 		 cat $(LOG) >&2; \

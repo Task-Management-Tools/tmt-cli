@@ -19,24 +19,24 @@ EXES = $(CPP_SOURCES:%.cpp=build/%) $(CC_SOURCES:%.cc=build/%)
 DEPS = $(CPP_SOURCES:%.cpp=build/%.d) $(CC_SOURCES:%.cc=build/%.d)
 LOGS = $(CPP_SOURCES:%.cpp=build/%.compile.log) $(CC_SOURCES:%.cc=build/%.compile.log)
 
-all: $(EXES) emit-log
+all: build $(EXES) emit-log
 
-build/%.d: %.cpp | build
+build/%.d: %.cpp build
 	$(CXX) $(CXXFLAGS) -MM $< -MT $* -MF $@
 
-build/%.d: %.cc | build
+build/%.d: %.cc build
 	$(CXX) $(CXXFLAGS) -MM $< -MT $* -MF $@
 
 include $(DEPS)
 
-build/%: %.cpp | build
+build/%: %.cpp 
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> build/$*.compile.log
 
-build/%: %.cc | build
+build/%: %.cc
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> build/$*.compile.log
 
 build:
-	mkdir -p build
+	[ -d build ] || mkdir build
 
 # clean:
 # 	rm -rf build

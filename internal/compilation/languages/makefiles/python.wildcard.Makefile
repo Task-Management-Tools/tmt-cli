@@ -12,7 +12,7 @@ LOGS = $(SRCS:%.py=build/%.compile.log)
 
 all: $(EXES) emit-log
 
-build/%.pyz: %.py | build
+build/%.pyz: %.py build
 	cp $< build/
 	$(PYTHON) -m compileall build/$< -b 2> build/$*.compile.log
 	mv build/$*.pyc build/__main__.pyc
