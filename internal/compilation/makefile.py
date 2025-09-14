@@ -1,6 +1,7 @@
 import subprocess
 import shutil
 import os
+import platform
 
 from internal.context import TMTContext
 from internal.outcome import (
@@ -12,7 +13,11 @@ from internal.runner import Process, wait_for_outputs
 
 from .languages import languages
 
-MAKE = "make"
+
+if platform.system() == "Darwin":
+    MAKE = "gmake"
+else:
+    MAKE = "make"
 
 
 def make_compile_wildcard(
