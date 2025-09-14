@@ -1,6 +1,6 @@
 from typing import Type
 
-from .abc import Language
+from .base import Language
 from .cpp import LanguageCpp
 from .python import LanguagePython3
 

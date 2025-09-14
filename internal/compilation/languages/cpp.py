@@ -1,7 +1,7 @@
 import os
 import platform
 
-from .abc import Language, MakeInfo
+from .base import Language, MakeInfo
 
 
 class LanguageCpp(Language):

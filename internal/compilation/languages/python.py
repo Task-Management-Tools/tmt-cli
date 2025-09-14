@@ -1,6 +1,6 @@
 import os
 
-from .abc import Language, MakeInfo
+from .base import Language, MakeInfo
 
 
 class LanguagePython3(Language):
