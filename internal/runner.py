@@ -236,7 +236,7 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
     # because of insufficient buffering (and without allocating too
     # much memory). Unix specific.
 
-    stdout, stderr = "", ""
+    stdout, stderr = b"", b""
     try:
         while proc.wait4() is None:
             to_read = (
@@ -251,8 +251,8 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
             available_read = select.select(to_read, [], [], 1.0)[0]
             for file in available_read:
                 content = file.read(8 * 1024)
-                if type(content) is bytes:
-                    content = content.decode()
+                if type(content) is str:
+                    content = content.encode()
                 if file is proc.stdout:
                     stdout += content
                 else:
@@ -260,12 +260,15 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
 
         if proc.stdout is not None:
             while content := proc.stdout.read(8 * 1024):
-                stdout += content.decode()
+                if type(content) is str:
+                    content = content.encode()
+                stdout += content
         if proc.stderr is not None:
             while content := proc.stderr.read(8 * 1024):
-                stderr += content.decode()
+                if type(content) is str:
+                    content = content.encode()
+                stderr += content
 
     finally:
         proc.safe_kill()
-
-    return stdout, stderr
+    return stdout.decode(), stderr.decode()
