@@ -3,7 +3,11 @@ import shutil
 import os
 
 from internal.context import TMTContext
-from internal.outcome import CompilationOutcome, CompilationResult, SingleCompilationResult
+from internal.outcome import (
+    CompilationOutcome,
+    CompilationResult,
+    SingleCompilationResult,
+)
 from internal.runner import Process, wait_for_outputs
 
 from .languages import languages
@@ -59,8 +63,8 @@ def make_compile_wildcard(
 
     return CompilationResult(
         verdict=verdict,
-        standard_output=stdout,
-        standard_error=stderr,
+        standard_output=allout,
+        standard_error=allerr,
         exit_status=(compile_process.status if compile_process is not None else 0),
     )
 
@@ -122,19 +126,21 @@ def make_compile_targets(
                 standard_output=stdout,
                 standard_error=stderr,
                 exit_status=compile_process.status,
-                produced_file=os.path.join(directory, "build", target + (lang.executable_extension or ""))
+                produced_file=os.path.join(
+                    directory, "build", target + (lang.executable_extension or "")
+                ),
             )
 
     return SingleCompilationResult(
         verdict=CompilationOutcome.FAILED,
         standard_error=f"Source files {sources} are not recognized by any language.",
         exit_status=-1,
-        produced_file=None
+        produced_file=None,
     )
-
 
 
 def make_clean(*, directory: str) -> None:
     # By default, Makefile is not called since we don't need to supply any environment variable for it to work.
     # TODO when custom Makefile is present, invoke it.
-    shutil.rmtree(os.path.join(directory, "build"))
+    if os.path.exists(os.path.join(directory, "build")):
+        shutil.rmtree(os.path.join(directory, "build"))

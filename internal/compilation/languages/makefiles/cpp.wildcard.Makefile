@@ -45,7 +45,7 @@ emit-log:
 	@for f in $(LOGS); do \
 		echo "---- $$f ----"; \
 		if [[ -f $$f ]]; then \
-			cat $$f; \
+			cat $$f >&2; \
 		else \
 			echo "warning: compilation log file $$f does not exist"; \
 		fi; \

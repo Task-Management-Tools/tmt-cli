@@ -44,6 +44,7 @@ class BatchSolutionStep(SolutionStep):
         if self.grader is not None:
             files.append(self.context.path.replace_with_grader(self.grader))
 
+        self.context.path.empty_directory(self.context.path.sandbox_solution)
         comp_result = compile_single(
             context=self.context,
             directory=self.context.path.sandbox_solution,

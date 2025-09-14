@@ -20,7 +20,6 @@ def compile_single(
     compilation_memory_limit_mib = context.config.trusted_step_memory_limit_mib
 
     compile_process: Process | None = None
-    allout, allerr = "", ""
 
     produced_file = None
     for lang_type in languages:
@@ -36,8 +35,9 @@ def compile_single(
                 executable_filename_base=executable_filename_base,
                 executable_stack_mib=executable_stack_size_mib,
             )
-            try:
-                for command in compilation_commands:
+            allout, allerr = "", ""
+            for command in compilation_commands:
+                try:
                     compile_process = Process(
                         command,
                         preexec_fn=lambda: os.chdir(directory),
@@ -47,17 +47,16 @@ def compile_single(
                         memory_limit_mib=compilation_memory_limit_mib,
                     )
 
-                stdout, stderr = wait_for_outputs(compile_process)
-                allout += stdout
-                allerr += stderr
+                    stdout, stderr = wait_for_outputs(compile_process)
+                    allout += stdout
+                    allerr += stderr
+                finally:
+                    if compile_process is not None:
+                        compile_process.safe_kill()
 
-                produced_file = executable_filename_base + (
-                    lang.executable_extension or ""
-                )
-            finally:
-                if compile_process is not None:
-                    compile_process.safe_kill()
-
+            produced_file = executable_filename_base + (
+                lang.executable_extension or ""
+            )
             break
 
     if compile_process is None:
@@ -105,8 +104,8 @@ def get_run_single_command(
             return lang.get_execution_command(exe_base, executable_stack_size_mib)
     return None
 
-def get_all_executable_ext(
-    *,
-    context: TMTContext
-) -> list[str] | None:
-    return list(set([lang_type(context).executable_extension for lang_type in languages]))
+
+def get_all_executable_ext(*, context: TMTContext) -> list[str] | None:
+    return list(
+        set([lang_type(context).executable_extension for lang_type in languages])
+    )

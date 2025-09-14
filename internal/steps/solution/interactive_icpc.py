@@ -6,7 +6,12 @@ from pathlib import Path
 
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
-from internal.compilation import make_compile_targets, make_clean, compile_single, get_run_single_command
+from internal.compilation import (
+    make_compile_targets,
+    make_clean,
+    compile_single,
+    get_run_single_command,
+)
 from internal.outcome import (
     EvaluationOutcome,
     EvaluationResult,
@@ -52,6 +57,7 @@ class InteractiveICPCSolutionStep(SolutionStep):
                 standard_error="ICPC-style interactive task only supports single file submission.",
             )
 
+        self.context.path.empty_directory(self.context.path.sandbox_solution)
         comp_result = compile_single(
             context=self.context,
             directory=self.context.path.sandbox_solution,
@@ -64,7 +70,6 @@ class InteractiveICPCSolutionStep(SolutionStep):
 
     def compile_interactor(self) -> CompilationResult:
         if self.context.path.has_interactor_directory():
-            
             comp_result = make_compile_targets(
                 context=self.context,
                 directory=self.context.path.interactor,

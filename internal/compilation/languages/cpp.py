@@ -38,7 +38,7 @@ class LanguageCpp(Language):
         return MakeInfo(
             makefile=os.path.join(
                 self.context.path.script_dir,
-                "internal/compilation/makefiles/cpp.wildcard.Makefile",
+                "internal/compilation/languages/makefiles/cpp.wildcard.Makefile",
             ),
             env=self._construct_make_env(executable_stack_mib),
         )
@@ -47,7 +47,7 @@ class LanguageCpp(Language):
         return MakeInfo(
             makefile=os.path.join(
                 self.context.path.script_dir,
-                "internal/compilation/makefiles/cpp.target.Makefile",
+                "internal/compilation/languages/makefiles/cpp.target.Makefile",
             ),
             env=self._construct_make_env(executable_stack_mib),
         )
@@ -58,7 +58,7 @@ class LanguageCpp(Language):
         executable_filename_base: str,
         executable_stack_mib: int,
     ) -> list[list[str]]:
-        compiler = os.getenv("CXX", self.context.compiler(self.name))
+        compiler = os.getenv("CXX", "g++")
         compile_flags = os.getenv("CXXFLAGS", self.context.compile_flags(self.name))
         compile_flags += self._get_stack_size_args(executable_stack_mib)
         command = [compiler]

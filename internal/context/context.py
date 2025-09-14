@@ -174,10 +174,12 @@ class TMTContext:
             and (self.config.check_forced_output or self.config.check_generated_output)
         )
 
-    def compiler(self, language: str) -> str:
-        if language == "cpp":
-            return "g++"
-        raise ValueError("Not yet supported now")
+    # TODO This should instead support user override of languages compilers;
+    # For example, on some machine g++-version should be used over the default ones.
+    # def compiler(self, language: str) -> str:
+    #     if language == "cpp":
+    #         return "g++"
+    #     raise ValueError("Not yet supported now")
 
     def compile_flags(self, language: str) -> list[str]:
         return self.compiler_yaml[language]["flags"]

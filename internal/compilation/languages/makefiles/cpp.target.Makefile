@@ -34,7 +34,7 @@ $(EXE): $(SRCS) | build
 
 emit-log:
 	@if [[ -f $(LOG) ]]; then \
-		 cat $(LOG); \
+		 cat $(LOG) >&2; \
 	 else \
 		 echo "warning: No such file: $$f"; \
 	 fi

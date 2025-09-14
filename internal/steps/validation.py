@@ -3,7 +3,11 @@ import shutil
 from pathlib import Path
 
 from internal.context import JudgeConvention, TMTContext
-from internal.compilation import make_compile_wildcard, make_clean, get_run_single_command
+from internal.compilation import (
+    make_compile_wildcard,
+    make_clean,
+    get_run_single_command,
+)
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.runner import Process, wait_procs
 from internal.errors import TMTMissingFileError
@@ -61,10 +65,10 @@ class ValidationStep:
                     context=self.context,
                     directory=self.context.path.validator_build,
                     executable_filename_base=commands[i][0],
-                    executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib
+                    executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
                 )
                 if validation_command is None:
-                    raise TMTMissingFileError("validator", file)
+                    raise TMTMissingFileError("validator", commands[i][0])
                 commands[i] = validation_command + commands[i][1:]
 
             try:

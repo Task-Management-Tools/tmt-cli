@@ -79,7 +79,9 @@ class ProblemDirectoryHelper:
     compiler_yaml = _problem_path_property("compiler.yaml")
     tmt_recipe = _problem_path_property("recipe")
 
-    default_checker_icpc = _internal_path_property("internal", "steps", "checker", "default_checkers", "icpc_default_validator.cc")
+    default_checker_icpc = _internal_path_property(
+        "internal", "steps", "checker", "default_checkers", "icpc_default_validator.cc"
+    )
 
     def clean_testcases(self, keep_hash=True):
         testcase_hash_exists = os.path.exists(self.testcases_hashes)

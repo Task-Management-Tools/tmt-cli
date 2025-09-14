@@ -4,7 +4,11 @@ import pathlib
 
 
 from internal.context import CheckerType, TMTContext
-from internal.compilation import make_compile_targets, make_clean, get_run_single_command
+from internal.compilation import (
+    make_compile_targets,
+    make_clean,
+    get_run_single_command,
+)
 from internal.runner import Process, wait_procs
 from internal.outcome import (
     EvaluationOutcome,

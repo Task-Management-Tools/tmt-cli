@@ -7,5 +7,5 @@ __all__ = [
     "make_clean",
     "compile_single",
     "get_run_single_command",
-    "get_all_executable_ext"
+    "get_all_executable_ext",
 ]

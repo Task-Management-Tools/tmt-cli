@@ -2,7 +2,11 @@ import os
 import shutil
 import subprocess
 
-from internal.compilation import make_compile_wildcard, make_clean, get_run_single_command
+from internal.compilation import (
+    make_compile_wildcard,
+    make_clean,
+    get_run_single_command,
+)
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
@@ -97,10 +101,10 @@ class GenerationStep:
                     context=self.context,
                     directory=self.context.path.generator_build,
                     executable_filename_base=commands[i][0],
-                    executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib
+                    executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
                 )
                 if generator_command is None:
-                    raise TMTMissingFileError("generator", file)
+                    raise TMTMissingFileError("generator", commands[i][0])
 
                 commands[i] = generator_command + commands[i][1:]
 
