@@ -66,6 +66,7 @@ class ProblemDirectoryHelper:
     sandbox_generation = _extend_path_property(sandbox, "generation")
     sandbox_validation = _extend_path_property(sandbox, "validation")
     sandbox_solution = _extend_path_property(sandbox, "solution")
+    sandbox_solution_compilation = _extend_path_property(sandbox, "solution-compile")
     sandbox_checker = _extend_path_property(sandbox, "checker")
     sandbox_interactor = _extend_path_property(sandbox, "interactor")
     sandbox_manager = _extend_path_property(sandbox, "manager")

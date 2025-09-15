@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import os
 
@@ -6,6 +7,7 @@ from internal.outcome import CompilationOutcome, SingleCompilationResult
 from internal.runner import Process, wait_for_outputs
 
 from .languages import languages
+from .makefile import make_compile_targets
 
 
 def compile_single(
@@ -13,73 +15,40 @@ def compile_single(
     context: TMTContext,
     directory: str,
     sources: list[str],
+    headers: list[str] = [],
     executable_filename_base: str,
     executable_stack_size_mib: int,
 ) -> SingleCompilationResult:
-    compilation_time_limit_sec = context.config.trusted_step_time_limit_sec
-    compilation_memory_limit_mib = context.config.trusted_step_memory_limit_mib
+    """
+    Compiles a single executable from sources and headers in directory.
 
-    compile_process: Process | None = None
+    All paths and directories should be absolute paths.
+    """
+    # They are internal errors; the caller should resolve them into absolute path.
+    if not os.path.isabs(directory):
+        raise ValueError(f"compile single: {directory} is not an absolute path.")
+    for source in sources:
+        if not os.path.isabs(source):
+            raise ValueError(f"compile single: {source} is not an absolute path.")
+    for header in headers:
+        if not os.path.isabs(header):
+            raise ValueError(f"compile single: {header} is not an absolute path.")
 
-    produced_file = None
-    for lang_type in languages:
-        lang = lang_type(context)
-        if all(
-            [
-                any([src.endswith(ext) for ext in lang.source_extensions])
-                for src in sources
-            ]
-        ):
-            compilation_commands = lang.get_compile_single_commands(
-                source_filenames=sources,
-                executable_filename_base=executable_filename_base,
-                executable_stack_mib=executable_stack_size_mib,
-            )
-            allout, allerr = "", ""
-            for command in compilation_commands:
-                try:
-                    compile_process = Process(
-                        command,
-                        preexec_fn=lambda: os.chdir(directory),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        time_limit_sec=compilation_time_limit_sec,
-                        memory_limit_mib=compilation_memory_limit_mib,
-                    )
+    context.path.empty_directory(directory)
+    # Copy in if it is not already in
+    for i in range(len(sources)):
+        if not os.path.samefile(os.path.dirname(sources[i]), directory):
+            shutil.copy(sources[i], directory)
+        sources[i] = os.path.basename(sources[i])
+    for i in range(len(headers)):
+        if not os.path.samefile(os.path.dirname(headers[i]), directory):
+            shutil.copy(headers[i], directory)
 
-                    stdout, stderr = wait_for_outputs(compile_process)
-                    allout += stdout
-                    allerr += stderr
-                finally:
-                    if compile_process is not None:
-                        compile_process.safe_kill()
-
-            produced_file = executable_filename_base + (lang.executable_extension or "")
-            break
-
-    if compile_process is None:
-        return SingleCompilationResult(
-            verdict=CompilationOutcome.FAILED,
-            standard_error=f"Source files {sources} are not recognized by any language.",
-            exit_status=-1,
-            produced_file=produced_file,
-        )
-
-    verdict: CompilationOutcome
-    if compile_process.is_timedout:
-        verdict = CompilationOutcome.TIMEDOUT
-    elif compile_process.status != 0:
-        verdict = CompilationOutcome.FAILED
-    else:
-        verdict = CompilationOutcome.SUCCESS
-
-    return SingleCompilationResult(
-        verdict=verdict,
-        standard_output=allout,
-        standard_error=allerr,
-        exit_status=compile_process.status,
-        produced_file=produced_file,
-    )
+    return make_compile_targets(context=context,
+                                directory=directory,
+                                sources=sources,
+                                target=executable_filename_base,
+                                executable_stack_size_mib=executable_stack_size_mib)
 
 
 def get_run_single_command(

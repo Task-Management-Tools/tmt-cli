@@ -53,15 +53,6 @@ class Language(ABC):
         return MakeInfo("", {})
 
     @abstractmethod
-    def get_compile_single_commands(
-        self,
-        source_filenames: list[str],
-        executable_filename_base: str,
-        executable_stack_mib: int,
-    ) -> list[list[str]]:
-        return []
-
-    @abstractmethod
     def get_execution_command(
         self,
         executable_filename_base: str,

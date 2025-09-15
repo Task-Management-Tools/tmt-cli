@@ -26,7 +26,7 @@ $(EXE): $(SRCS)
 	cp $^ build/python/
 	$(PYTHON) -m compileall build/python/ -b 2> build/$*.compile.log
 	mv build/python/$(basename $<).pyc build/python/__main__.pyc
-	zip $@ build/python/*.pyc
+	zip -j $@ build/python/*.pyc
 	rm -rf build/python/
 
 emit-log:

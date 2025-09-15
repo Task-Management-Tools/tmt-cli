@@ -52,25 +52,6 @@ class LanguageCpp(Language):
             env=self._construct_make_env(executable_stack_mib),
         )
 
-    def get_compile_single_commands(
-        self,
-        source_filenames: list[str],
-        executable_filename_base: str,
-        executable_stack_mib: int,
-    ) -> list[list[str]]:
-        compiler = os.getenv("CXX", "g++")
-        if "CXXFLAGS" in os.environ:
-            compile_flags = os.getenv("CXXFLAGS", "").split()
-        else:
-            compile_flags = self.context.compile_flags(self.name)
-        compile_flags += self._get_stack_size_args(executable_stack_mib)
-        command = [compiler]
-        command += compile_flags
-        command += source_filenames
-        command += ["-o", executable_filename_base]
-
-        return [command]
-
     def get_execution_command(
         self,
         executable_filename_base: str,

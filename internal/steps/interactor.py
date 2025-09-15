@@ -9,7 +9,6 @@ from internal.runner import Process, wait_procs
 from internal.compilation import (
     make_compile_targets,
     make_clean,
-    compile_single,
     get_run_single_command,
 )
 from internal.steps.solution import SolutionStep
