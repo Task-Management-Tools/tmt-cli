@@ -7,7 +7,9 @@ from internal.context import TMTContext
 @dataclass
 class MakeInfo:
     makefile: str
-    env: dict[str, str]
+    """Absolue path to the Makefile."""
+    extra_env: dict[str, str]
+    """Extra environment supplied to the Makefile."""
 
 
 class Language(ABC):
@@ -37,19 +39,29 @@ class Language(ABC):
 
     @property
     @abstractmethod
-    def executable_extension(self) -> str | None:
+    def executable_extension(self) -> str:
         """
-        If the compilation step gives a file that can be directly executed, return None.
-        Otherwise, it should return an unique extension to identify the execution method.
+        Return an unique extension (possibly empty: indicating no extension) to identify the execution method.
         """
-        return None
+        return ""
 
     @abstractmethod
     def get_make_wildcard_command(self, executable_stack_mib: int) -> MakeInfo:
+        """
+        Returns a MakeInfo indicating the location of the Makefile compiling every single target,
+        and the related environment.
+        """
         return MakeInfo("", {})
 
     @abstractmethod
     def get_make_target_command(self, executable_stack_mib: int) -> MakeInfo:
+        """
+        Returns a MakeInfo indicating the location of the Makefile compiling a single target,
+        and the related environment.
+
+        Apart from the compiler specific environment variables, SRCS and TARGET_NAME should 
+        still be supplied to form the compilation environment.
+        """
         return MakeInfo("", {})
 
     @abstractmethod

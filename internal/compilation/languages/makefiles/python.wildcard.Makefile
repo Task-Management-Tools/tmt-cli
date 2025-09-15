@@ -32,4 +32,4 @@ emit-log:
 		fi; \
 	done
 
-.PHONY: all clean emit-log
+.PHONY: all emit-log

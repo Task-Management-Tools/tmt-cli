@@ -45,4 +45,4 @@ build:
 # clean:
 # 	rm -rf build
 	
-.PHONY: all clean emit-log
+.PHONY: all emit-log

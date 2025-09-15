@@ -1,10 +1,11 @@
 import os
 import platform
 
-from .base import Language, MakeInfo
+from .base import MakeInfo
+from .executable import ExecutableLanguage
 
 
-class LanguageCpp(Language):
+class LanguageCpp(ExecutableLanguage):
     @property
     def name(self):
         return "cpp"
@@ -12,10 +13,6 @@ class LanguageCpp(Language):
     @property
     def source_extensions(self):
         return [".cpp", ".cc"]
-
-    @property
-    def executable_extension(self):
-        return None  # compiles to ELF
 
     def _get_stack_size_args(self, executable_stack_mib: int) -> list[str]:
         if platform.system() == "Darwin":
@@ -40,7 +37,7 @@ class LanguageCpp(Language):
                 self.context.path.script_dir,
                 "internal/compilation/languages/makefiles/cpp.wildcard.Makefile",
             ),
-            env=self._construct_make_env(executable_stack_mib),
+            extra_env=self._construct_make_env(executable_stack_mib),
         )
 
     def get_make_target_command(self, executable_stack_mib: int) -> MakeInfo:
@@ -49,12 +46,5 @@ class LanguageCpp(Language):
                 self.context.path.script_dir,
                 "internal/compilation/languages/makefiles/cpp.target.Makefile",
             ),
-            env=self._construct_make_env(executable_stack_mib),
+            extra_env=self._construct_make_env(executable_stack_mib),
         )
-
-    def get_execution_command(
-        self,
-        executable_filename_base: str,
-        executable_stack_mib: int,
-    ):
-        return [executable_filename_base]

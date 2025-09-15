@@ -22,7 +22,7 @@ class LanguagePython3(Language):
                 self.context.path.script_dir,
                 "internal/compilation/languages/makefiles/python.wildcard.Makefile",
             ),
-            env={},
+            extra_env={},
         )
 
     def get_make_target_command(self, executable_stack_mib: int) -> MakeInfo:
@@ -31,7 +31,7 @@ class LanguagePython3(Language):
                 self.context.path.script_dir,
                 "internal/compilation/languages/makefiles/python.target.Makefile",
             ),
-            env={},
+            extra_env={},
         )
 
     def get_execution_command(

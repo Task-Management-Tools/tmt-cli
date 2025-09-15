@@ -59,14 +59,10 @@ def get_run_single_command(
     executable_stack_size_mib: int,
 ) -> list[str] | None:
     exe_base = os.path.join(directory, executable_filename_base)
-    if os.path.exists(exe_base) and os.path.isfile(exe_base):
-        return [exe_base]
 
     for lang_type in languages:
         lang = lang_type(context)
-        if lang.executable_extension is None:
-            continue
-
+        
         exe_file = exe_base + lang.executable_extension
         if os.path.exists(exe_file) and os.path.isfile(exe_file):
             return lang.get_execution_command(exe_base, executable_stack_size_mib)

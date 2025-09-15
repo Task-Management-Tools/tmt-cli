@@ -1,6 +1,7 @@
 import subprocess
 import shutil
 import os
+import pathlib
 
 from internal.context import TMTContext
 from internal.outcome import (
@@ -9,14 +10,19 @@ from internal.outcome import (
     SingleCompilationResult,
 )
 from internal.runner import Process, wait_for_outputs
+from internal.errors import TMTMissingFileError
 
 from .languages import languages
 
-
-# if platform.system() == "Darwin":
-#     MAKE = "make"
-# else:
-MAKE = "make"
+def _get_make() -> str:
+    # TODO: configurable with per-user config
+    if make := os.environ.get("MAKE"):
+        return make
+    if shutil.which("gmake") is not None:
+        return "gmake"
+    if shutil.which("make") is not None:
+        return "make"
+    raise TMTMissingFileError("executable", "make", "PATH")
 
 
 def make_compile_wildcard(
@@ -29,19 +35,31 @@ def make_compile_wildcard(
 
     compile_process: Process | None = None
 
+    executables = {}
+    for source in pathlib.Path(directory).glob('*'):
+        base, ext = os.path.splitext(source)
+        if any([ext in lang(context).source_extensions for lang in languages]):
+            if base in executables:
+                return CompilationResult(
+                    verdict=CompilationOutcome.FAILED,
+                    standard_output=f"Source files {source} and {executables[base]} are ambigious. Please rename one of them.",
+                    exit_status=-1,
+                )
+            executables[base] = source
+
     for lang_type in languages:
         lang = lang_type(context)
 
         make_info = lang.get_make_wildcard_command(executable_stack_size_mib)
 
-        command = [MAKE, "-C", directory, "-f", make_info.makefile]
+        command = [_get_make(), "-C", directory, "-f", make_info.makefile]
         compile_process = Process(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             time_limit_sec=compilation_time_limit_sec,
             memory_limit_mib=compilation_memory_limit_mib,
-            env=make_info.env | os.environ,
+            env=make_info.extra_env | os.environ,
         )
         stdout, stderr = wait_for_outputs(compile_process)
         allout += stdout
@@ -84,22 +102,17 @@ def make_compile_targets(
     for lang_type in languages:
         lang = lang_type(context)
 
-        if all(
-            [
-                any([src.endswith(ext) for ext in lang.source_extensions])
-                for src in sources
-            ]
-        ):
+        if all([os.path.splitext(src)[1] in lang.source_extensions for src in sources]):
             make_info = lang.get_make_target_command(executable_stack_size_mib)
 
-            command = [MAKE, "-C", directory, "-f", make_info.makefile]
+            command = [_get_make(), "-C", directory, "-f", make_info.makefile]
             compile_process = Process(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 time_limit_sec=compilation_time_limit_sec,
                 memory_limit_mib=compilation_memory_limit_mib,
-                env=make_info.env
+                env=make_info.extra_env
                 | os.environ
                 | {
                     "SRCS": " ".join(sources),

@@ -36,4 +36,4 @@ emit-log:
 		 echo "warning: No such file: $$f"; \
 	 fi
 	
-.PHONY: all clean emit-log
+.PHONY: all emit-log
