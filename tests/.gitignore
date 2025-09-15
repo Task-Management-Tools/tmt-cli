@@ -1,0 +1,16 @@
+# Build binaries, artifacts, and logs
+*/generator/build
+*/validator/build
+*/checker/build
+*/interactor/build
+*/manager/build
+
+# Testcases
+*/testcases/*
+!*/testcases/hash.json
+
+# Logs
+*/logs/
+
+# Sandbox
+*/sandbox/

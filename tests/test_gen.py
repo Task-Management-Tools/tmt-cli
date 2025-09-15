@@ -1,3 +1,6 @@
+import os
+import json
+import hashlib
 import pathlib
 import pytest
 
@@ -134,6 +137,11 @@ def test_gen(problem_shortname: str, expected_results: dict[str, GenerationResul
         assert interactor_compile_result.verdict == CompilationOutcome.SUCCESS
 
     # TODO assert that tests are sorted?
+
+    official_testcase_hashes: dict[str, str]
+    with open(context.path.testcases_hashes, "r") as f:
+        official_testcase_hashes = json.load(f)
+
     for testset in context.recipe.testsets.values():
         for test in testset.tests:
             codename = test.test_name
@@ -156,3 +164,18 @@ def test_gen(problem_shortname: str, expected_results: dict[str, GenerationResul
             assert result.output_generation == expected_result.output_generation
             if expected_result.output_validation is not ExecutionOutcome.UNKNOWN:
                 assert result.output_validation == expected_result.output_validation
+
+            # Verifies hash
+            if result:
+                for testcase_file_exts in [
+                    context.config.input_extension,
+                    context.config.output_extension,
+                ] + list(testset.extra_file):
+                    base_filename = context.construct_test_filename(
+                        codename, testcase_file_exts
+                    )
+                    file = os.path.join(context.path.testcases, base_filename)
+                    assert os.path.isfile(file)
+                    with open(file, "rb") as f:
+                        testcase_hash = hashlib.sha256(f.read()).hexdigest()
+                    assert official_testcase_hashes[base_filename] == testcase_hash
