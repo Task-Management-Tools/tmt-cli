@@ -216,7 +216,9 @@ def command_gen(
             formatter.println()
             with open(context.path.testcases_hashes, "r") as f:
                 official_testcase_hashes: dict[str, str] = json.load(f)
-            formatter.print_hash_diff(official_testcase_hashes, testcase_hashes)
+            formatter.print_hash_diff_with_exit(
+                official_testcase_hashes, testcase_hashes
+            )
             if official_testcase_hashes != testcase_hashes:
                 exit(1)
         else:

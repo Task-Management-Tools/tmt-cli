@@ -59,7 +59,7 @@ class Language(ABC):
         Returns a MakeInfo indicating the location of the Makefile compiling a single target,
         and the related environment.
 
-        Apart from the compiler specific environment variables, SRCS and TARGET_NAME should 
+        Apart from the compiler specific environment variables, SRCS and TARGET_NAME should
         still be supplied to form the compilation environment.
         """
         return MakeInfo("", {})

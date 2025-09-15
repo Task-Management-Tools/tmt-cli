@@ -62,7 +62,7 @@ def get_run_single_command(
 
     for lang_type in languages:
         lang = lang_type(context)
-        
+
         exe_file = exe_base + lang.executable_extension
         if os.path.exists(exe_file) and os.path.isfile(exe_file):
             return lang.get_execution_command(exe_base, executable_stack_size_mib)

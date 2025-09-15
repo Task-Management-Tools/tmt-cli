@@ -138,7 +138,7 @@ class Formatter:
             raise ValueError(f"Unexpected ExecutionOutcome {result}")
 
     def print_reason(self, reason: str):
-        # : the following terminal width threshold should be configurable via global settings
+        # TODO: the following terminal width threshold should be configurable via global settings
         if self.terminal_width is not None and self.terminal_width >= 96:
             buffer = reason
             cursor_position = self.cursor
@@ -258,3 +258,10 @@ class Formatter:
             self.println(self.ANSI_RED, "Extra files:", self.ANSI_RESET)
             for file in sorted(extra_files):
                 self.println(tab, file)
+
+    def print_hash_diff_with_exit(
+        self, official_testcase_hashes: dict[str, str], testcase_hashes: dict[str, str]
+    ) -> None:
+        self.print_hash_diff(official_testcase_hashes, testcase_hashes)
+        if official_testcase_hashes != testcase_hashes:
+            exit(1)

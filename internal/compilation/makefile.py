@@ -14,6 +14,7 @@ from internal.errors import TMTMissingFileError
 
 from .languages import languages
 
+
 def _get_make() -> str:
     # TODO: configurable with per-user config
     if make := os.environ.get("MAKE"):
@@ -36,7 +37,7 @@ def make_compile_wildcard(
     compile_process: Process | None = None
 
     executables = {}
-    for source in pathlib.Path(directory).glob('*'):
+    for source in pathlib.Path(directory).glob("*"):
         base, ext = os.path.splitext(source)
         if any([ext in lang(context).source_extensions for lang in languages]):
             if base in executables:
