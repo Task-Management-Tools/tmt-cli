@@ -219,8 +219,6 @@ def command_gen(
             formatter.print_hash_diff_with_exit(
                 official_testcase_hashes, testcase_hashes
             )
-            if official_testcase_hashes != testcase_hashes:
-                exit(1)
         else:
             with open(context.path.testcases_hashes, "w") as f:
                 json.dump(testcase_hashes, f, sort_keys=True, indent=4)
