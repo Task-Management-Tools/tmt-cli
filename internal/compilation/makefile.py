@@ -1,7 +1,6 @@
 import subprocess
 import shutil
 import os
-import platform
 
 from internal.context import TMTContext
 from internal.outcome import (
@@ -34,22 +33,19 @@ def make_compile_wildcard(
         lang = lang_type(context)
 
         make_info = lang.get_make_wildcard_command(executable_stack_size_mib)
-        try:
-            command = [MAKE, "-C", directory, "-f", make_info.makefile]
-            compile_process = Process(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                time_limit_sec=compilation_time_limit_sec,
-                memory_limit_mib=compilation_memory_limit_mib,
-                env=os.environ | make_info.env,
-            )
-            stdout, stderr = wait_for_outputs(compile_process)
-            allout += stdout
-            allerr += stderr
-        finally:
-            if compile_process is not None:
-                compile_process.safe_kill()
+
+        command = [MAKE, "-C", directory, "-f", make_info.makefile]
+        compile_process = Process(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            time_limit_sec=compilation_time_limit_sec,
+            memory_limit_mib=compilation_memory_limit_mib,
+            env=make_info.env | os.environ,
+        )
+        stdout, stderr = wait_for_outputs(compile_process)
+        allout += stdout
+        allerr += stderr
 
         if compile_process.status != 0 or compile_process.is_timedout:
             break
@@ -95,26 +91,23 @@ def make_compile_targets(
             ]
         ):
             make_info = lang.get_make_target_command(executable_stack_size_mib)
-            try:
-                command = [MAKE, "-C", directory, "-f", make_info.makefile]
-                compile_process = Process(
-                    command,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    time_limit_sec=compilation_time_limit_sec,
-                    memory_limit_mib=compilation_memory_limit_mib,
-                    env={
-                        "SRCS": " ".join(sources),
-                        "TARGET_NAME": target,
-                    }
-                    | os.environ
-                    | make_info.env,
-                )
 
-                stdout, stderr = wait_for_outputs(compile_process)
-            finally:
-                if compile_process is not None:
-                    compile_process.safe_kill()
+            command = [MAKE, "-C", directory, "-f", make_info.makefile]
+            compile_process = Process(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                time_limit_sec=compilation_time_limit_sec,
+                memory_limit_mib=compilation_memory_limit_mib,
+                env=make_info.env
+                | os.environ
+                | {
+                    "SRCS": " ".join(sources),
+                    "TARGET_NAME": target,
+                },
+            )
+
+            stdout, stderr = wait_for_outputs(compile_process)
 
             verdict: CompilationOutcome
             if compile_process.is_timedout:

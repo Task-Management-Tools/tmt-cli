@@ -1,10 +1,8 @@
 import shutil
-import subprocess
 import os
 
 from internal.context import TMTContext
-from internal.outcome import CompilationOutcome, SingleCompilationResult
-from internal.runner import Process, wait_for_outputs
+from internal.outcome import SingleCompilationResult
 
 from .languages import languages
 from .makefile import make_compile_targets
@@ -44,11 +42,13 @@ def compile_single(
         if not os.path.samefile(os.path.dirname(headers[i]), directory):
             shutil.copy(headers[i], directory)
 
-    return make_compile_targets(context=context,
-                                directory=directory,
-                                sources=sources,
-                                target=executable_filename_base,
-                                executable_stack_size_mib=executable_stack_size_mib)
+    return make_compile_targets(
+        context=context,
+        directory=directory,
+        sources=sources,
+        target=executable_filename_base,
+        executable_stack_size_mib=executable_stack_size_mib,
+    )
 
 
 def get_run_single_command(
