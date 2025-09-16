@@ -16,7 +16,7 @@ class SolutionStep(ABC):
     ):
         self.context = context
 
-        self.executable_name = self.context.config.short_name
+        self.executable_name_base = self.context.config.short_name
         # TODO: if is_generation, moves the output (and remove save_output in run_solution method)
         if is_generation:
             self.time_limit_sec = self.context.config.trusted_step_time_limit_sec

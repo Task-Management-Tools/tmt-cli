@@ -2,10 +2,15 @@ import os
 import shutil
 import subprocess
 
-from internal.compilation_makefile import compile_with_make, clean_with_make
+from internal.compilation import (
+    make_compile_wildcard,
+    make_clean,
+    get_run_single_command,
+)
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
 from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
+from internal.errors import TMTMissingFileError
 
 
 class GenerationStep:
@@ -15,8 +20,7 @@ class GenerationStep:
         self.workdir = self.context.path.sandbox_generation
 
     def compile(self) -> CompilationResult:
-        comp_result = compile_with_make(
-            makefile_path=self.context.path.makefile_normal,
+        comp_result = make_compile_wildcard(
             directory=self.context.path.generator,
             context=self.context,
             executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
@@ -28,11 +32,7 @@ class GenerationStep:
         os.makedirs(self.workdir, exist_ok=True)
 
     def clean_up(self):
-        clean_with_make(
-            makefile_path=self.context.path.makefile_normal,
-            directory=self.context.path.generator,
-            context=self.context,
-        )
+        make_clean(directory=self.context.path.generator)
 
     def run_generator(
         self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]
@@ -50,9 +50,8 @@ class GenerationStep:
         ]
 
         result = GenerationResult()
-        generates_output = (
-            False  # TODO: should be True when config answer_generation is generator.
-        )
+        # TODO: should be True when config answer_generation is generator.
+        generates_output = False
         try:
             # Filenames
             testcase_input = self.context.construct_input_filename(code_name)
@@ -72,6 +71,7 @@ class GenerationStep:
                 sandbox_testcase_extra.append(sandbox_file)
 
             start_parsing_index = 0
+
             # Preprocess: replace manual
             if commands[0][0] == "manual":
                 if len(commands[0]) == 2:
@@ -96,9 +96,17 @@ class GenerationStep:
                     result.is_output_forced = True
 
             # Preprocess: replace manual files
-            for command in commands[start_parsing_index:]:
-                if not command[0].startswith(os.sep):
-                    command[0] = self.context.path.replace_with_generator(command[0])
+            for i in range(start_parsing_index, len(commands)):
+                generator_command = get_run_single_command(
+                    context=self.context,
+                    directory=self.context.path.generator_build,
+                    executable_filename_base=commands[i][0],
+                    executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
+                )
+                if generator_command is None:
+                    raise TMTMissingFileError("generator", commands[i][0])
+
+                commands[i] = generator_command + commands[i][1:]
 
             # Launch each command, chaining stdin/stdout
             generator_processes: list[Process] = []

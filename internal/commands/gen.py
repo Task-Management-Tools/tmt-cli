@@ -190,6 +190,7 @@ def command_gen(
                     test=test,
                 )
                 codename = test.test_name
+                assert codename is not None
                 with open(
                     os.path.join(context.path.logs_generation, f"{codename}.gen.log"),
                     "w+",
@@ -215,7 +216,9 @@ def command_gen(
             formatter.println()
             with open(context.path.testcases_hashes, "r") as f:
                 official_testcase_hashes: dict[str, str] = json.load(f)
-            formatter.print_hash_diff(official_testcase_hashes, testcase_hashes)
+            formatter.print_hash_diff_with_exit(
+                official_testcase_hashes, testcase_hashes
+            )
         else:
             with open(context.path.testcases_hashes, "w") as f:
                 json.dump(testcase_hashes, f, sort_keys=True, indent=4)

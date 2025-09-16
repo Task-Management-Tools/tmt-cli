@@ -6,7 +6,11 @@ from pathlib import Path
 
 from internal.context import TMTContext
 from internal.runner import Process, wait_procs
-from internal.compilation_makefile import compile_with_make, clean_with_make
+from internal.compilation import (
+    make_compile_targets,
+    make_clean,
+    get_run_single_command,
+)
 from internal.steps.solution import SolutionStep
 from internal.outcome import (
     EvaluationOutcome,
@@ -25,28 +29,32 @@ class InteractorStep:
     def prepare_sandbox(self) -> None:
         os.makedirs(self.context.path.sandbox_interactor, exist_ok=True)
 
-    def clean_up(self) -> None:
-        clean_with_make(
-            makefile_path=self.context.path.makefile_checker,
-            directory=self.context.path.interactor,
-            context=self.context,
-            env={"SRCS": self.context.config.interactor.filename},
-        )
+    def clean_up(self):
+        make_clean(directory=self.context.path.interactor)
 
     def compile(self) -> CompilationResult:
         if self.context.path.has_interactor_directory():
-            comp_result = compile_with_make(
-                makefile_path=self.context.path.makefile_checker,
-                directory=self.context.path.interactor,
+            if (
+                self.context.config.interactor is None
+                or self.context.config.interactor.filename is None
+            ):
+                raise ValueError("Interactor config should be present")
+
+            comp_result = make_compile_targets(
                 context=self.context,
+                directory=self.context.path.interactor,
+                sources=[self.context.config.interactor.filename],
+                target="interactor",
                 executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
-                env={"SRCS": self.context.config.interactor.filename},
             )
 
-            shutil.copy(
-                os.path.join(self.context.path.interactor, "checker"),
-                self.context.path.sandbox_interactor,
-            )
+            if comp_result.verdict is CompilationOutcome.SUCCESS:
+                if comp_result.produced_file is None:
+                    raise FileNotFoundError("Compilation did not produce interactor")
+                shutil.copy(
+                    comp_result.produced_file,
+                    self.context.path.sandbox_interactor,
+                )
 
             return comp_result
         return CompilationResult(
@@ -103,10 +111,14 @@ class InteractorStep:
             os.chdir(self.context.path.sandbox_solution)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
+        solution_exec_command = get_run_single_command(
+            context=self.context,
+            directory=self.context.path.sandbox_solution,
+            executable_filename_base=solution_step.executable_name_base,
+            executable_stack_size_mib=solution_step.memory_limit_mib,
+        )
         solution = Process(
-            os.path.join(
-                self.context.path.sandbox_solution, solution_step.executable_name
-            ),
+            solution_exec_command,
             preexec_fn=solution_preexec_fn,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -120,13 +132,20 @@ class InteractorStep:
             os.chdir(self.context.path.sandbox_interactor)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
+        interactor_exec_command = get_run_single_command(
+            context=self.context,
+            directory=self.context.path.sandbox_interactor,
+            executable_filename_base="interactor",
+            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+        )
+        assert interactor_exec_command is not None
+        interactor_exec_args = [
+            sandbox_interactor_input_file,
+            sandbox_interactor_answer_file,
+            sandbox_interactor_feedback_dir,
+        ]
         interactor = Process(
-            [
-                os.path.join(self.context.path.sandbox_interactor, "checker"),
-                sandbox_interactor_input_file,
-                sandbox_interactor_answer_file,
-                sandbox_interactor_feedback_dir,
-            ],
+            interactor_exec_command + interactor_exec_args,
             preexec_fn=interactor_preexec_fn,
             stdin=solution.stdout,
             stdout=solution.stdin,
@@ -188,18 +207,18 @@ class InteractorStep:
         # else, we check if solution executed successfully
         elif solution_step.is_solution_abormal_exit(solution, result):
             pass
-        # Noe, we can check if solution is actually correct
+        # Now, we can check if the solution is actually correct
         elif interactor.exit_code == 42:
             result.verdict = EvaluationOutcome.ACCEPTED
         else:
             result.verdict = EvaluationOutcome.WRONG
 
             # See ICPCCheckerStep.
-            checker_feedback_file = (
+            interactor_feedback_file = (
                 Path(sandbox_interactor_feedback_dir) / "judgemessage.txt"
             )
-            if checker_feedback_file.is_file():
-                with open(checker_feedback_file, "r") as f:
+            if interactor_feedback_file.is_file():
+                with open(interactor_feedback_file, "r") as f:
                     result.checker_reason = f.readline().strip()
 
         shutil.rmtree(sandbox_interactor_feedback_dir)

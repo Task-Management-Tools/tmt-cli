@@ -1,3 +1,6 @@
+import os
+import json
+import hashlib
 import pathlib
 import pytest
 
@@ -67,6 +70,15 @@ expected_results_parity = {
     "2_override_1":               expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
     "3_override-wrong-answer_1":  expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
 }
+
+expected_results_aplusb_py = {
+    "1_handmade_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_4":       expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+    "1_handmade_5":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    "1_handmade_6":       expected_result_helper(gen=OK,   val=OK,   ans=OK)
+}
 # fmt: on
 
 
@@ -74,6 +86,7 @@ expected_results_parity = {
     "problem_shortname, expected_results",
     [
         ("aplusb", expected_results_aplusb),
+        ("aplusb-py", expected_results_aplusb_py),
         ("floatcmp", expected_results_floatcmp),
         ("guess", expected_results_guess),
         ("parity", expected_results_parity),
@@ -124,6 +137,11 @@ def test_gen(problem_shortname: str, expected_results: dict[str, GenerationResul
         assert interactor_compile_result.verdict == CompilationOutcome.SUCCESS
 
     # TODO assert that tests are sorted?
+
+    official_testcase_hashes: dict[str, str]
+    with open(context.path.testcases_hashes, "r") as f:
+        official_testcase_hashes = json.load(f)
+
     for testset in context.recipe.testsets.values():
         for test in testset.tests:
             codename = test.test_name
@@ -146,3 +164,18 @@ def test_gen(problem_shortname: str, expected_results: dict[str, GenerationResul
             assert result.output_generation == expected_result.output_generation
             if expected_result.output_validation is not ExecutionOutcome.UNKNOWN:
                 assert result.output_validation == expected_result.output_validation
+
+            # Verifies hash
+            if result:
+                for testcase_file_exts in [
+                    context.config.input_extension,
+                    context.config.output_extension,
+                ] + list(testset.extra_file):
+                    base_filename = context.construct_test_filename(
+                        codename, testcase_file_exts
+                    )
+                    file = os.path.join(context.path.testcases, base_filename)
+                    assert os.path.isfile(file)
+                    with open(file, "rb") as f:
+                        testcase_hash = hashlib.sha256(f.read()).hexdigest()
+                    assert official_testcase_hashes[base_filename] == testcase_hash

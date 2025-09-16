@@ -221,7 +221,7 @@ def wait_procs(procs: list[Process]) -> None:
             pid_to_proc[pid].safe_kill()
 
 
-def wait_for_outputs(proc: Process) -> tuple[str, str]:
+def wait_for_outputs(proc: Process, truncate_length: int = 16384) -> tuple[str, str]:
     """
     Wait for the conclusion of the processes in the list, avoiding
     starving for input and output.
@@ -236,13 +236,21 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
     # because of insufficient buffering (and without allocating too
     # much memory). Unix specific.
 
-    stdout, stderr = "", ""
+    stdout, stderr = b"", b""
+
+    if proc.stdout is not None:
+        os.set_blocking(proc.stdout.fileno(), False)
+    if proc.stderr is not None:
+        os.set_blocking(proc.stderr.fileno(), False)
+
     try:
-        while proc.wait4() is None:
+        while True:
             to_read = (
                 [proc.stdout]
                 if proc.stdout is not None and not proc.stdout.closed
-                else [] + [proc.stderr]
+                else []
+            ) + (
+                [proc.stderr]
                 if proc.stderr is not None and not proc.stderr.closed
                 else []
             )
@@ -250,22 +258,23 @@ def wait_for_outputs(proc: Process) -> tuple[str, str]:
                 break
             available_read = select.select(to_read, [], [], 1.0)[0]
             for file in available_read:
-                content = file.read(8 * 1024)
-                if type(content) is bytes:
-                    content = content.decode()
+                content = file.read(8192)
+                if type(content) is str:
+                    content = content.encode()
+                if len(content) == 0:  # EOF
+                    file.close()
+                    continue
                 if file is proc.stdout:
                     stdout += content
                 else:
                     stderr += content
 
-        if proc.stdout is not None:
-            while content := proc.stdout.read(8 * 1024):
-                stdout += content.decode()
-        if proc.stderr is not None:
-            while content := proc.stderr.read(8 * 1024):
-                stderr += content.decode()
-
+        _, status, rusage = os.wait4(proc.pid, 0)
+        poll_time = time.monotonic()
+        proc.post_wait(poll_time, status, rusage)
     finally:
         proc.safe_kill()
-
-    return stdout, stderr
+    return (
+        stdout[:truncate_length].decode(errors="ignore"),
+        stderr[:truncate_length].decode(errors="ignore"),
+    )
