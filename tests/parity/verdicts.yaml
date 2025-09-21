@@ -1,0 +1,6 @@
+- filename: sol.cpp
+  verdict: accepted
+- filename: alt.cpp 
+  verdict: accepted 
+- filename: overflow.cpp 
+  verdict: wrong_answer

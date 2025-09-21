@@ -3,7 +3,7 @@ import pathlib
 
 from internal.formatting import Formatter
 from internal.context import TMTContext, find_problem_dir
-from internal.commands import command_gen, command_invoke, command_clean
+from internal.commands import command_gen, command_invoke, command_clean, command_export
 from internal.errors import TMTMissingFileError, TMTInvalidConfigError
 
 
@@ -42,6 +42,9 @@ def main():
     parser_clean.add_argument(
         "-y", "--yes", action="store_true", help="Automatic yes to prompts."
     )
+    
+    parser_export = subparsers.add_parser("export", help="Export packages")
+    parser_export.add_argument("output", help="The filename of the exported zip file.")
 
     args = parser.parse_args()
 
@@ -77,6 +80,9 @@ def main():
         command_clean(formatter=formatter, context=context, skip_confirm=args.yes)
         return
 
+    if args.command == "export":
+        command_export(formatter=formatter, context=context, output_path=args.output)
+        return
 
 if __name__ == "__main__":
     try:
