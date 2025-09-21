@@ -44,7 +44,7 @@ def yaml_converter(formatter: Formatter, context: TMTContext, source_files: List
             command += " ".join(context.config.checker.arguments) 
         output_yaml["validation"] = command
     elif context.config.interactor:
-        output_yaml["validation"] = "custome interactive"
+        output_yaml["validation"] = "custom interactive"
 
     yaml.dump(output_yaml, output_file, sort_keys=False)
 
