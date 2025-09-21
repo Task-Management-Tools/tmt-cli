@@ -18,4 +18,4 @@ def command_export(*, formatter: Formatter, context: TMTContext, output_path: st
         case _:
             raise ValueError("Unsupported package export format: " + str(package_format) + ".")
 
-    exporter.export(create_zip)
+    exporter.export(formatter, context, create_zip)
