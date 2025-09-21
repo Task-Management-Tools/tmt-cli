@@ -31,7 +31,7 @@ class FolderFormatExporter:
         self,
         source_paths: List[str],
         target_path: str,
-        processor_func: Callable[[List[Path], IO], None],
+        processor_func: Callable[[Formatter, TMTContext, List[Path], IO], None],
     ) -> None:
         """Add a custom file processing operation"""
         operation = CustomFileOperation(source_paths, target_path, processor_func)
@@ -42,9 +42,13 @@ class FolderFormatExporter:
         pattern: str,
         target_folder: str,
         keep_original_name: bool = True,
-        rename_func: Optional[Callable[[List[Path], List[Path]], str]] = None,
-        custom_func: Optional[Callable[[List[Path], List[Path], IO], None]] = None,
-        additional_sources: Optional[List[str]] = None,
+        rename_func: Optional[
+            Callable[[Formatter, TMTContext, Path, List[Path]], str]
+        ] = None,
+        custom_func: Optional[
+            Callable[[Formatter, TMTContext, Path, List[Path], IO], None]
+        ] = None,
+        supplementary_files: Optional[List[str]] = None,
     ) -> None:
         """
         Add a regex-based file copy operation
@@ -53,9 +57,9 @@ class FolderFormatExporter:
             pattern: Regex pattern to match files
             target_folder: Target folder name
             keep_original_name: Whether to keep original filenames (ignored if rename_func provided)
-            rename_func: Function that takes (matched_files, supplementary_files) and returns target filename
-            custom_func: Function that takes (matched_files, supplementary_files, output_file)
-            additional_sources: List of additional file paths from problem director to include
+            rename_func: Function that takes (formatter, context, matched_file, supplementary_files) and returns target filename
+            custom_func: Function that takes (formatter, context, matched_file, supplementary_files, output_file)
+            supplementary_files: List of supplementary file paths from problem director to include
         """
         operation = RegexCopyOperation(
             pattern,
@@ -63,7 +67,7 @@ class FolderFormatExporter:
             keep_original_name,
             rename_func,
             custom_func,
-            additional_sources,
+            supplementary_files,
         )
         self.operations.append(operation)
 

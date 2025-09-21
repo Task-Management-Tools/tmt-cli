@@ -70,12 +70,12 @@ class ICPCExporter(FolderFormatExporter):
         def recognize_verdict(
             formatter: Formatter,
             context: TMTContext,
-            matched_files: List[Path],
+            matched_file: Path,
             supplementary_files: List[Path],
         ) -> str:
             verdicts_folder = "unknown"
-            idx = matched_files[0].parts.index("solutions")
-            file_name = Path(*matched_files[0].parts[idx + 1 :])
+            idx = matched_file.parts.index("solutions")
+            file_name = Path(*matched_file.parts[idx + 1 :])
             try:
                 with open(supplementary_files[0], "r") as file:
                     verdicts = yaml.safe_load(file)
@@ -97,7 +97,7 @@ class ICPCExporter(FolderFormatExporter):
             "submissions",
             keep_original_name=False,
             rename_func=recognize_verdict,
-            additional_sources=["verdicts.yaml"],
+            supplementary_files=["verdicts.yaml"],
         )
 
         """Setup output_validators"""

@@ -61,7 +61,7 @@ class CustomFileOperation(ConversionOperation):
         self,
         source_paths: List[str],
         target_path: str,
-        processor_func: Callable[[List[Path], IO], None],
+        processor_func: Callable[[Formatter, TMTContext, List[Path], IO], None],
     ):
         self.source_paths = source_paths
         self.target_path = target_path
@@ -105,16 +105,20 @@ class RegexCopyOperation(ConversionOperation):
         pattern: str,
         target_path: str,
         keep_original_name: bool = True,
-        rename_func: Optional[Callable[[List[Path], List[Path]], str]] = None,
-        custom_func: Optional[Callable[[List[Path], List[Path], IO], None]] = None,
-        additional_sources: Optional[List[str]] = None,
+        rename_func: Optional[
+            Callable[[Formatter, TMTContext, Path, List[Path]], str]
+        ] = None,
+        custom_func: Optional[
+            Callable[[Formatter, TMTContext, Path, List[Path], IO], None]
+        ] = None,
+        supplementary_files: Optional[List[str]] = None,
     ):
         self.pattern = re.compile(pattern)
         self.target_path = target_path
         self.keep_original_name = keep_original_name
         self.rename_func = rename_func
         self.custom_func = custom_func
-        self.additional_sources = additional_sources or []
+        self.supplementary_files = supplementary_files or []
 
     def target_name(self) -> str:
         return self.target_path + "/ (" + self.pattern.pattern + ")"
@@ -144,9 +148,9 @@ class RegexCopyOperation(ConversionOperation):
             )
             return
 
-        # Collect additional source files
+        # Collect supplementary source files
         supplementary_files = []
-        for source_path in self.additional_sources:
+        for source_path in self.supplementary_files:
             source_file = Path(context.path.problem_dir) / Path(source_path)
             if source_file.exists():
                 supplementary_files.append(source_file)
@@ -157,7 +161,7 @@ class RegexCopyOperation(ConversionOperation):
                     "WARN",
                     formatter.ANSI_RESET,
                     "]",
-                    f" Additional files {source_path} does not exist",
+                    f" Supplementary file {source_path} does not exist",
                 )
                 return
 
@@ -167,7 +171,7 @@ class RegexCopyOperation(ConversionOperation):
             else:
                 if self.rename_func:
                     target_name = self.rename_func(
-                        formatter, context, [file_path], supplementary_files
+                        formatter, context, file_path, supplementary_files
                     )
                 else:
                     target_name = file_path.name
@@ -180,12 +184,12 @@ class RegexCopyOperation(ConversionOperation):
                     self.custom_func(
                         formatter,
                         context,
-                        [file_path],
+                        file_path,
                         supplementary_files,
                         output_file,
                     )
             else:
-                # Simple copy (ignoring additional files in default behavior)
+                # Simple copy (ignoring supplementary files files in default behavior)
                 shutil.copy2(file_path, target_file)
 
         formatter.println("[", formatter.ANSI_GREEN, "OK", formatter.ANSI_RESET, "]")
