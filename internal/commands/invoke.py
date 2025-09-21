@@ -4,7 +4,7 @@ import subprocess
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
-from internal.outcome import eval_outcome_to_run_outcome
+from internal.outcomes import eval_outcome_to_run_outcome
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
 from internal.steps.interactor import InteractorStep

@@ -3,7 +3,7 @@ import yaml
 
 
 from internal.recipe_parser import parse_recipe_data
-from internal.errors import TMTMissingFileError, TMTInvalidConfigError
+from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 
 from .paths import ProblemDirectoryHelper
 from .config import TMTConfig

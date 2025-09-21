@@ -5,8 +5,8 @@ import json
 
 from internal.formatting import Formatter
 from internal.context import CheckerType, AnswerGenerationType, TMTContext
-from internal.errors import TMTInvalidConfigError
-from internal.outcome import (
+from internal.exceptions import TMTInvalidConfigError
+from internal.outcomes import (
     ExecutionOutcome,
     eval_outcome_to_run_outcome,
 )

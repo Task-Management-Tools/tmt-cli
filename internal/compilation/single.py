@@ -2,7 +2,7 @@ import shutil
 import os
 
 from internal.context import TMTContext
-from internal.outcome import SingleCompilationResult
+from internal.outcomes import SingleCompilationResult
 
 from .languages import languages
 from .makefile import make_compile_targets

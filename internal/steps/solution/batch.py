@@ -4,9 +4,9 @@ import shutil
 from pathlib import Path
 
 from internal.context import TMTContext
-from internal.runner import Process, wait_procs
+from internal.process import Process, wait_procs
 from internal.compilation import compile_single, get_run_single_command
-from internal.outcome import (
+from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,

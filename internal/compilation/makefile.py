@@ -4,13 +4,13 @@ import os
 import pathlib
 
 from internal.context import TMTContext
-from internal.outcome import (
+from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
     SingleCompilationResult,
 )
-from internal.runner import Process, wait_for_outputs
-from internal.errors import TMTMissingFileError
+from internal.process import Process, wait_for_outputs
+from internal.exceptions import TMTMissingFileError
 
 from .languages import languages
 

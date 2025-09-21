@@ -8,9 +8,9 @@ from internal.compilation import (
     get_run_single_command,
 )
 from internal.context import TMTContext
-from internal.runner import Process, wait_procs
-from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
-from internal.errors import TMTMissingFileError
+from internal.process import Process, wait_procs
+from internal.outcomes import CompilationResult, GenerationResult, ExecutionOutcome
+from internal.exceptions import TMTMissingFileError
 
 
 class GenerationStep:

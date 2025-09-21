@@ -1,4 +1,4 @@
-from internal.outcome import (
+from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,
@@ -21,7 +21,7 @@ class CMSCheckerStep(CheckerStep):
 
     def compile(self) -> CompilationResult:
         if self.working_dir.has_checker_directory():
-            compile_result = self.compile_with_make(self.working_dir.checker)
+            _ = self.compile_with_make(self.working_dir.checker)
         else:
             # In this case we have no checker directory, therefore, we will run the default checker
             # (the white diff) in sandbox/checker instead, therefore no compilation is required.

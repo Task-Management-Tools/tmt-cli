@@ -9,8 +9,8 @@ from internal.compilation import (
     make_clean,
     get_run_single_command,
 )
-from internal.runner import Process, wait_procs
-from internal.outcome import (
+from internal.process import Process, wait_procs
+from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,

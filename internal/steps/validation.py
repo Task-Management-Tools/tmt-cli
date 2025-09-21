@@ -8,9 +8,9 @@ from internal.compilation import (
     make_clean,
     get_run_single_command,
 )
-from internal.outcome import CompilationResult, GenerationResult, ExecutionOutcome
-from internal.runner import Process, wait_procs
-from internal.errors import TMTMissingFileError
+from internal.outcomes import CompilationResult, GenerationResult, ExecutionOutcome
+from internal.process import Process, wait_procs
+from internal.exceptions import TMTMissingFileError
 
 
 class ValidationStep:

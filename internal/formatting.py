@@ -1,7 +1,7 @@
 import sys
 import os
 
-from internal.outcome import (
+from internal.outcomes import (
     CompilationResult,
     CompilationOutcome,
     ExecutionOutcome,

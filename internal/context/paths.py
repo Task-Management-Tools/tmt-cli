@@ -2,8 +2,7 @@ import os
 import shutil
 import stat
 
-from internal.errors import TMTMissingFileError
-# from internal.errors import TMTParsingError
+from internal.exceptions import TMTMissingFileError
 
 
 # Subdirectories properties creation helper

@@ -12,7 +12,7 @@ from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.interactor import InteractorStep
 from internal.steps.checker.icpc import ICPCCheckerStep
 
-from internal.outcome import (
+from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
     GenerationResult,

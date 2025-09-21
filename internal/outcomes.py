@@ -3,7 +3,7 @@ import os
 from enum import Enum
 from dataclasses import dataclass
 
-from internal.runner import Process
+from internal.process import Process
 
 
 class EvaluationOutcome(Enum):
