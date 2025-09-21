@@ -99,11 +99,9 @@ class ICPCExporter(FolderFormatExporter):
             rename_func=recognize_verdict,
             supplementary_files=["verdicts.yaml"],
         )
-        
+
         """Setup input_validators"""
-        self.add_regex_copy_operation(
-            r"^validator/.*\.(?:cc|cpp)", "input_validators"
-        )
+        self.add_regex_copy_operation(r"^validator/.*\.(?:cc|cpp)", "input_validators")
 
         """Setup output_validators"""
         self.add_regex_copy_operation(
@@ -136,6 +134,4 @@ class ICPCExporter(FolderFormatExporter):
         self.add_regex_copy_operation(
             r"^include/.*\.(?:h|hpp)", "output_validators/cpp_validator"
         )
-        self.add_regex_copy_operation(
-            r"^include/.*\.(?:h|hpp)", "input_validators"
-        )
+        self.add_regex_copy_operation(r"^include/.*\.(?:h|hpp)", "input_validators")

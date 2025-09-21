@@ -42,7 +42,7 @@ def main():
     parser_clean.add_argument(
         "-y", "--yes", action="store_true", help="Automatic yes to prompts."
     )
-    
+
     parser_export = subparsers.add_parser("export", help="Export packages")
     parser_export.add_argument("output", help="The filename of the exported zip file.")
 
@@ -83,6 +83,7 @@ def main():
     if args.command == "export":
         command_export(formatter=formatter, context=context, output_path=args.output)
         return
+
 
 if __name__ == "__main__":
     try:
