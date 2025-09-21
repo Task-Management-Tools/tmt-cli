@@ -12,7 +12,7 @@ def yaml_converter(
     formatter: Formatter, context: TMTContext, source_files: List[Path], output_file: IO
 ) -> None:
     """
-    source_files: [problem_yaml]
+    No need for source_files
     """
     output_yaml = {
         "problem_format_version": "2023-07-draft",
@@ -110,7 +110,8 @@ class ICPCExporter(FolderFormatExporter):
 
         """Setup data"""
         self.add_regex_copy_operation(
-            rf"^testcases/[0-9]+_samples_[0-9]+\{context.config.input_extension}", "data/sample"
+            rf"^testcases/[0-9]+_samples_[0-9]+\{context.config.input_extension}",
+            "data/sample",
         )
         self.add_regex_copy_operation(
             rf"^testcases/[0-9]+_samples_[0-9]+\{context.config.output_extension}",
