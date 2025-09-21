@@ -110,18 +110,18 @@ class ICPCExporter(FolderFormatExporter):
 
         """Setup data"""
         self.add_regex_copy_operation(
-            rf"^testcases/.*_samples_.*\{context.config.input_extension}", "data/sample"
+            rf"^testcases/[0-9]+_samples_.*\{context.config.input_extension}", "data/sample"
         )
         self.add_regex_copy_operation(
-            rf"^testcases/.*_samples_.*\{context.config.output_extension}",
+            rf"^testcases/[0-9]+_samples_.*\{context.config.output_extension}",
             "data/sample",
         )
         self.add_regex_copy_operation(
-            rf"^testcases/(?!.*_samples_).*\{context.config.input_extension}",
+            rf"^testcases/(?![0-9]+_samples_).*\{context.config.input_extension}",
             "data/secret",
         )
         self.add_regex_copy_operation(
-            rf"^testcases/(?!.*_samples_).*\{context.config.output_extension}",
+            rf"^testcases/(?![0-9]+_samples_).*\{context.config.output_extension}",
             "data/secret",
         )
 
