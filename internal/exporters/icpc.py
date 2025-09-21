@@ -12,7 +12,7 @@ def yaml_converter(
     formatter: Formatter, context: TMTContext, source_files: List[Path], output_file: IO
 ) -> None:
     """
-    source_files: [proble_yaml]
+    source_files: [problem_yaml]
     """
     output_yaml = {
         "problem_format_version": "2023-07-draft",
