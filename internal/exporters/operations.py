@@ -131,7 +131,7 @@ class RegexCopyOperation(ConversionOperation):
 
         # Find all matching files recursively
         matching_files = []
-        for file_path in Path(context.path.problem_dir).rglob("*"):
+        for file_path in Path(context.path.problem_dir).rglob("*", recurse_symlinks=True):
             if file_path.is_file() and self.pattern.search(
                 str(file_path.relative_to(context.path.problem_dir))
             ):
