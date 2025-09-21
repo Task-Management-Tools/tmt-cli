@@ -15,22 +15,28 @@ from internal.exceptions import TMTMissingFileError
 from .languages import languages
 
 
-def _get_make() -> str:
+def _get_make() -> list[str]:
+    make_flags = os.getenv("MAKEFLAGS")
+    if make_flags is None:
+        make_flags = []
+    else:
+        make_flags = make_flags.split()
+
     # TODO: configurable with per-user config
     if make := os.environ.get("MAKE"):
-        return make
+        return [make] + make_flags
     if shutil.which("gmake") is not None:
-        return "gmake"
+        return ["gmake"] + make_flags
     if shutil.which("make") is not None:
-        return "make"
+        return ["make"] + make_flags
     raise TMTMissingFileError("executable", "make", "PATH")
 
 
 def make_compile_wildcard(
     *, context: TMTContext, directory: str, executable_stack_size_mib: int
 ) -> CompilationResult:
-    compilation_time_limit_sec = context.config.trusted_compile_time_limit_sec
-    compilation_memory_limit_mib = context.config.trusted_compile_memory_limit_mib
+    compilation_time_limit_sec = context.config.compile_time_limit_sec
+    compilation_memory_limit_mib = context.config.compile_memory_limit_mib
 
     allout, allerr = "", ""
 
@@ -53,7 +59,7 @@ def make_compile_wildcard(
 
         make_info = lang.get_make_wildcard_command(executable_stack_size_mib)
 
-        command = [_get_make(), "-C", directory, "-f", make_info.makefile]
+        command = _get_make() + ["-C", directory, "-f", make_info.makefile]
         compile_process = Process(
             command,
             stdout=subprocess.PIPE,
@@ -95,8 +101,8 @@ def make_compile_targets(
     target: str,
     executable_stack_size_mib: int,
 ) -> SingleCompilationResult:
-    compilation_time_limit_sec = context.config.trusted_compile_time_limit_sec
-    compilation_memory_limit_mib = context.config.trusted_compile_memory_limit_mib
+    compilation_time_limit_sec = context.config.compile_time_limit_sec
+    compilation_memory_limit_mib = context.config.compile_memory_limit_mib
 
     compile_process: Process | None = None
 
@@ -106,7 +112,7 @@ def make_compile_targets(
         if all([os.path.splitext(src)[1] in lang.source_extensions for src in sources]):
             make_info = lang.get_make_target_command(executable_stack_size_mib)
 
-            command = [_get_make(), "-C", directory, "-f", make_info.makefile]
+            command = _get_make() + ["-C", directory, "-f", make_info.makefile]
             compile_process = Process(
                 command,
                 stdout=subprocess.PIPE,
