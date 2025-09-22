@@ -13,11 +13,10 @@ LOGS = $(SRCS:%.py=build/%.compile.log)
 all: $(EXES) emit-log
 
 build/%.pyz: %.py build
-	cp $< build/
-	$(PYTHON) -m compileall build/$< -b 2> build/$*.compile.log
-	mv build/$*.pyc build/__main__.pyc
-	zip -j $@ build/__main__.pyc
-	rm build/__main__.pyc
+	mkdir -p build/$*
+	cp $< build/$*/__main__.py
+	$(PYTHON) -m zipapp build/$* 2> build/$*.compile.log
+	rm -r build/$*
 
 build:
 	mkdir -p build
