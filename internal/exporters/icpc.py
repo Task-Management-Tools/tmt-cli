@@ -39,10 +39,10 @@ def yaml_converter(
 
     """Setup validation"""
     if context.config.checker:
-        command = context.config.checker.type.value
+        command = [context.config.checker.type.value]
         if context.config.checker.arguments:
-            command += " ".join(context.config.checker.arguments)
-        output_yaml["validation"] = command
+            command += context.config.checker.arguments
+        output_yaml["validation"] = " ".join(command)
     elif context.config.interactor:
         output_yaml["validation"] = "custom interactive"
 
