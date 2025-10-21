@@ -53,7 +53,7 @@ def make_compile_wildcard(
 
         make_info = lang.get_make_wildcard_command(executable_stack_size_mib)
 
-        command = [_get_make(), "-C", directory, "-f", make_info.makefile]
+        command = [_get_make(), "-C", directory, "-f", make_info.makefile, "-k", "-s"]
         compile_process = Process(
             command,
             stdout=subprocess.PIPE,

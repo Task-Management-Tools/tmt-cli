@@ -24,7 +24,7 @@ $(EXE): $(SRCS)
 	rm -rf build/python/
 	mkdir -p build/python/
 	cp $^ build/python/
-	$(PYTHON) -m compileall build/python/ -b 2> build/$*.compile.log
+	$(PYTHON) -m compileall build/python/ -b > build/$*.compile.log
 	mv build/python/$(basename $<).pyc build/python/__main__.pyc
 	zip -j $@ build/python/*.pyc
 	rm -rf build/python/
@@ -33,7 +33,7 @@ emit-log:
 	@if [[ -f $(LOG) ]]; then \
 		 cat $(LOG) >&2; \
 	 else \
-		 echo "warning: No such file: $$f"; \
+		 echo "warning: No such file: $$f" >&2; \
 	 fi
 	
 .PHONY: all emit-log

@@ -16,7 +16,7 @@ build:
 
 emit-log:
 	@for f in $(LOGS); do \
-		echo "---- $$f ----"; \
+		echo "---- $$f ----" >&2; \
 		if [[ -f $$f ]]; then \
 			cat $$f >&2; \
 		else \

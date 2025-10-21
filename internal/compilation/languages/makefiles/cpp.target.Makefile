@@ -36,7 +36,7 @@ emit-log:
 	@if [[ -f $(LOG) ]]; then \
 		 cat $(LOG) >&2; \
 	 else \
-		 echo "warning: No such file: $$f"; \
+		 echo "warning: No such file: $$f" >&2; \
 	 fi
 
 build:

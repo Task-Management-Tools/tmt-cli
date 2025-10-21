@@ -14,7 +14,7 @@ all: $(EXES) emit-log
 
 build/%.pyz: %.py build
 	cp $< build/
-	$(PYTHON) -m compileall build/$< -b 2> build/$*.compile.log
+	$(PYTHON) -m compileall build/$< -b > build/$*.compile.log
 	mv build/$*.pyc build/__main__.pyc
 	zip -j $@ build/__main__.pyc
 	rm build/__main__.pyc
@@ -24,11 +24,11 @@ build:
 
 emit-log:
 	@for f in $(LOGS); do \
-		echo "---- $$f ----"; \
+		echo "---- $$f ----" >&2; \
 		if [[ -f $$f ]]; then \
 			cat $$f >&2; \
 		else \
-			echo "warning: compilation log file $$f does not exist"; \
+			echo "warning: compilation log file $$f does not exist" >&2; \
 		fi; \
 	done
 
