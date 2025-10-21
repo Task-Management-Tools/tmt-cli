@@ -161,6 +161,9 @@ class TMTConfig:
     interactor: Interactor | None = None
     # TODO: manager
 
+    compile_time_limit: str | None = None
+    compile_memory_limit: str | None = None
+
     def __post_init__(self):
         if not self.input_extension.startswith("."):
             raise ValueError('input_extension should start with ".".')
@@ -200,16 +203,22 @@ class TMTConfig:
                     "when the problem type is not batch."
                 )
 
-        # TODO are these required?
-        self.trusted_compile_time_limit_sec = 60.0  # one minute
-        self.trusted_compile_memory_limit_mib = resource.RLIM_INFINITY
+        # TODO maybe these should be in compiler.yaml
+        if self.compile_time_limit is None:
+            self.compile_time_limit_sec = 60.0  # default one minute
+        else:
+            self.compile_time_limit_sec = parse_time_to_second(
+                "compile_time_limit", self.compile_time_limit
+            )
+        if self.compile_memory_limit is None:
+            self.compile_memory_limit_mib = resource.RLIM_INFINITY  # default unlimited
+        elif self.compile_memory_limit == "unlimited":
+            self.compile_memory_limit_mib = resource.RLIM_INFINITY
+        else:
+            self.compile_memory_limit_sec = parse_bytes_to_mib(
+                "compile_memory_limit", self.compile_memory_limit
+            )
 
         self.trusted_step_time_limit_sec = 10.0
         self.trusted_step_memory_limit_mib = 4 * 1024
         self.trusted_step_output_limit_mib = resource.RLIM_INFINITY
-
-        # self.should_run_checker: bool = (
-        #     self.problem_type is ProblemType.BATCH
-        #     and self.checker_type is not CheckerType.DEFAULT
-        #     and (self.check_forced_output or self.check_generated_output)
-        # )
