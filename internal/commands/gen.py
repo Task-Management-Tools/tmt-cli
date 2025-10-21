@@ -220,5 +220,26 @@ def command_gen(
                 official_testcase_hashes, testcase_hashes
             )
         else:
+            # Duplicated test detection
+            input_hashes: dict[str, list[str]] = {}
+            for file, hash in testcase_hashes.items():
+                if file.endswith(context.config.input_extension):
+                    if hash not in input_hashes:
+                        input_hashes[hash] = []
+                    input_hashes[hash].append(file)
+            dupe_hashes = {hash: filelist for hash, filelist in input_hashes.items() if len(filelist) > 1 }
+            if len(dupe_hashes):
+                formatter.println(
+                    formatter.ANSI_YELLOW,
+                    "Warning: same hash value for input files detected:",
+                )
+                for hash, filelist in dupe_hashes.items():
+                    print(f"\t{hash}: {', '.join(filelist)}")
+                formatter.println(
+                    "Please make sure the possibly duplicated test is intended.",
+                    formatter.ANSI_RESET,
+                )
+
+            # Dump duplicated test
             with open(context.path.testcases_hashes, "w") as f:
                 json.dump(testcase_hashes, f, sort_keys=True, indent=4)
