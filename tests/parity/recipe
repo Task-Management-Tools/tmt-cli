@@ -1,0 +1,13 @@
+@testset handmade
+manual one.in
+manual two.in
+
+@testset override
+manual long.in long.ans
+
+@testset override-wrong-answer
+manual long.in long-wrong.ans
+
+@subtask full 100
+@description No additional constraints
+@include handmade

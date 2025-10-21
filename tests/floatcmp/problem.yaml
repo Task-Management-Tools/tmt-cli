@@ -1,0 +1,28 @@
+title: Float Compare
+short_name: floatcmp
+description: Print the same real numbers.
+
+input_extension: .in # "." is required
+output_extension: .out
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GB
+  output_limit: unlimited
+
+answer_generation: 
+  type: solution
+  filename: sol.cpp
+
+checker:
+  type: default
+  arguments: float_tolerance 1e-6
+  # check_generated_output: true/false (default true)
+  # check_forced_output: true/false (default true)

@@ -1,0 +1,22 @@
+title: Same hash test
+short_name: samehash
+description: A dummy problem for testing same hash detection 
+
+input_extension: .in # "." is required
+output_extension: .out
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GB
+  output_limit: unlimited
+
+answer_generation: 
+  type: solution
+  filename: model-solution.cpp

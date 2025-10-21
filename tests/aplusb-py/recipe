@@ -1,0 +1,9 @@
+@testset handmade
+@validation validator
+print 30 11 | swap
+print 30 22 | swap 
+print 47 24
+print 2147483647 1 
+print 2000000000 2000000000
+
+manual 1.in

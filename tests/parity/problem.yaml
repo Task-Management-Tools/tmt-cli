@@ -1,0 +1,28 @@
+title: Parity
+short_name: parity
+description: Print a number with the same parity.
+
+input_extension: .in # "." is required
+output_extension: .out
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GB
+  output_limit: unlimited
+
+answer_generation: 
+  type: solution
+  filename: sol.cpp
+
+checker:
+  type: custom
+  filename: checker.cpp
+  # check_generated_output: true/false (default true)
+  # check_forced_output: true/false (default true)
