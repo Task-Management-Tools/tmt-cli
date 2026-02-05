@@ -1,0 +1,10 @@
+@testset testset
+print fixed 1
+print fixed 10
+print fixed 1024
+print adaptive
+
+@subtask full 100
+@description No additional constraints
+@validation validator 
+@include testset

@@ -1,0 +1,25 @@
+title: Guess
+short_name: guess
+description: Guess a number between 1 and 1024
+
+input_extension: .in # "." is required
+output_extension: .out
+
+judge_convention: icpc
+problem_type: interactive
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GB
+  output_limit: unlimited
+
+answer_generation: 
+  type: solution
+  filename: sol.cpp
+
+interactor:
+  filename: checker.cc

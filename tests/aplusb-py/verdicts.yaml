@@ -1,0 +1,6 @@
+- filename: sol.py
+  verdict: accepted
+- filename: sleep.py
+  verdict: time_limit_exceeded
+- filename: overflow.cpp
+  verdict: wrong_answer 

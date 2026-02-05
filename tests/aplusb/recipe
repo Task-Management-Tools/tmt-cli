@@ -1,0 +1,25 @@
+@testset handmade
+print 30 11 | swap
+print 30 22 | swap 
+print 47 24
+print 2147483647 1 
+print 2000000000 2000000000
+
+manual 1.in
+
+@testset with-proof
+@extra_file PROOF .proof
+print-with-proof 12 23 ${PROOF}
+
+@testset bad-generators
+non-zero-exit
+signaled-exit
+time-limit
+remove-stdout
+
+
+@subtask full 100
+@description No additional constraints
+@validation validator 
+@include handmade
+@include with-proof
