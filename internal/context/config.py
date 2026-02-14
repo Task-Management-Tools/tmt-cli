@@ -3,6 +3,8 @@ import resource
 import re
 import dataclasses
 
+from internal import __version__
+
 
 class JudgeConvention(enum.Enum):
     ICPC = "icpc"
@@ -146,6 +148,8 @@ class TMTConfig:
     title: str | None
     short_name: str
     description: str | None
+
+    tmt_version: str
 
     input_extension: str
     output_extension: str
