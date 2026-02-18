@@ -5,7 +5,7 @@ Command Line Interface for Task Management Tools
 ## Quick start
 
 ```bash
-pip install pyyaml
+python3 -m pip install pyyaml
 
 git clone https://github.com/Task-Management-Tools/tmt-cli.git
 alias tmt='python3 ~/path/to/tmt-cli/tmt.py'
@@ -18,7 +18,7 @@ Run from anywhere inside a problem directory. `tmt` searches upward from the cur
 - Python `>=3.10`
   - `pyyaml` python package
 - `make`
-  - `tmt` assumes that GNU Make is used, so if you're on MacOS please take care of that (e.g. add `MAKE=gmake`).
+  - `tmt` assumes that GNU Make is used, so if you're on macOS please take care of that (e.g. add `MAKE=gmake`).
 - C++ toolchain for `.cpp` and `.cc` sources (e.g. `g++`)
 
 Optional environment variables:
@@ -59,7 +59,9 @@ problem_root/
 ## Commands
 
 - `tmt gen` compiles the required binaries and generates testcases based on `recipe`.
-  - `[--verify-hash]` regenerates and compares testcase hashes to existing `testcases/hash.json`. We recommend tracking `hash.json` in git (or any VCS you're using).
+  - `[--verify-hash]` regenerates testcases and compares testcase SHA-256 hashes to existing `testcases/hash.json`. Aborts if `hash.json` doesn't exist or the hashes are different.
+    - The `hash.json` file will be generated (or overwritten) if `--verify-hash` is not specified.
+    - We recommend tracking `hash.json` in git (or any VCS you're using).
   - `[-r|--show-reason]` prints generator/validator/checker failure reasons verbosely.
 - `tmt invoke solutions/correct.cpp` compiles the submission `solutions/correct.cpp` and runs it against the generated testcases.
   - `[-r|--show-reason]` prints submission failure reasons verbosely.
@@ -105,7 +107,7 @@ tmt_version: 0.1.0
 
 Explanation:
 
-- `input_extension` and `output_extension` specifies the extension of the generated testcase files.
+- `input_extension` and `output_extension` specify the extension of the generated testcase files.
 - `solution.time_limit` accepts `ms` or `s`.
 - `solution.memory_limit` accepts `MB`, `MiB`, `GB`, or `GiB`.
   - Note that `GB` will be regarded as `GiB`.
@@ -182,7 +184,7 @@ manual 1.in
 - Executables, like `print`, or `swap`, are resolved in `generator`
   - For instance, `tmt` will use the compiled version of `generator/print.cpp` (or `print.py`, if you're using python)
 - `manual <input>` uses a file from `generator/manual/` as the testcase input.
-- Testcases are named as `<testsetIndex>_<testsetName>_<testcaseIndex>`, with zero-padding based on counts.
+- Testcases are named as `<testset-index>_<testset-name>_<testcase-index>`, with zero-padding based on counts.
 
 ### Basic `@` commands
 
@@ -194,7 +196,8 @@ manual 1.in
 ### Advanced usage
 
 - `@subtask <name> <score>` starts a new subtask. If test lines appear inside a subtask, an independent testset is created with the same name.
-    - The names of testsets and subtasks should be distinct.
+  - Note that the names of testsets and subtasks should be distinct.
+  - The difference from "testset": subtasks have scores, and subtasks can `@include` testsets or other subtasks.
 - `@description <text>` sets description for the current testset or subtask.
 - `@include <testset-or-subtask>` includes a testset or all testsets from another subtask into the current subtask.
 - `@constant <NAME> <value>` defines a constant used as `${NAME}` in later lines.
