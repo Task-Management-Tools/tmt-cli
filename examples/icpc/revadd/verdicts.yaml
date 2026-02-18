@@ -1,0 +1,6 @@
+- filename: sol.cpp
+  verdict: accepted
+- filename: tailing-charater.cpp 
+  verdict: wrong_answer 
+- filename: zero.cpp 
+  verdict: wrong_answer 

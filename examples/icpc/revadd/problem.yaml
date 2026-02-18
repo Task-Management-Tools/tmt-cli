@@ -1,0 +1,28 @@
+title: x = A + B Problem
+short_name: revadd
+description: Reverse A + B Problem
+
+input_extension: .in
+output_extension: .ans
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 2 G
+  output_limit: 8 MB
+
+answer_generation: 
+  type: solution
+  filename: sol.cpp
+
+checker:
+  type: custom
+  filename: checker.cpp
+
+tmt_version: 0.0.0

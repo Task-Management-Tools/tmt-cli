@@ -1,0 +1,9 @@
+@global_validation validator 
+
+@testset sample
+
+@testset testset
+print fixed 1
+print fixed 10
+print fixed 1024
+print adaptive
