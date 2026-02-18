@@ -100,7 +100,7 @@ answer_generation:
 compile_time_limit: 60 s
 compile_memory_limit: unlimited
 
-tmt_version: 0.0.0
+tmt_version: 0.1.0
 ```
 
 Explanation:

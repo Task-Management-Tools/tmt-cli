@@ -25,4 +25,4 @@ checker:
   type: default
   arguments: float_tolerance 1e-6
 
-tmt_version: 0.0.0
+tmt_version: 0.1.0

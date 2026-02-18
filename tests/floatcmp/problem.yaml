@@ -27,4 +27,4 @@ checker:
   # check_generated_output: true/false (default true)
   # check_forced_output: true/false (default true)
 
-tmt_version: 0.0.0
+tmt_version: 0.1.0

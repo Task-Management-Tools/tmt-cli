@@ -25,4 +25,4 @@ checker:
   type: custom
   filename: checker.cpp
 
-tmt_version: 0.0.0
+tmt_version: 0.1.0
