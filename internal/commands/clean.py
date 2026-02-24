@@ -7,7 +7,7 @@ from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
 from internal.steps.solution import make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
-from internal.steps.interactor import InteractorStep
+from internal.steps.interactor import ICPCInteractorStep
 
 
 def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bool):
@@ -36,18 +36,19 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
     # TODO: clean statement?
 
     if confirm("Cleanup compiled generators, validators and solutions"):
-        GenerationStep(context).clean_up()
-        ValidationStep(context).clean_up()
+        GenerationStep(context, sandbox=None).clean_up()
+        ValidationStep(context, sandbox=None).clean_up()
         if (
             context.config.checker is not None
             and context.config.checker.type is not CheckerType.DEFAULT
         ):
-            ICPCCheckerStep(context).clean_up()
+            ICPCCheckerStep(context, sandbox=None).clean_up()
         if context.config.interactor is not None:
-            InteractorStep(context=context).clean_up()
+            ICPCInteractorStep(context=context, sandbox=None).clean_up()
         make_solution_step(
             solution_type=context.config.solution.type,
             context=context,
+            sandbox=None,
             is_generation=False,
             submission_files=[],
         ).clean_up()

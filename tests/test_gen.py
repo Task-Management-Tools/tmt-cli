@@ -5,11 +5,11 @@ import pathlib
 import pytest
 
 from internal.formatting import Formatter
-from internal.context import TMTContext, AnswerGenerationType
+from internal.context import TMTContext, AnswerGenerationType, SandboxDirectory
 from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
 from internal.steps.solution import SolutionStep, make_solution_step
-from internal.steps.interactor import InteractorStep
+from internal.steps.interactor import ICPCInteractorStep
 from internal.steps.checker.icpc import ICPCCheckerStep
 
 from internal.outcomes import (
@@ -97,42 +97,39 @@ def test_gen(problem_shortname: str, expected_results: dict[str, GenerationResul
     problem_dir = pathlib.Path(__file__).parent.resolve() / problem_shortname
     formatter = Formatter()
     context = TMTContext(str(problem_dir), str(script_dir))
+    sandbox = SandboxDirectory(context.path.sandbox)
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
 
-    generation_step = GenerationStep(context)
-    validation_step = ValidationStep(context)
+    generation_step = GenerationStep(context, sandbox)
+    validation_step = ValidationStep(context, sandbox)
     assert context.config.answer_generation.type is AnswerGenerationType.SOLUTION
     solution_step: SolutionStep = make_solution_step(
         solution_type=context.config.solution.type,
         context=context,
+        sandbox=sandbox,
         is_generation=True,
         submission_files=[context.config.answer_generation.filename],
     )
 
-    generation_step.prepare_sandbox()
     generation_compile_result: CompilationResult = generation_step.compile()
     assert generation_compile_result.verdict == CompilationOutcome.SUCCESS
 
-    validation_step.prepare_sandbox()
     validation_compile_result: CompilationResult = validation_step.compile()
     assert validation_compile_result.verdict == CompilationOutcome.SUCCESS
 
-    solution_step.prepare_sandbox()
     solution_compile_result: CompilationResult = solution_step.compile_solution()
     assert solution_compile_result.verdict == CompilationOutcome.SUCCESS
 
     checker_step = None
     if context.config.checker is not None:
-        checker_step = ICPCCheckerStep(context)
-        checker_step.prepare_sandbox()
+        checker_step = ICPCCheckerStep(context, sandbox)
         checker_compile_result: CompilationResult = checker_step.compile()
         assert checker_compile_result.verdict == CompilationOutcome.SUCCESS
 
     interactor_step = None
     if context.config.interactor is not None:
-        interactor_step = InteractorStep(context=context)
-        interactor_step.prepare_sandbox()
+        interactor_step = ICPCInteractorStep(context=context, sandbox=sandbox)
         interactor_compile_result: CompilationResult = interactor_step.compile()
         assert interactor_compile_result.verdict == CompilationOutcome.SUCCESS
 

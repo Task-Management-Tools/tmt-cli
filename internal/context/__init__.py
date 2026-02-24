@@ -7,6 +7,7 @@ from .config import (
     SolutionType,
     AnswerGenerationType,
 )
+from .directory import SandboxDirectory, Directory
 
 __all__ = [
     "TMTContext",
@@ -17,4 +18,6 @@ __all__ = [
     "ValidatorType",
     "SolutionType",
     "AnswerGenerationType",
+    "SandboxDirectory",
+    "Directory"
 ]

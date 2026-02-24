@@ -4,7 +4,7 @@ import hashlib
 import json
 
 from internal.formatting import Formatter
-from internal.context import CheckerType, AnswerGenerationType, TMTContext
+from internal.context import CheckerType, AnswerGenerationType, TMTContext, SandboxDirectory
 from internal.exceptions import TMTInvalidConfigError
 from internal.outcomes import (
     ExecutionOutcome,
@@ -15,7 +15,7 @@ from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
-from internal.steps.interactor import InteractorStep
+from internal.steps.interactor import ICPCInteractorStep
 
 
 def gen_single(
@@ -25,7 +25,7 @@ def gen_single(
     validation_step: ValidationStep,
     solution_step: SolutionStep,
     checker_step: ICPCCheckerStep | None,
-    interactor_step: InteractorStep | None,
+    interactor_step: ICPCInteractorStep | None,
     codename_display_width: int,
     show_reason: bool,
     testset,
@@ -98,8 +98,12 @@ def gen_single(
 
 def command_gen(
     *, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool
-):
+) -> bool:
     """Generate test cases in the given directory."""
+
+    # TODO: this should be changed in the PR; roast me if this is still here
+    os.makedirs(context.path.sandbox, exist_ok=True)
+    sandbox = SandboxDirectory(context.path.sandbox)
 
     if verify_hash and not (
         os.path.exists(context.path.testcases_hashes)
@@ -110,45 +114,48 @@ def command_gen(
             "Testcase hashes does not exist. There is nothing to verify.",
             formatter.ANSI_RESET,
         )
-        return
+        return False
 
     context.path.clean_logs()
     os.makedirs(context.path.logs)
     os.makedirs(context.path.logs_generation, exist_ok=True)
 
-    # Compile generators, validators and solutions
-    generation_step = GenerationStep(context)
-    validation_step = ValidationStep(context)
+    # Init all steps
+    generation_step = GenerationStep(context=context, sandbox=sandbox)
+    validation_step = ValidationStep(context=context, sandbox=sandbox)
 
     assert context.config.answer_generation.type is AnswerGenerationType.SOLUTION
     solution_step: SolutionStep = make_solution_step(
         solution_type=context.config.solution.type,
         context=context,
+        sandbox=sandbox,
         is_generation=True,
         submission_files=[context.config.answer_generation.filename],
     )
 
+    checker_step: ICPCCheckerStep | None = None
+    if context.config.checker is not None:
+        checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
+
+    interactor_step: ICPCInteractorStep | None = None
+    if context.config.interactor is not None:
+        interactor_step = ICPCInteractorStep(context=context, sandbox=sandbox)
+
+    # Run steps
     formatter.print("Generator   compile ")
-    generation_step.prepare_sandbox()
     generation_compilation = generation_step.compile()
     formatter.print_compile_string_with_exit(generation_compilation)
 
     formatter.print("Validator   compile ")
-    validation_step.prepare_sandbox()
     validation_compilation = validation_step.compile()
     formatter.print_compile_string_with_exit(validation_compilation)
 
     formatter.print("Solution    compile ")
-    solution_step.prepare_sandbox()
     formatter.print_compile_string_with_exit(solution_step.compile_solution())
 
-    checker_step: ICPCCheckerStep | None = None
-    if context.config.checker is not None:
+    if checker_step is not None:
         formatter.print("Checker     compile ")
-        checker_step = ICPCCheckerStep(context)
-        checker_step.prepare_sandbox()
         formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
-
         formatter.print(
             " " * 2,
             "(default)"
@@ -157,11 +164,8 @@ def command_gen(
             endl=True,
         )
 
-    interactor_step: InteractorStep | None = None
-    if context.config.interactor is not None:
+    if interactor_step is not None:
         formatter.print("Interactor  compile ")
-        interactor_step = InteractorStep(context=context)
-        interactor_step.prepare_sandbox()
         interactor_compilation = interactor_step.compile()
         formatter.print_compile_string_with_exit(interactor_compilation)
 

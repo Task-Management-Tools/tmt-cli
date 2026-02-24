@@ -7,7 +7,7 @@ from internal.context import TMTContext
 from internal.outcomes import eval_outcome_to_run_outcome
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
-from internal.steps.interactor import InteractorStep
+from internal.steps.interactor import ICPCInteractorStep
 
 
 def is_apport_active():
@@ -63,7 +63,7 @@ def command_invoke(
 
     interactor_step = None
     if context.config.interactor is not None:
-        interactor_step = InteractorStep(context=context)
+        interactor_step = ICPCInteractorStep(context=context)
         formatter.print("Interactor  compile ")
         formatter.print_compile_string_with_exit(interactor_step.compile())
 
