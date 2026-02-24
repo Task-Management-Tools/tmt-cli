@@ -87,7 +87,9 @@ class ICPCInteractorStep:
         sandbox_interactor_answer_file = self.workdir.file(file_out_name)
         sandbox_interactor_err_file = self.workdir.file(file_interactor_err_name)
         sandbox_interactor_feedback_dir = self.workdir.subdir("feedback_dir")
-        sandbox_solution_err_file = self.sandbox.solution_invocation.file(file_sol_err_name)
+        sandbox_solution_err_file = self.sandbox.solution_invocation.file(
+            file_sol_err_name
+        )
 
         # Create dummy output
         if solution_step.is_generation:
@@ -103,7 +105,9 @@ class ICPCInteractorStep:
             os.chdir(self.sandbox.solution_invocation.path)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
-        solution_sandbox_build_dir = self.sandbox.solution_compilation.subdir("build").path
+        solution_sandbox_build_dir = self.sandbox.solution_compilation.subdir(
+            "build"
+        ).path
         solution_exec_command = get_run_single_command(
             context=self.context,
             directory=solution_sandbox_build_dir,
@@ -111,7 +115,9 @@ class ICPCInteractorStep:
             executable_stack_size_mib=solution_step.memory_limit_mib,
         )
         if solution_exec_command is None:
-            raise TMTMissingFileError(f"Solution executable file not found in {solution_sandbox_build_dir}.")
+            raise TMTMissingFileError(
+                f"Solution executable file not found in {solution_sandbox_build_dir}."
+            )
         solution = Process(
             solution_exec_command,
             preexec_fn=solution_preexec_fn,
@@ -137,7 +143,7 @@ class ICPCInteractorStep:
         interactor_exec_args = [
             sandbox_interactor_input_file,
             sandbox_interactor_answer_file,
-            sandbox_interactor_feedback_dir.path + os.sep, # required in ICPC format
+            sandbox_interactor_feedback_dir.path + os.sep,  # required in ICPC format
         ]
         interactor = Process(
             interactor_exec_command + interactor_exec_args,

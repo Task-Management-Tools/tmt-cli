@@ -12,7 +12,12 @@ from internal.process import Process
 
 class SolutionStep(ABC):
     def __init__(
-        self, *, context: TMTContext, sandbox: SandboxDirectory | None, is_generation: bool, submission_files: list[str]
+        self,
+        *,
+        context: TMTContext,
+        sandbox: SandboxDirectory | None,
+        is_generation: bool,
+        submission_files: list[str],
     ):
         self.context = context
         self.sandbox = sandbox

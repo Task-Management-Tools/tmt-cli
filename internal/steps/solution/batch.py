@@ -18,7 +18,12 @@ from .base import SolutionStep
 
 class BatchSolutionStep(SolutionStep):
     def __init__(
-        self, *, context: TMTContext, sandbox: SandboxDirectory | None, is_generation: bool, submission_files: list[str]
+        self,
+        *,
+        context: TMTContext,
+        sandbox: SandboxDirectory | None,
+        is_generation: bool,
+        submission_files: list[str],
     ):
         super().__init__(
             context=context,
@@ -37,7 +42,7 @@ class BatchSolutionStep(SolutionStep):
                 exit_status=-1,
                 standard_error="Batch task only supports single file submission.",
             )
-        
+
         workdir = self.sandbox.solution_compilation
         workdir.clean()
 
@@ -57,7 +62,7 @@ class BatchSolutionStep(SolutionStep):
         if comp_result.verdict is CompilationOutcome.SUCCESS:
             if comp_result.produced_file is None:
                 raise FileNotFoundError("Compilation did not produce solution")
-            
+
         comp_result.dump_to_logs(self.log_directory, "solution")
         return comp_result
 

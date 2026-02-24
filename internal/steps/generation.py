@@ -111,7 +111,11 @@ class GenerationStep:
 
             try:
                 for i, command in enumerate(commands, 1):
-                    sandbox_err_file_base = f"{code_name}.gen.{i}.err" if len(commands) > 1 else f"{code_name}.gen.err"
+                    sandbox_err_file_base = (
+                        f"{code_name}.gen.{i}.err"
+                        if len(commands) > 1
+                        else f"{code_name}.gen.err"
+                    )
                     sandbox_err_file = self.workdir.file(sandbox_err_file_base)
                     sandbox_logs.append(sandbox_err_file)
 

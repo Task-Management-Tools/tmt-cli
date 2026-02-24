@@ -19,5 +19,5 @@ __all__ = [
     "SolutionType",
     "AnswerGenerationType",
     "SandboxDirectory",
-    "Directory"
+    "Directory",
 ]

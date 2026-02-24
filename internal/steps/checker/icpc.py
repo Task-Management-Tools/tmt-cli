@@ -1,6 +1,5 @@
 import os
 import shutil
-import pathlib
 
 
 from internal.context import CheckerType, TMTContext, SandboxDirectory
@@ -9,6 +8,7 @@ from internal.compilation import (
     make_clean,
     get_run_single_command,
 )
+from internal.formatting import Formatter
 from internal.process import Process, wait_procs
 from internal.outcomes import (
     EvaluationOutcome,
@@ -40,8 +40,18 @@ class ICPCCheckerStep(CheckerStep):
                 raise ValueError("Checker config should be present")
             if not self.context.path.has_checker_directory():
                 raise FileNotFoundError("Directory `checker` is not present.")
-            
+
         self.compiled_checker_path: str | None = None
+
+    def check_unused_checker(self, formatter: Formatter) -> bool:
+        if self.context.path.has_checker_directory() and self.use_default_checker:
+            formatter.println(
+                formatter.ANSI_YELLOW,
+                "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
+                formatter.ANSI_RESET,
+            )
+            return True
+        return False
 
     def compile(self) -> CompilationResult:
         workdir = self.sandbox.checker_compilation
@@ -130,7 +140,9 @@ class ICPCCheckerStep(CheckerStep):
         answer_file: str,
     ) -> EvaluationResult:
         self.sandbox.checker.clean()
-        return self._run_without_clean(arguments, evaluation_record, input_file, answer_file)
+        return self._run_without_clean(
+            arguments, evaluation_record, input_file, answer_file
+        )
 
     def _run_without_clean(
         self,
@@ -165,7 +177,9 @@ class ICPCCheckerStep(CheckerStep):
         if arguments is None:
             arguments = []
         checker_process = Process(
-            checker_exec_command + [input_file, answer_file, feedback_dir.path + os.sep] + arguments,
+            checker_exec_command
+            + [input_file, answer_file, feedback_dir.path + os.sep]
+            + arguments,
             preexec_fn=lambda: os.chdir(workdir.path),
             stdin_redirect=evaluation_record.output_file,
             stdout=None,

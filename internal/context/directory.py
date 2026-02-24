@@ -2,7 +2,7 @@
 
 import os
 import shutil
-import stat
+
 
 class Directory:
     def __init__(self, directory_root: str):
@@ -45,9 +45,15 @@ class SandboxDirectory(Directory):
         super().__init__(sandbox_directory)
         self.generation = Directory(os.path.join(self.directory_root, "generation"))
         self.validation = Directory(os.path.join(self.directory_root, "validation"))
-        self.solution_invocation = Directory(os.path.join(self.directory_root, "solution-invoke"))
-        self.solution_compilation = Directory(os.path.join(self.directory_root, "solution-compile"))
-        self.checker_compilation = Directory(os.path.join(self.directory_root, "checker-compile"))
+        self.solution_invocation = Directory(
+            os.path.join(self.directory_root, "solution-invoke")
+        )
+        self.solution_compilation = Directory(
+            os.path.join(self.directory_root, "solution-compile")
+        )
+        self.checker_compilation = Directory(
+            os.path.join(self.directory_root, "checker-compile")
+        )
         self.checker = Directory(os.path.join(self.directory_root, "checker"))
         self.interactor = Directory(os.path.join(self.directory_root, "interactor"))
         self.manager = Directory(os.path.join(self.directory_root, "manager"))

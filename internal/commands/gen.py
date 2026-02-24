@@ -4,7 +4,12 @@ import hashlib
 import json
 
 from internal.formatting import Formatter
-from internal.context import CheckerType, AnswerGenerationType, TMTContext, SandboxDirectory
+from internal.context import (
+    CheckerType,
+    AnswerGenerationType,
+    TMTContext,
+    SandboxDirectory,
+)
 from internal.exceptions import TMTInvalidConfigError
 from internal.outcomes import (
     ExecutionOutcome,
@@ -136,6 +141,7 @@ def command_gen(
     checker_step: ICPCCheckerStep | None = None
     if context.config.checker is not None:
         checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
+        checker_step.check_unused_checker(formatter)
 
     interactor_step: ICPCInteractorStep | None = None
     if context.config.interactor is not None:
@@ -231,7 +237,11 @@ def command_gen(
                     if hash not in input_hashes:
                         input_hashes[hash] = []
                     input_hashes[hash].append(file)
-            dupe_hashes = {hash: filelist for hash, filelist in input_hashes.items() if len(filelist) > 1 }
+            dupe_hashes = {
+                hash: filelist
+                for hash, filelist in input_hashes.items()
+                if len(filelist) > 1
+            }
             if len(dupe_hashes):
                 formatter.println(
                     formatter.ANSI_YELLOW,

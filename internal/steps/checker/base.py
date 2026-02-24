@@ -1,4 +1,3 @@
-import os
 from abc import ABC, abstractmethod
 
 from internal.context import TMTContext, SandboxDirectory

@@ -81,9 +81,9 @@ class ValidationStep:
                         output_filename = f"{code_name}.val.{i}.out"
                         error_filename = f"{code_name}.val.{i}.err"
 
-                    sandbox_input_file =  self.workdir.file(input_filename)
+                    sandbox_input_file = self.workdir.file(input_filename)
                     sandbox_output_file = self.workdir.file(output_filename)
-                    sandbox_error_file =  self.workdir.file(error_filename)
+                    sandbox_error_file = self.workdir.file(error_filename)
 
                     # Copy input and extra inputs
                     shutil.copy(
