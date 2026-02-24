@@ -73,7 +73,17 @@ class Formatter:
             CompilationOutcome.SUCCESS,
             CompilationOutcome.SKIPPED,
         ]:
-            self.print("[", self.ANSI_RED, "FAIL", self.ANSI_RESET, "]", endl=True)
+            match result.verdict:
+                case CompilationOutcome.FAILED:
+                    self.print(
+                        "[", self.ANSI_RED, "FAIL", self.ANSI_RESET, "]", endl=True
+                    )
+                case CompilationOutcome.TIMEDOUT:
+                    self.print(
+                        "[", self.ANSI_RED, "CTLE", self.ANSI_RESET, "]", endl=True
+                    )
+                case _:
+                    raise ValueError("Invaid enum")
             self.print(
                 self.ANSI_YELLOW,
                 "exit-code: ",

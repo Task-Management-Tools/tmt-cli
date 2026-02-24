@@ -20,3 +20,6 @@ solution:
 answer_generation: 
   type: solution
   filename: sol.cpp
+
+compile_time_limit: 60 s
+compile_memory_limit: unlimited
