@@ -10,7 +10,7 @@ class TerminalFormatter(Formatter):
     """
 
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
         self.ANSI_RESET = self.AnsiSequence("\033[0m")
         self.ANSI_RED = self.AnsiSequence("\033[31m")
         self.ANSI_GREEN = self.AnsiSequence("\033[32m")

@@ -300,6 +300,21 @@ def command_gen(
                     "Please make sure the possibly duplicated test is intended.",
                     formatter.ANSI_RESET,
                 )
+                for hash, filelist in dupe_hashes.items():
+                    last_file = open(file=os.path.join(context.path.testcases, filelist[0]))
+                    last_file_content = last_file.read()
+                    last_file.close()
+                    for i in range(1, len(filelist)):
+                        current_file = open(file=os.path.join(context.path.testcases, filelist[i]))
+                        current_file_content = current_file.read()
+                        current_file.close()
+                        if last_file_content != current_file_content: # SHA-256 collision?
+                            formatter.println(
+                                formatter.ANSI_RED_BG,
+                                f"You found a SHA-256 hash collision: {filelist[i - 1]} and {filelist[i]}.",
+                                formatter.ANSI_RESET,
+                            )
+                        last_file_content = current_file_content
 
             # Dump duplicated test
             with open(context.path.testcases_hashes, "w") as f:
