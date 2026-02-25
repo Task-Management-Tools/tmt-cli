@@ -1,8 +1,5 @@
-// @author cebrusfs
-// headers {{{
 #include<bits/stdc++.h>
 using namespace std;
-// }}}
 
 int main()
 {
