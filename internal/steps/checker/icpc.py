@@ -34,10 +34,12 @@ class ICPCCheckerStep(CheckerStep):
             if context.config.checker is None:
                 raise TMTInvalidConfigError("Config section `checker` is not present.")
             if context.config.checker.filename is None:
-                raise TMTInvalidConfigError("Config option `checker.filename` is not present.")
+                raise TMTInvalidConfigError(
+                    "Config option `checker.filename` is not present."
+                )
             if not context.path.has_checker_directory():
                 raise TMTMissingFileError("Directory `checker` is not present.")
-            
+
             checker_name = context.config.checker.filename
         else:
             checker_name = "(default)"

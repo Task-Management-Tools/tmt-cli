@@ -62,6 +62,7 @@ class ProblemDirectoryHelper:
     testcases_hashes = _extend_path_property(testcases, "hash.json")
 
     sandbox = _problem_path_property("sandbox")
+    default_sandbox = _extend_path_property(sandbox, "default")
 
     logs = _problem_path_property("logs")
     logs_generation = _extend_path_property(logs, "generation")

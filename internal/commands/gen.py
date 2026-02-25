@@ -5,13 +5,13 @@ import json
 
 from internal.formatting import Formatter
 from internal.context import (
-    CheckerType,
     AnswerGenerationType,
     TMTContext,
     SandboxDirectory,
 )
 from internal.exceptions import TMTInvalidConfigError
 from internal.outcomes import (
+    CompilationResult,
     ExecutionOutcome,
     GenerationResult,
     eval_outcome_to_run_outcome,
@@ -97,7 +97,7 @@ def gen_single(
         result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
 
     if show_reason:
-        formatter.print_reason(result.reason)
+        formatter.print_checker_reason(result.reason)
 
     formatter.println()
 
@@ -109,16 +109,29 @@ class CommandGenSummary:
         self.testcase_results: dict[str, GenerationResult | None] = {}
         self.testcase_summary_path: str | None = None
         self.testcase_hashes: dict[str, str] = {}
-        self.compilation_error: bool = False
+
+        self.generation_compilation: CompilationResult | None = None
+        self.validation_compilation: CompilationResult | None = None
+        self.solution_compilation: CompilationResult | None = None
+        self.checker_compilation: CompilationResult | None = None
+        self.interactor_compilation: CompilationResult | None = None
 
     def __bool__(self):
-        if self.compilation_error:
-            return False
-        return all(self.testcase_results.values())
+        all_compilations = [
+            self.generation_compilation,
+            self.validation_compilation,
+            self.solution_compilation,
+            self.checker_compilation,
+            self.interactor_compilation,
+        ]
 
-    def fail(self):
-        self.compilation_error = True
-        return self
+        def is_compilation_error(cresult: CompilationResult | None):
+            return cresult is not None and not cresult
+
+        if any(map(is_compilation_error, all_compilations)):
+            return False
+
+        return all(self.testcase_results.values())
 
 
 def command_gen(
@@ -128,9 +141,9 @@ def command_gen(
 
     summary = CommandGenSummary()
 
-    # TODO: this should be changed in the PR; roast me if this is still here
-    os.makedirs(context.path.sandbox, exist_ok=True)
-    sandbox = SandboxDirectory(context.path.sandbox)
+    # TODO when multiprocess generation is used, reflect this sandbox usage
+    sandbox = SandboxDirectory(context.path.default_sandbox)
+    sandbox.create()
 
     if verify_hash and not (
         os.path.exists(context.path.testcases_hashes)
@@ -171,36 +184,40 @@ def command_gen(
 
     # Compile steps
     formatter.print("Generator   compile ")
-    generation_compilation = generation_step.compile()
-    formatter.print_compile_string(generation_compilation)
-    if not generation_compilation:
-        return summary.fail()
+    summary.generation_compilation = generation_step.compile()
+    formatter.print_compile_result(summary.generation_compilation)
+    if not summary.generation_compilation:
+        return summary
 
     formatter.print("Validator   compile ")
-    validation_compilation = validation_step.compile()
-    formatter.print_compile_string(validation_compilation)
-    if not validation_compilation:
-        return summary.fail()
+    summary.validation_compilation = validation_step.compile()
+    formatter.print_compile_result(summary.validation_compilation)
+    if not summary.validation_compilation:
+        return summary
 
     formatter.print("Solution    compile ")
-    solution_compilation = solution_step.compile_solution()
-    formatter.print_compile_string(solution_compilation)
-    if not solution_compilation:
-        return summary.fail()
+    summary.solution_compilation = solution_step.compile_solution()
+    formatter.print_compile_result(summary.solution_compilation)
+    if not summary.solution_compilation:
+        return summary
 
     if interactor_step is not None:
         formatter.print("Interactor  compile ")
-        interactor_compilation = interactor_step.compile()
-        formatter.print_compile_string(interactor_compilation, name=interactor_step.interactor_name)
-        if not interactor_compilation:
-            return summary.fail()
-        
+        summary.interactor_compilation = interactor_step.compile()
+        formatter.print_compile_result(
+            summary.interactor_compilation, name=interactor_step.interactor_name
+        )
+        if not summary.interactor_compilation:
+            return summary
+
     if checker_step is not None:
         formatter.print("Checker     compile ")
-        checker_compilation = checker_step.compile()
-        formatter.print_compile_string(checker_compilation, name=checker_step.checker_name)
-        if not checker_compilation:
-            return summary.fail()
+        summary.checker_compilation = checker_step.compile()
+        formatter.print_compile_result(
+            summary.checker_compilation, name=checker_step.checker_name
+        )
+        if not summary.checker_compilation:
+            return summary
 
     # TODO: in case of update testcases, these should be mkdir
     # instead of mkdir_clean.

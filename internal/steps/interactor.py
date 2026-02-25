@@ -32,11 +32,17 @@ class ICPCInteractorStep:
             self.workdir = self.sandbox.interactor
             self.workdir.create()
         if not self.context.path.has_interactor_directory():
-            raise TMTMissingFileError("`interactor' directory not found for an interactive problem.")
+            raise TMTMissingFileError(
+                "`interactor' directory not found for an interactive problem."
+            )
         if self.context.config.interactor is None:
-            raise TMTInvalidConfigError("Config section `interactor` is not present in problems.yaml.")
+            raise TMTInvalidConfigError(
+                "Config section `interactor` is not present in problems.yaml."
+            )
         if self.context.config.interactor.filename is None:
-            raise TMTInvalidConfigError("Config option `interactor.filename` is not present in problems.yaml.")
+            raise TMTInvalidConfigError(
+                "Config option `interactor.filename` is not present in problems.yaml."
+            )
         self.interactor_name = self.context.config.interactor.filename
 
     def clean_up(self):

@@ -1,10 +1,10 @@
 import argparse
 import pathlib
 
-from internal.formatting import Formatter
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import command_gen, command_invoke, command_clean, command_export
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
+from internal.formatting import TerminalFormatter
 
 
 def main():
@@ -52,7 +52,7 @@ def main():
         print("Directory initialization is not implemented yet.")
         return
 
-    formatter = Formatter()
+    formatter = TerminalFormatter()
     cwd = pathlib.Path.cwd()
     problem_dir = find_problem_dir(cwd)  # TODO specify it in args
     script_dir = str(pathlib.Path(__file__).parent.resolve())
@@ -78,11 +78,11 @@ def main():
 
     if args.command == "clean":
         command_clean(formatter=formatter, context=context, skip_confirm=args.yes)
-        return True # Does not fail without exception
+        return True  # Does not fail without exception
 
     if args.command == "export":
         command_export(formatter=formatter, context=context, output_path=args.output)
-        return True # Does not fail without exception
+        return True  # Does not fail without exception
 
     return False
 

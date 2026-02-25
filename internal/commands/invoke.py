@@ -4,7 +4,11 @@ import subprocess
 
 from internal.formatting import Formatter
 from internal.context import TMTContext, SandboxDirectory
-from internal.outcomes import EvaluationOutcome, EvaluationResult, eval_outcome_to_run_outcome
+from internal.outcomes import (
+    EvaluationOutcome,
+    EvaluationResult,
+    eval_outcome_to_run_outcome,
+)
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
 from internal.steps.interactor import ICPCInteractorStep
@@ -32,7 +36,7 @@ class CommandInvokeSummary:
     def __bool__(self):
         if self.directory_error or self.compilation_error:
             return False
-        
+
         # TODO this should check for expected verdicts; right now only failures are checked against
         def predicate(result: EvaluationResult):
             return result not in [
@@ -43,6 +47,7 @@ class CommandInvokeSummary:
                 EvaluationOutcome.CHECKER_TIMEDOUT,
                 EvaluationOutcome.INTERNAL_ERROR,
             ]
+
         return all(map(predicate, self.testcase_results.values()))
 
     def directory_fail(self):
@@ -61,8 +66,10 @@ def command_invoke(
     show_reason: bool,
     submission_files: list[str],
 ) -> CommandInvokeSummary:
+
+    sandbox = SandboxDirectory(context.path.default_sandbox)
+    sandbox.create()
     
-    sandbox = SandboxDirectory(context.path.sandbox)
     actual_files = [os.path.join(os.getcwd(), file) for file in submission_files]
 
     summary = CommandInvokeSummary()
@@ -110,14 +117,16 @@ def command_invoke(
 
     formatter.print("Solution    compile ")
     solution_compilation_result = solution_step.compile_solution()
-    formatter.print_compile_string(solution_compilation_result)
+    formatter.print_compile_result(solution_compilation_result)
     if not solution_compilation_result:
         return summary.compilation_fail()
 
     if interactor_step is not None:
         formatter.print("Interactor  compile ")
         interactor_compilation_result = interactor_step.compile()
-        formatter.print_compile_string(interactor_compilation_result, name=interactor_step.interactor_name)
+        formatter.print_compile_result(
+            interactor_compilation_result, name=interactor_step.interactor_name
+        )
         if not interactor_compilation_result:
             return summary.compilation_fail()
 
@@ -126,7 +135,9 @@ def command_invoke(
     if checker_step is not None:
         formatter.print("Checker     compile ")
         checker_compilation_result = checker_step.compile()
-        formatter.print_compile_string(checker_compilation_result, name=checker_step.checker_name)
+        formatter.print_compile_result(
+            checker_compilation_result, name=checker_step.checker_name
+        )
         if not checker_compilation_result:
             return summary.compilation_fail()
 

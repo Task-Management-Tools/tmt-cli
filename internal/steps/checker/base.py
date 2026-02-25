@@ -5,7 +5,9 @@ from internal.outcomes import EvaluationResult, CompilationResult
 
 
 class CheckerStep(ABC):
-    def __init__(self, context: TMTContext, sandbox: SandboxDirectory | None, checker_name: str):
+    def __init__(
+        self, context: TMTContext, sandbox: SandboxDirectory | None, checker_name: str
+    ):
         self.context = context
         self.sandbox = sandbox
         if self.sandbox:

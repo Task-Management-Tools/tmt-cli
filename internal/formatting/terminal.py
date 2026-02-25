@@ -1,27 +1,16 @@
-import sys
 import os
 
-from internal.outcomes import (
-    CompilationResult,
-    CompilationOutcome,
-    ExecutionOutcome,
-    EvaluationResult,
-    EvaluationOutcome,
-)
+from internal.outcomes import CompilationOutcome, EvaluationOutcome, ExecutionOutcome
+from .base import Formatter
 
 
-class Formatter:
-    class AnsiSequence:
-        def __init__(self, text: str):
-            self.text = text
-
-        def __str__(self):
-            if sys.stdout.isatty():
-                return self.text
-            else:
-                return ""
+class TerminalFormatter(Formatter):
+    """
+    Implements formatting behavior in the terminals.
+    """
 
     def __init__(self):
+        super().__init__(self)
         self.ANSI_RESET = self.AnsiSequence("\033[0m")
         self.ANSI_RED = self.AnsiSequence("\033[31m")
         self.ANSI_GREEN = self.AnsiSequence("\033[32m")
@@ -37,11 +26,11 @@ class Formatter:
             self.terminal_width = None
         self.cursor = 0
 
-    def advance_cursor(self, num: int):
+    def advance_cursor(self, num):
         if self.terminal_width is not None:
             self.cursor = (self.cursor + num) % self.terminal_width
 
-    def print(self, *args, endl=False) -> None:
+    def print(self, *args, endl=False):
         # TODO: do we support endline in text?
         for arg in args:
             if not isinstance(arg, self.AnsiSequence):
@@ -51,10 +40,7 @@ class Formatter:
             self.cursor = 0
         print(*args, sep="", flush=True, end=("\n" if endl else ""))
 
-    def println(self, *args) -> None:
-        self.print(*args, endl=True)
-
-    def print_fixed_width(self, *args, width: int, endl=False) -> None:
+    def print_fixed_width(self, *args, width, endl=False):
         total_length = 0
         for arg in args:
             if not isinstance(arg, self.AnsiSequence):
@@ -63,12 +49,7 @@ class Formatter:
 
         self.print(*args, pad, endl=endl)
 
-    def print_compile_string(
-        self, result: CompilationResult, name: str = "", endl: bool = True
-    ) -> None:
-        """
-        Prints the compilation output in formatted result.
-        """
+    def print_compile_result(self, result, name: str = "", endl: bool = True):
         match result.verdict:
             case CompilationOutcome.FAILED:
                 self.print("[", self.ANSI_RED, "FAIL", self.ANSI_RESET, "]")
@@ -83,12 +64,13 @@ class Formatter:
                     self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]")
             case _:
                 raise ValueError("Invaid enum")
-            
+
         if len(name):
             self.print(" " * 2, name)
 
         if result:
-            if endl: self.println()
+            if endl:
+                self.println()
             return
 
         self.println()
@@ -100,21 +82,13 @@ class Formatter:
             endl=True,
         )
         if result.standard_output.strip() != "":
-            self.print(
-                self.ANSI_YELLOW, "standard output:", self.ANSI_RESET, endl=True
-            )
+            self.print(self.ANSI_YELLOW, "standard output:", self.ANSI_RESET, endl=True)
             self.print(result.standard_output, endl=True)
         if result.standard_error.strip() != "":
-            self.print(
-                self.ANSI_YELLOW, "standard error:", self.ANSI_RESET, endl=True
-            )
+            self.print(self.ANSI_YELLOW, "standard error:", self.ANSI_RESET, endl=True)
             self.print(result.standard_error, endl=True)
-            
 
-    def print_exec_result(self, result: ExecutionOutcome) -> None:
-        """
-        Formats the execution output.
-        """
+    def print_exec_result(self, result):
         WIDTH = 7
 
         def format(color: str, content: str):
@@ -136,7 +110,7 @@ class Formatter:
         else:
             raise ValueError(f"Unexpected ExecutionOutcome {result}")
 
-    def print_reason(self, reason: str):
+    def print_checker_reason(self, reason):
         # TODO: the following terminal width threshold should be configurable via global settings
         if self.terminal_width is not None and self.terminal_width >= 96:
             buffer = reason
@@ -172,10 +146,7 @@ class Formatter:
         EvaluationOutcome.INTERNAL_ERROR,
     ]
 
-    def print_checker_status(self, result: EvaluationResult) -> str:
-        """
-        Formats the execution short status (the one with surrounded by square brackets).
-        """
+    def print_checker_status(self, result):
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
         def print_result(checker_color: str, checker_status: str):
@@ -198,12 +169,7 @@ class Formatter:
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
 
-    def print_checker_verdict(
-        self, result: EvaluationResult, print_reason: bool = False
-    ) -> str:
-        """
-        Formats the execution verdict and reason.
-        """
+    def print_checker_verdict(self, result, print_reason: bool = False):
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
         def print_result(content_color: str):
@@ -211,7 +177,7 @@ class Formatter:
                 content_color, result.verdict.value, self.ANSI_RESET, " ", width=16
             )
             if print_reason:
-                self.print_reason(result.checker_reason)
+                self.print_checker_reason(result.checker_reason)
 
         if result.verdict in self.group_accepted:
             return print_result(self.ANSI_GREEN)
@@ -228,9 +194,7 @@ class Formatter:
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
 
-    def print_hash_diff(
-        self, official_testcase_hashes: dict[str, str], testcase_hashes: dict[str, str]
-    ) -> None:
+    def print_hash_diff(self, official_testcase_hashes, testcase_hashes):
         if testcase_hashes == official_testcase_hashes:
             self.println(self.ANSI_GREEN, "Hash matches!", self.ANSI_RESET)
             return
