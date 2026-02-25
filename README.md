@@ -206,7 +206,7 @@ manual 1.in
 - `@include <testset-or-subtask>` includes a testset or all testsets from another subtask into the current subtask.
 - `@constant <NAME> <value>` defines a constant used as `${NAME}` in later lines.
 - `@extra_file <NAME> <.ext>` adds an extra file output for the current testset or subtask.
-- `manual <input> <output>` forces the testcase output to a file from `generator/manual/` and marks it as forced output for checker rules.
+- `manual <input> <output>` (`manual` but with an additional argument `<output>`) forces the testcase output to a file from `generator/manual/` and marks it as forced output for checker rules.
 - Piped sequences
   - A generator command can be a shell-like pipeline sequence of executables, split by `|`. (e.g. `step1 args1 | step2 args2`)
   - The previous command's output will be the next command's input.
