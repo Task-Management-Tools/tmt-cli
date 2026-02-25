@@ -58,7 +58,7 @@ class ProblemDirectoryHelper:
     interactor_build = _extend_path_property(interactor, "build")
 
     testcases = _problem_path_property("testcases")
-    testcases_summary = _extend_path_property(testcases, "summary")
+    testcase_summary = _extend_path_property(testcases, "summary")
     testcases_hashes = _extend_path_property(testcases, "hash.json")
 
     sandbox = _problem_path_property("sandbox")

@@ -12,9 +12,8 @@ from internal.context import (
 )
 from internal.exceptions import TMTInvalidConfigError
 from internal.outcomes import (
-    EvaluationOutcome,
-    EvaluationResult,
     ExecutionOutcome,
+    GenerationResult,
     eval_outcome_to_run_outcome,
 )
 
@@ -105,10 +104,29 @@ def gen_single(
     return result
 
 
+class CommandGenSummary:
+    def __init__(self):
+        self.testcase_results: dict[str, GenerationResult | None] = {}
+        self.testcase_summary_path: str | None = None
+        self.testcase_hashes: dict[str, str] = {}
+        self.compilation_error: bool = False
+
+    def __bool__(self):
+        if self.compilation_error:
+            return False
+        return all(self.testcase_results.values())
+
+    def fail(self):
+        self.compilation_error = True
+        return self
+
+
 def command_gen(
     *, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool
-) -> bool:
+) -> CommandGenSummary:
     """Generate test cases in the given directory."""
+
+    summary = CommandGenSummary()
 
     # TODO: this should be changed in the PR; roast me if this is still here
     os.makedirs(context.path.sandbox, exist_ok=True)
@@ -151,21 +169,29 @@ def command_gen(
     if context.config.interactor is not None:
         interactor_step = ICPCInteractorStep(context=context, sandbox=sandbox)
 
-    # Run steps
+    # Compile steps
     formatter.print("Generator   compile ")
     generation_compilation = generation_step.compile()
-    formatter.print_compile_string_with_exit(generation_compilation)
+    formatter.print_compile_string(generation_compilation)
+    if not generation_compilation:
+        return summary.fail()
 
     formatter.print("Validator   compile ")
     validation_compilation = validation_step.compile()
-    formatter.print_compile_string_with_exit(validation_compilation)
+    formatter.print_compile_string(validation_compilation)
+    if not validation_compilation:
+        return summary.fail()
 
     formatter.print("Solution    compile ")
-    formatter.print_compile_string_with_exit(solution_step.compile_solution())
+    solution_compilation = solution_step.compile_solution()
+    formatter.print_compile_string(solution_compilation)
+    if not solution_compilation:
+        return summary.fail()
 
     if checker_step is not None:
         formatter.print("Checker     compile ")
-        formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
+        checker_compilation = checker_step.compile()
+        formatter.print_compile_string(checker_compilation, endl=False)
         formatter.print(
             " " * 2,
             "(default)"
@@ -173,22 +199,26 @@ def command_gen(
             else context.config.checker.filename,
             endl=True,
         )
+        if not checker_compilation:
+            return summary.fail()
 
     if interactor_step is not None:
         formatter.print("Interactor  compile ")
         interactor_compilation = interactor_step.compile()
-        formatter.print_compile_string_with_exit(interactor_compilation)
+        formatter.print_compile_string(interactor_compilation)
+        if not interactor_compilation:
+            return summary.fail()
 
     # TODO: in case of update testcases, these should be mkdir
     # instead of mkdir_clean.
     context.path.clean_testcases()
     os.makedirs(context.path.testcases, exist_ok=True)
-    pathlib.Path(context.path.testcases_summary).touch()
+    pathlib.Path(context.path.testcase_summary).touch()
 
     codename_display_width: int = max(map(len, context.recipe.get_all_test_names())) + 2
-    testcase_hashes: dict[str, str] = {}
 
-    with open(context.path.testcases_summary, "wt") as testcases_summary:
+    # Execute steps
+    with open(context.path.testcase_summary, "wt") as testcase_summary_file:
         for testset in context.recipe.testsets.values():
             for test in testset.tests:
                 result = gen_single(
@@ -205,38 +235,42 @@ def command_gen(
                 )
                 codename = test.test_name
                 assert codename is not None
+
+
                 with open(
                     os.path.join(context.path.logs_generation, f"{codename}.gen.log"),
                     "w+",
                 ) as f:
                     f.write(result.reason)
+
+                summary.testcase_results[codename] = result
+                if not result:
+                    continue
+
                 # TODO: this should print more meaningful contents, right now it is only the testcases
-                if result:
-                    testcases_summary.write(f"{codename}\n")
-                    for testcase_file_exts in [
-                        context.config.input_extension,
-                        context.config.output_extension,
-                    ] + list(testset.extra_file):
-                        base_filename = context.construct_test_filename(
-                            codename, testcase_file_exts
-                        )
-                        file = os.path.join(context.path.testcases, base_filename)
-                        with open(file, "rb") as f:
-                            testcase_hashes[base_filename] = hashlib.sha256(
-                                f.read()
-                            ).hexdigest()
+                testcase_summary_file.write(f"{codename}\n")
+                for testcase_file_exts in [
+                    context.config.input_extension,
+                    context.config.output_extension,
+                ] + list(testset.extra_file):
+                    base_filename = context.construct_test_filename(
+                        codename, testcase_file_exts
+                    )
+                    file = os.path.join(context.path.testcases, base_filename)
+                    with open(file, "rb") as f:
+                        summary.testcase_hashes[base_filename] = hashlib.sha256(
+                            f.read()
+                        ).hexdigest()
 
         if verify_hash:
             formatter.println()
             with open(context.path.testcases_hashes, "r") as f:
                 official_testcase_hashes: dict[str, str] = json.load(f)
-            formatter.print_hash_diff_with_exit(
-                official_testcase_hashes, testcase_hashes
-            )
+            formatter.print_hash_diff(official_testcase_hashes, summary.testcase_hashes)
         else:
             # Duplicated test detection
             input_hashes: dict[str, list[str]] = {}
-            for file, hash in testcase_hashes.items():
+            for file, hash in summary.testcase_hashes.items():
                 if file.endswith(context.config.input_extension):
                     if hash not in input_hashes:
                         input_hashes[hash] = []
@@ -260,4 +294,7 @@ def command_gen(
 
             # Dump duplicated test
             with open(context.path.testcases_hashes, "w") as f:
-                json.dump(testcase_hashes, f, sort_keys=True, indent=4)
+                json.dump(summary.testcase_hashes, f, sort_keys=True, indent=4)
+    
+    summary.testcase_summary_path = context.path.testcase_summary
+    return summary

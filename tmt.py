@@ -59,13 +59,13 @@ def main():
     context = TMTContext(problem_dir, script_dir)
 
     if args.command == "gen":
-        command_gen(
+        cmd_ret = command_gen(
             formatter=formatter,
             context=context,
             verify_hash=args.verify_hash,
             show_reason=args.show_reason,
         )
-        return
+        return bool(cmd_ret)
 
     if args.command == "invoke":
         command_invoke(
@@ -74,20 +74,23 @@ def main():
             show_reason=args.show_reason,
             submission_files=args.submission_files,
         )
-        return
+        return True
 
     if args.command == "clean":
         command_clean(formatter=formatter, context=context, skip_confirm=args.yes)
-        return
+        return True
 
     if args.command == "export":
         command_export(formatter=formatter, context=context, output_path=args.output)
-        return
+        return True
+    
+    return False
 
 
 if __name__ == "__main__":
     try:
-        main()
+        success = main()
+        exit(0 if success else 1)
     except TMTMissingFileError as e:
         print()
         print(e)

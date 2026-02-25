@@ -34,8 +34,8 @@ def command_invoke(
     actual_files = [os.path.join(os.getcwd(), file) for file in submission_files]
 
     if not (
-        os.path.exists(context.path.testcases_summary)
-        and os.path.isfile(context.path.testcases_summary)
+        os.path.exists(context.path.testcase_summary)
+        and os.path.isfile(context.path.testcase_summary)
     ):
         formatter.println(
             formatter.ANSI_RED,
@@ -44,7 +44,7 @@ def command_invoke(
         )
         return
 
-    with open(context.path.testcases_summary, "rt") as testcases_summary:
+    with open(context.path.testcase_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
     unavailable_testcases = [
         testcase
@@ -52,7 +52,7 @@ def command_invoke(
         if available_testcases.count(testcase) == 0
     ]
 
-    assert pathlib.Path(context.path.testcases_summary).exists()
+    assert pathlib.Path(context.path.testcase_summary).exists()
 
     # Make every steps first
 
@@ -99,7 +99,7 @@ def command_invoke(
         for testset in context.recipe.testsets.values()
         for test in testset.tests
     ]
-    with open(context.path.testcases_summary, "rt") as testcases_summary:
+    with open(context.path.testcase_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
     unavailable_testcases = [
         testcase
@@ -171,4 +171,3 @@ def command_invoke(
 
         formatter.print_checker_verdict(solution_result, print_reason=show_reason)
         formatter.println()
-

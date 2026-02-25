@@ -90,7 +90,12 @@ class ICPCCheckerStep(CheckerStep):
     def clean_up(self):
         make_clean(directory=self.context.path.checker)
 
-    def run_checker_during_gen(self, result: GenerationResult, sol_result: EvaluationResult | None, codename: str):
+    def run_checker_during_gen(
+        self,
+        result: GenerationResult,
+        sol_result: EvaluationResult | None,
+        codename: str,
+    ):
         if result.output_generation not in [
             ExecutionOutcome.SUCCESS,
             ExecutionOutcome.SKIPPED_SUCCESS,
@@ -126,7 +131,11 @@ class ICPCCheckerStep(CheckerStep):
 
         checker_result = self._run_without_clean(
             self.context.config.checker.arguments,
-            EvaluationResult(output_file=testcase_answer if sol_result is None else sol_result.output_file),
+            EvaluationResult(
+                output_file=testcase_answer
+                if sol_result is None
+                else sol_result.output_file
+            ),
             testcase_input,
             testcase_answer,
         )
