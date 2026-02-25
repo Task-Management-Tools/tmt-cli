@@ -311,7 +311,7 @@ def command_gen(
                         if last_file_content != current_file_content: # SHA-256 collision?
                             formatter.println(
                                 formatter.ANSI_RED_BG,
-                                f"You found a SHA-256 hash collision: {filelist[i - 1]} and {filelist[i]}.",
+                                f"You found a SHA-256 hash collision: {filelist[i - 1]} and {filelist[i]}. You should check whether your disk and RAM are still working properly.",
                                 formatter.ANSI_RESET,
                             )
                         last_file_content = current_file_content
