@@ -18,7 +18,7 @@ ifndef TARGET_NAME
 $(error TARGET_NAME is undefined)
 endif
 
-all: $(EXE) emit-log
+all: $(EXE)
 
 $(EXE): $(SRCS)
 	rm -rf build/python/

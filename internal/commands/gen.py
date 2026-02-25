@@ -188,25 +188,18 @@ def command_gen(
     if not solution_compilation:
         return summary.fail()
 
-    if checker_step is not None:
-        formatter.print("Checker     compile ")
-        checker_compilation = checker_step.compile()
-        formatter.print_compile_string(checker_compilation, endl=False)
-        formatter.print(
-            " " * 2,
-            "(default)"
-            if context.config.checker.type is CheckerType.DEFAULT
-            else context.config.checker.filename,
-            endl=True,
-        )
-        if not checker_compilation:
-            return summary.fail()
-
     if interactor_step is not None:
         formatter.print("Interactor  compile ")
         interactor_compilation = interactor_step.compile()
-        formatter.print_compile_string(interactor_compilation)
+        formatter.print_compile_string(interactor_compilation, name=interactor_step.interactor_name)
         if not interactor_compilation:
+            return summary.fail()
+        
+    if checker_step is not None:
+        formatter.print("Checker     compile ")
+        checker_compilation = checker_step.compile()
+        formatter.print_compile_string(checker_compilation, name=checker_step.checker_name)
+        if not checker_compilation:
             return summary.fail()
 
     # TODO: in case of update testcases, these should be mkdir
@@ -235,7 +228,6 @@ def command_gen(
                 )
                 codename = test.test_name
                 assert codename is not None
-
 
                 with open(
                     os.path.join(context.path.logs_generation, f"{codename}.gen.log"),
@@ -295,6 +287,6 @@ def command_gen(
             # Dump duplicated test
             with open(context.path.testcases_hashes, "w") as f:
                 json.dump(summary.testcase_hashes, f, sort_keys=True, indent=4)
-    
+
     summary.testcase_summary_path = context.path.testcase_summary
     return summary

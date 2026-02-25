@@ -64,63 +64,52 @@ class Formatter:
         self.print(*args, pad, endl=endl)
 
     def print_compile_string(
-        self, result: CompilationResult, endl: bool = True
+        self, result: CompilationResult, name: str = "", endl: bool = True
     ) -> None:
         """
         Prints the compilation output in formatted result.
         """
-        if result.verdict not in [
-            CompilationOutcome.SUCCESS,
-            CompilationOutcome.SKIPPED,
-        ]:
-            match result.verdict:
-                case CompilationOutcome.FAILED:
-                    self.print(
-                        "[", self.ANSI_RED, "FAIL", self.ANSI_RESET, "]", endl=True
-                    )
-                case CompilationOutcome.TIMEDOUT:
-                    self.print(
-                        "[", self.ANSI_RED, "CTLE", self.ANSI_RESET, "]", endl=True
-                    )
-                case _:
-                    raise ValueError("Invaid enum")
-            self.print(
-                self.ANSI_YELLOW,
-                "exit-code: ",
-                self.ANSI_RESET,
-                result.exit_status,
-                endl=True,
-            )
-            if result.standard_output.strip() != "":
-                self.print(
-                    self.ANSI_YELLOW, "standard output:", self.ANSI_RESET, endl=True
-                )
-                self.print(result.standard_output, endl=True)
-            if result.standard_error.strip() != "":
-                self.print(
-                    self.ANSI_YELLOW, "standard error:", self.ANSI_RESET, endl=True
-                )
-                self.print(result.standard_error, endl=True)
-        elif result.verdict is CompilationOutcome.SKIPPED:
-            self.print("[", self.ANSI_GREY, "SKIP", self.ANSI_RESET, "]", endl=endl)
-        elif result.standard_error.find("warning") > 0:
-            self.print("[", self.ANSI_YELLOW, "WARN", self.ANSI_RESET, "]", endl=endl)
-        else:
-            self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]", endl=endl)
+        match result.verdict:
+            case CompilationOutcome.FAILED:
+                self.print("[", self.ANSI_RED, "FAIL", self.ANSI_RESET, "]")
+            case CompilationOutcome.TIMEDOUT:
+                self.print("[", self.ANSI_RED, "CTLE", self.ANSI_RESET, "]")
+            case CompilationOutcome.SKIPPED:
+                self.print("[", self.ANSI_GREY, "SKIP", self.ANSI_RESET, "]")
+            case CompilationOutcome.SUCCESS:
+                if result.standard_error.find("warning") > 0:
+                    self.print("[", self.ANSI_YELLOW, "WARN", self.ANSI_RESET, "]")
+                else:
+                    self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]")
+            case _:
+                raise ValueError("Invaid enum")
+            
+        if len(name):
+            self.print(" " * 2, name)
 
-    def print_compile_string_with_exit(
-        self, result: CompilationResult, endl: bool = True
-    ) -> None:
-        """
-        Prints the compilation output in formatted result. This function can exit the whole program if the
-        CompilationResult is failure.
-        """
-        self.print_compile_string(result, endl)
-        if result.verdict not in [
-            CompilationOutcome.SUCCESS,
-            CompilationOutcome.SKIPPED,
-        ]:
-            exit(1)
+        if result:
+            if endl: self.println()
+            return
+
+        self.println()
+        self.print(
+            self.ANSI_YELLOW,
+            "exit-code: ",
+            self.ANSI_RESET,
+            result.exit_status,
+            endl=True,
+        )
+        if result.standard_output.strip() != "":
+            self.print(
+                self.ANSI_YELLOW, "standard output:", self.ANSI_RESET, endl=True
+            )
+            self.print(result.standard_output, endl=True)
+        if result.standard_error.strip() != "":
+            self.print(
+                self.ANSI_YELLOW, "standard error:", self.ANSI_RESET, endl=True
+            )
+            self.print(result.standard_error, endl=True)
+            
 
     def print_exec_result(self, result: ExecutionOutcome) -> None:
         """

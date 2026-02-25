@@ -4,7 +4,7 @@ import subprocess
 
 from internal.formatting import Formatter
 from internal.context import TMTContext, SandboxDirectory
-from internal.outcomes import eval_outcome_to_run_outcome
+from internal.outcomes import EvaluationOutcome, EvaluationResult, eval_outcome_to_run_outcome
 from internal.steps.solution import SolutionStep, make_solution_step
 from internal.steps.checker.icpc import ICPCCheckerStep
 from internal.steps.interactor import ICPCInteractorStep
@@ -23,15 +23,49 @@ def is_apport_active():
         return False  # systemctl not available
 
 
+class CommandInvokeSummary:
+    def __init__(self):
+        self.testcase_results: dict[str, EvaluationResult | None] = {}
+        self.directory_error: bool = False
+        self.compilation_error: bool = False
+
+    def __bool__(self):
+        if self.directory_error or self.compilation_error:
+            return False
+        
+        # TODO this should check for expected verdicts; right now only failures are checked against
+        def predicate(result: EvaluationResult):
+            return result not in [
+                EvaluationOutcome.MANAGER_CRASHED,
+                EvaluationOutcome.MANAGER_TIMEOUT,
+                EvaluationOutcome.CHECKER_CRASHED,
+                EvaluationOutcome.CHECKER_FAILED,
+                EvaluationOutcome.CHECKER_TIMEDOUT,
+                EvaluationOutcome.INTERNAL_ERROR,
+            ]
+        return all(map(predicate, self.testcase_results.values()))
+
+    def directory_fail(self):
+        self.directory_error = True
+        return self
+
+    def compilation_fail(self):
+        self.compilation_error = True
+        return self
+
+
 def command_invoke(
     *,
     formatter: Formatter,
     context: TMTContext,
     show_reason: bool,
     submission_files: list[str],
-):
+) -> CommandInvokeSummary:
+    
     sandbox = SandboxDirectory(context.path.sandbox)
     actual_files = [os.path.join(os.getcwd(), file) for file in submission_files]
+
+    summary = CommandInvokeSummary()
 
     if not (
         os.path.exists(context.path.testcase_summary)
@@ -42,7 +76,7 @@ def command_invoke(
             "Testcase summary does not exist. Please generate the testcases first.",
             formatter.ANSI_RESET,
         )
-        return
+        return summary.directory_fail()
 
     with open(context.path.testcase_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
@@ -75,24 +109,26 @@ def command_invoke(
     checker_step.check_unused_checker(formatter)
 
     formatter.print("Solution    compile ")
-    formatter.print_compile_string_with_exit(solution_step.compile_solution())
+    solution_compilation_result = solution_step.compile_solution()
+    formatter.print_compile_string(solution_compilation_result)
+    if not solution_compilation_result:
+        return summary.compilation_fail()
 
     if interactor_step is not None:
         formatter.print("Interactor  compile ")
-        formatter.print_compile_string_with_exit(interactor_step.compile())
+        interactor_compilation_result = interactor_step.compile()
+        formatter.print_compile_string(interactor_compilation_result, name=interactor_step.interactor_name)
+        if not interactor_compilation_result:
+            return summary.compilation_fail()
 
     # TODO manager
 
     if checker_step is not None:
         formatter.print("Checker     compile ")
-        formatter.print_compile_string_with_exit(checker_step.compile(), endl=False)
-        formatter.print(
-            " " * 2,
-            "(default)"
-            if checker_step.use_default_checker
-            else context.config.checker.filename,
-            endl=True,
-        )
+        checker_compilation_result = checker_step.compile()
+        formatter.print_compile_string(checker_compilation_result, name=checker_step.checker_name)
+        if not checker_compilation_result:
+            return summary.compilation_fail()
 
     all_testcases = [
         test.test_name
@@ -168,6 +204,9 @@ def command_invoke(
             )
 
         formatter.print_checker_status(solution_result)
-
         formatter.print_checker_verdict(solution_result, print_reason=show_reason)
         formatter.println()
+
+        summary.testcase_results[codename] = solution_result
+
+    return summary

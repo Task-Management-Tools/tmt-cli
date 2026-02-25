@@ -68,22 +68,22 @@ def main():
         return bool(cmd_ret)
 
     if args.command == "invoke":
-        command_invoke(
+        cmd_ret = command_invoke(
             formatter=formatter,
             context=context,
             show_reason=args.show_reason,
             submission_files=args.submission_files,
         )
-        return True
+        return bool(cmd_ret)
 
     if args.command == "clean":
         command_clean(formatter=formatter, context=context, skip_confirm=args.yes)
-        return True
+        return True # Does not fail without exception
 
     if args.command == "export":
         command_export(formatter=formatter, context=context, output_path=args.output)
-        return True
-    
+        return True # Does not fail without exception
+
     return False
 
 

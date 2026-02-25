@@ -1,6 +1,6 @@
-title: A + B Problem
-short_name: aplusb
-description: A + B Problem
+title: Validator Compilation Error
+short_name: val-ce
+description: Validator Compilation Error
 
 input_extension: .in # "." is required
 output_extension: .out

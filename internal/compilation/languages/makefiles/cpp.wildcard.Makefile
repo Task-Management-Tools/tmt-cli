@@ -19,7 +19,7 @@ EXES = $(CPP_SOURCES:%.cpp=build/%) $(CC_SOURCES:%.cc=build/%)
 DEPS = $(CPP_SOURCES:%.cpp=build/%.d) $(CC_SOURCES:%.cc=build/%.d)
 LOGS = $(CPP_SOURCES:%.cpp=build/%.compile.log) $(CC_SOURCES:%.cc=build/%.compile.log)
 
-all: build $(EXES) emit-log
+all: build $(EXES)
 
 build/%.d: %.cpp build
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $< -MT $* -MF $@
@@ -43,11 +43,9 @@ build:
 
 emit-log:
 	@for f in $(LOGS); do \
-		echo "---- $$f ----" >&2; \
 		if [[ -f $$f ]]; then \
+			echo "---- $$f ----" >&2; \
 			cat $$f >&2; \
-		else \
-			echo "warning: compilation log file $$f does not exist" >&2; \
 		fi; \
 	done
 

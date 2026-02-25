@@ -3,6 +3,7 @@ import shutil
 
 
 from internal.context import CheckerType, TMTContext, SandboxDirectory
+from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.compilation import (
     make_compile_targets,
     make_clean,
@@ -25,22 +26,24 @@ from .base import CheckerStep
 
 class ICPCCheckerStep(CheckerStep):
     def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
-        super().__init__(context, sandbox)
-        self.limits = context.config  # shorthand
         self.use_default_checker = (
             context.config.checker is None
             or context.config.checker.type == CheckerType.DEFAULT
         )
-
         if not self.use_default_checker:
-            if (
-                self.context.config.checker is None
-                or self.context.config.checker.filename is None
-            ):
-                raise ValueError("Checker config should be present")
-            if not self.context.path.has_checker_directory():
-                raise FileNotFoundError("Directory `checker` is not present.")
+            if context.config.checker is None:
+                raise TMTInvalidConfigError("Config section `checker` is not present.")
+            if context.config.checker.filename is None:
+                raise TMTInvalidConfigError("Config option `checker.filename` is not present.")
+            if not context.path.has_checker_directory():
+                raise TMTMissingFileError("Directory `checker` is not present.")
+            
+            checker_name = context.config.checker.filename
+        else:
+            checker_name = "(default)"
 
+        super().__init__(context, sandbox, checker_name)
+        self.limits = context.config  # shorthand
         self.compiled_checker_path: str | None = None
 
     def check_unused_checker(self, formatter: Formatter) -> bool:

@@ -1,0 +1,6 @@
+@testset handmade
+gen 
+
+@subtask full 100
+@description No additional constraints
+@validation validator 

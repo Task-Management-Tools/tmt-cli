@@ -6,7 +6,7 @@ from pathlib import Path
 
 from internal.context import TMTContext
 from internal.context.directory import SandboxDirectory
-from internal.exceptions import TMTMissingFileError
+from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.process import Process, wait_procs
 from internal.compilation import (
     make_compile_targets,
@@ -31,38 +31,36 @@ class ICPCInteractorStep:
         if self.sandbox:
             self.workdir = self.sandbox.interactor
             self.workdir.create()
+        if not self.context.path.has_interactor_directory():
+            raise TMTMissingFileError("`interactor' directory not found for an interactive problem.")
+        if self.context.config.interactor is None:
+            raise TMTInvalidConfigError("Config section `interactor` is not present in problems.yaml.")
+        if self.context.config.interactor.filename is None:
+            raise TMTInvalidConfigError("Config option `interactor.filename` is not present in problems.yaml.")
+        self.interactor_name = self.context.config.interactor.filename
 
     def clean_up(self):
         make_clean(directory=self.context.path.interactor)
 
     def compile(self) -> CompilationResult:
-        if self.context.path.has_interactor_directory():
-            if (
-                self.context.config.interactor is None
-                or self.context.config.interactor.filename is None
-            ):
-                raise ValueError("Interactor config should be present")
 
-            comp_result = make_compile_targets(
-                context=self.context,
-                directory=self.context.path.interactor,
-                sources=[self.context.config.interactor.filename],
-                target="interactor",
-                executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+        comp_result = make_compile_targets(
+            context=self.context,
+            directory=self.context.path.interactor,
+            sources=[self.context.config.interactor.filename],
+            target="interactor",
+            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+        )
+
+        if comp_result.verdict is CompilationOutcome.SUCCESS:
+            if comp_result.produced_file is None:
+                raise TMTMissingFileError("Compilation did not produce an interactor")
+            shutil.copy(
+                comp_result.produced_file,
+                self.workdir.path,
             )
 
-            if comp_result.verdict is CompilationOutcome.SUCCESS:
-                if comp_result.produced_file is None:
-                    raise FileNotFoundError("Compilation did not produce interactor")
-                shutil.copy(
-                    comp_result.produced_file,
-                    self.workdir.path,
-                )
-
-            return comp_result
-        return CompilationResult(
-            CompilationOutcome.FAILED, "`interactor' directory not found."
-        )
+        return comp_result
 
     def run_solution(
         self,

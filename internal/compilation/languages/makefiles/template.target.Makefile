@@ -16,8 +16,7 @@ ifndef TARGET_NAME
 $(error TARGET_NAME is undefined)
 endif
 
-# Target all should emit-log at the end
-all: build $(EXE) emit-log
+all: build $(EXE)
 
 # TODO: specify how to build target
 

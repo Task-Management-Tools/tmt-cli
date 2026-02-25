@@ -23,7 +23,7 @@ ifndef TARGET_NAME
 $(error TARGET_NAME is undefined)
 endif
 
-all: build $(EXE) emit-log
+all: build $(EXE)
 
 $(DEP): build
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $(SRCS) -MT $(EXE) -MF $@
