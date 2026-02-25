@@ -215,4 +215,4 @@ manual 1.in
 
 ## License
 
-The default validator from the Kattis problemtools package is included, licensed under the MIT license. See `internal/steps/checker/default_checkers/icpc_default_validator.cc`.
+The default validator from the [Kattis problemtools](https://github.com/Kattis/problemtools) package is included, licensed under the MIT license. See [icpc_default_validator.cc](internal/steps/checker/default_checkers/icpc_default_validator.cc).
