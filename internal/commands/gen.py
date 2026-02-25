@@ -12,6 +12,8 @@ from internal.context import (
 )
 from internal.exceptions import TMTInvalidConfigError
 from internal.outcomes import (
+    EvaluationOutcome,
+    EvaluationResult,
     ExecutionOutcome,
     eval_outcome_to_run_outcome,
 )
@@ -68,6 +70,8 @@ def gen_single(
     # skip (and fail) if input validation did not succeed
     # skip if generator already produced output
     formatter.print("ans ")
+    solution_result = None
+
     if result.input_validation is not ExecutionOutcome.SUCCESS:
         result.output_generation = ExecutionOutcome.SKIPPED
     elif result.output_generation is ExecutionOutcome.SKIPPED_SUCCESS:
@@ -88,7 +92,7 @@ def gen_single(
     # If both input is validated and output is available, run checker if the testcase type should apply check
     if checker_step is not None:
         formatter.print("val ")
-        checker_step.run_checker_during_gen(result, codename)
+        checker_step.run_checker_during_gen(result, solution_result, codename)
         formatter.print_exec_result(result.output_validation)
     else:
         result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS

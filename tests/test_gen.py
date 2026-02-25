@@ -101,8 +101,8 @@ def test_gen(problem_shortname: str, expected_results: dict[str, GenerationResul
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
 
-    generation_step = GenerationStep(context, sandbox)
-    validation_step = ValidationStep(context, sandbox)
+    generation_step = GenerationStep(context=context, sandbox=sandbox)
+    validation_step = ValidationStep(context=context, sandbox=sandbox)
     assert context.config.answer_generation.type is AnswerGenerationType.SOLUTION
     solution_step: SolutionStep = make_solution_step(
         solution_type=context.config.solution.type,
@@ -123,7 +123,7 @@ def test_gen(problem_shortname: str, expected_results: dict[str, GenerationResul
 
     checker_step = None
     if context.config.checker is not None:
-        checker_step = ICPCCheckerStep(context, sandbox)
+        checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
         checker_compile_result: CompilationResult = checker_step.compile()
         assert checker_compile_result.verdict == CompilationOutcome.SUCCESS
 

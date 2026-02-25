@@ -14,7 +14,7 @@ from internal.exceptions import TMTMissingFileError
 
 
 class GenerationStep:
-    def __init__(self, context: TMTContext, sandbox: SandboxDirectory | None):
+    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
         self.context = context
         self.limits = context.config  # for short hand reference
         self.sandbox = sandbox

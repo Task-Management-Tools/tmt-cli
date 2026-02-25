@@ -172,5 +172,3 @@ def command_invoke(
         formatter.print_checker_verdict(solution_result, print_reason=show_reason)
         formatter.println()
 
-        if solution_result.output_file is not None:
-            os.unlink(solution_result.output_file)

@@ -117,7 +117,7 @@ class BatchSolutionStep(SolutionStep):
         # Move output
         if Path(sandbox_output_file).exists():
             if self.is_generation:
-                shutil.move(
+                shutil.copy(
                     sandbox_output_file,
                     os.path.join(self.context.path.testcases, file_out_name),
                 )
@@ -126,7 +126,7 @@ class BatchSolutionStep(SolutionStep):
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
-            output_file=sandbox_output_file if not self.is_generation else None,
+            output_file=sandbox_output_file,
         )
         result.fill_from_solution_process(solution)
 

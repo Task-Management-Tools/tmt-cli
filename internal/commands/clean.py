@@ -36,13 +36,13 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
     # TODO: clean statement?
 
     if confirm("Cleanup compiled generators, validators and solutions"):
-        GenerationStep(context, sandbox=None).clean_up()
-        ValidationStep(context, sandbox=None).clean_up()
+        GenerationStep(context=context, sandbox=None).clean_up()
+        ValidationStep(context=context, sandbox=None).clean_up()
         if (
             context.config.checker is not None
             and context.config.checker.type is not CheckerType.DEFAULT
         ):
-            ICPCCheckerStep(context, sandbox=None).clean_up()
+            ICPCCheckerStep(context=context, sandbox=None).clean_up()
         if context.config.interactor is not None:
             ICPCInteractorStep(context=context, sandbox=None).clean_up()
         make_solution_step(

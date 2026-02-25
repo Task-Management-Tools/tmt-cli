@@ -24,7 +24,7 @@ from .base import CheckerStep
 
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, context: TMTContext, sandbox: SandboxDirectory | None):
+    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
         super().__init__(context, sandbox)
         self.limits = context.config  # shorthand
         self.use_default_checker = (
@@ -55,7 +55,7 @@ class ICPCCheckerStep(CheckerStep):
 
     def compile(self) -> CompilationResult:
         workdir = self.sandbox.checker_compilation
-        workdir.create()
+        workdir.clean()
 
         if self.use_default_checker:
             # In this case we have no checker directory, therefore, we will build the default checker
@@ -90,7 +90,7 @@ class ICPCCheckerStep(CheckerStep):
     def clean_up(self):
         make_clean(directory=self.context.path.checker)
 
-    def run_checker_during_gen(self, result: GenerationResult, codename: str):
+    def run_checker_during_gen(self, result: GenerationResult, sol_result: EvaluationResult | None, codename: str):
         if result.output_generation not in [
             ExecutionOutcome.SUCCESS,
             ExecutionOutcome.SKIPPED_SUCCESS,
@@ -119,12 +119,14 @@ class ICPCCheckerStep(CheckerStep):
         )
 
         workdir = self.sandbox.checker
+        workdir.clean()
+
         copied_testcase_output = workdir.file(os.path.basename(testcase_answer))
         shutil.copy(testcase_answer, copied_testcase_output)
 
         checker_result = self._run_without_clean(
             self.context.config.checker.arguments,
-            EvaluationResult(output_file=copied_testcase_output),
+            EvaluationResult(output_file=testcase_answer if sol_result is None else sol_result.output_file),
             testcase_input,
             testcase_answer,
         )
@@ -159,6 +161,8 @@ class ICPCCheckerStep(CheckerStep):
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
         workdir = self.sandbox.checker
+        workdir.clean()
+
         feedback_dir = workdir.subdir("feedback_dir")
         feedback_dir.create()
 

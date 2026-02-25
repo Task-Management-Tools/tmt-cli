@@ -10,6 +10,7 @@ class CheckerStep(ABC):
         self.sandbox = sandbox
         if self.sandbox:
             self.sandbox.checker.create()
+            self.sandbox.checker_compilation.create()
 
     @abstractmethod
     def compile(self) -> CompilationResult:
