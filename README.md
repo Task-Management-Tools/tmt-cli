@@ -205,7 +205,9 @@ manual 1.in
 - `@description <text>` sets description for the current testset or subtask.
 - `@include <testset-or-subtask>` includes a testset or all testsets from another subtask into the current subtask.
 - `@constant <NAME> <value>` defines a constant used as `${NAME}` in later lines.
-- `@extra_file <NAME> <.ext>` adds an extra file output for the current testset or subtask.
+- `@extra_file <NAME> <.ext>` creates an extra file with the filename `<testcase-name><.ext>` for each testcase in the current testset or subtask. This enables generators to externally store auxiliary information for their generated testcases.
+  - For instance, using `@extra_file <NAME> .png` allows generators to generate corresponding visualizations along with the test cases. 
+  - Note that generators are responsible for opening these files. Users should pass the filenames by including the defined constant `${NAME}` in the generation command (e.g., `gen --figure=${NAME}`).
 - `manual <input> <output>` (`manual` but with an additional argument `<output>`) forces the testcase output to a file from `generator/manual/` and marks it as forced output for checker rules.
 - Piped sequences
   - A generator command can be a shell-like pipeline sequence of executables, split by `|`. (e.g. `step1 args1 | step2 args2`)
