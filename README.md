@@ -92,7 +92,7 @@ validator:
 solution:
   type: default
   time_limit: 1000 ms
-  memory_limit: 1 GB
+  memory_limit: 1 G
   output_limit: unlimited
 
 answer_generation:
@@ -109,8 +109,8 @@ Explanation:
 
 - `input_extension` and `output_extension` specify the extension of the generated testcase files.
 - `solution.time_limit` accepts `ms` or `s`.
-- `solution.memory_limit` accepts `MB`, `MiB`, `GB`, or `GiB`.
-  - Note that `GB` will be regarded as `GiB`.
+- `solution.memory_limit` accepts `M`, `MiB`, `G`, or `GiB`.
+  - Note that `M` = `MiB` and `G` = `GiB`.
 - `solution.output_limit` accepts the same units or `unlimited`.
 - `answer_generation.filename` specifies what the reference solution is.
 

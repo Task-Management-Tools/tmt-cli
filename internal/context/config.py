@@ -72,7 +72,7 @@ def parse_time_to_second(field_name: str, input_str: str) -> float:
 
 
 def parse_bytes_to_mib(field_name: str, input_str: str) -> int:
-    match = re.fullmatch(r"(\d+)\s*(G|GB|GiB|M|MB|MiB)", input_str)
+    match = re.fullmatch(r"(\d+)\s*(G|GiB|M|MiB)", input_str)
     if match is None:
         raise ValueError(f'{field_name} "{input_str}" is invalid.')
     if match.group(2).startswith("G"):
