@@ -220,7 +220,7 @@ class ICPCInteractorStep:
 
             # See ICPCCheckerStep.
             interactor_feedback_file = (
-                Path(sandbox_interactor_feedback_dir) / "judgemessage.txt"
+                Path(sandbox_interactor_feedback_dir.path) / "judgemessage.txt"
             )
             if interactor_feedback_file.is_file():
                 with open(interactor_feedback_file, "r") as f:
