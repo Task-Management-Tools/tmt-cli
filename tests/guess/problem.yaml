@@ -14,7 +14,7 @@ validator:
 solution:
   type: default
   time_limit: 1000 ms
-  memory_limit: 1 GB
+  memory_limit: 1 G
   output_limit: unlimited
 
 answer_generation: 
@@ -23,3 +23,5 @@ answer_generation:
 
 interactor:
   filename: checker.cc
+
+tmt_version: 0.1.0

@@ -1,0 +1,18 @@
+@global_validation validator 
+
+@testset samples
+manual s1.in
+manual s2.in
+manual s3.in
+
+@testset handmade
+manual 1.in
+manual 2.in
+manual 3.in
+manual 4.in
+manual 5num-1.in
+manual 5num-2.in
+manual 5num-3.in
+manual 5num-4.in
+manual zero.in
+manual zero-1.in
