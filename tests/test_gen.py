@@ -126,7 +126,9 @@ def test_gen(
     context = TMTContext(str(problem_dir), str(script_dir))
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
-    command_result = command_gen(formatter=formatter, context=context, verify_hash=False, show_reason=False)
+    command_result = command_gen(
+        formatter=formatter, context=context, verify_hash=False, show_reason=False
+    )
 
     expected_compilation, expected_generation = expected_results
 
@@ -142,7 +144,9 @@ def test_gen(
     check_compilation(expected_compilation.val, command_result.validation_compilation)
     check_compilation(expected_compilation.sol, command_result.solution_compilation)
     check_compilation(expected_compilation.check, command_result.checker_compilation)
-    check_compilation(expected_compilation.interact, command_result.interactor_compilation)
+    check_compilation(
+        expected_compilation.interact, command_result.interactor_compilation
+    )
 
     for testset in context.recipe.testsets.values():
         for test in testset.tests:
@@ -172,6 +176,8 @@ def test_gen(
                     assert os.path.isfile(file)
                     with open(file, "rb") as f:
                         testcase_hash = hashlib.sha256(f.read()).hexdigest()
-                    assert command_result.testcase_hashes[base_filename] == testcase_hash
+                    assert (
+                        command_result.testcase_hashes[base_filename] == testcase_hash
+                    )
 
     # TODO assert that tests are sorted in summary file?

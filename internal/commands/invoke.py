@@ -69,7 +69,7 @@ def command_invoke(
 
     sandbox = SandboxDirectory(context.path.default_sandbox)
     sandbox.create()
-    
+
     actual_files = [os.path.join(os.getcwd(), file) for file in submission_files]
 
     summary = CommandInvokeSummary()
