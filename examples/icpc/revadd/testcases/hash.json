@@ -1,0 +1,20 @@
+{
+    "1_samples_1.ans": "a279f0fe018bb1305d69ee251cd2a29919d20c910b86e3730fc1b857dd3c573a",
+    "1_samples_1.in": "7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d",
+    "1_samples_2.ans": "8e426e752417be3d8fad586a3f1b24129da1d1f5b504a0201057acb0e66fdc5c",
+    "1_samples_2.in": "f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06",
+    "1_samples_3.ans": "66cad223eb4b52b45ee49a6f14a923756f9c308fb0a2f62f02808d1d2491969e",
+    "1_samples_3.in": "9a92adbc0cee38ef658c71ce1b1bf8c65668f166bfb213644c895ccb1ad07a25",
+    "2_handmade_1.ans": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "2_handmade_1.in": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "2_handmade_2.ans": "a79122992d53d358e6bbbbb98883d64fa0c15df3bcb08ff7b65a0580870af424",
+    "2_handmade_2.in": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "2_handmade_3.ans": "3f11ad6bbc7ecca0b2416b713dee77f1a635c00aaeaa946e14cde1c2bfae56d5",
+    "2_handmade_3.in": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+    "2_handmade_4.ans": "eae528b76c3f4b1ceeadecf7a68ff81e965bdab1d81c01e360dc6a9f5550f64b",
+    "2_handmade_4.in": "83c02ac2d48c863dab2ccf6870455aadfc2cec073b8db269b517c879d76aa6d9",
+    "2_handmade_5.ans": "c095f7b6d32597b5347270857ce57a0ed73dc207096ad85d71d5a1974e8de70f",
+    "2_handmade_5.in": "952476e082db783da62fea9f4663f452b09c2cc408a571146f4a318d9a68d06d",
+    "2_handmade_6.ans": "b58139719b50c0ffc85e1301b1e1f8d30c902eb21738a1f40705a74c172fa2de",
+    "2_handmade_6.in": "1d8fa3c8ab49d50b30fccbbd901735d5896a5d7959a5ad7ccecb79c1c849cc66"
+}

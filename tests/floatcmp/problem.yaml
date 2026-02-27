@@ -14,7 +14,7 @@ validator:
 solution:
   type: default
   time_limit: 1000 ms
-  memory_limit: 1 GB
+  memory_limit: 1 G
   output_limit: unlimited
 
 answer_generation: 
@@ -26,3 +26,5 @@ checker:
   arguments: float_tolerance 1e-6
   # check_generated_output: true/false (default true)
   # check_forced_output: true/false (default true)
+
+tmt_version: 0.1.0

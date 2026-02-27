@@ -4,6 +4,7 @@ import pathlib
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import command_gen, command_invoke, command_clean, command_export
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
+from internal import __version__
 from internal.formatting import TerminalFormatter
 
 
@@ -12,12 +13,12 @@ def main():
     parser.add_argument(
         "--version",
         action="version",
-        version="TMT 0.0.0",
+        version=f"TMT {__version__}",
         help="Show the version of TMT.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
+    # parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
 
     parser_gen = subparsers.add_parser("gen", help="Generate testcases.")
     parser_gen.add_argument(

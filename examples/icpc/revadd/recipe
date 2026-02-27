@@ -1,0 +1,14 @@
+@global_validation validator 
+
+@testset samples
+manual s1.in s1.ans
+manual s2.in s2.ans
+manual s3.in s3.ans
+
+@testset handmade
+print 0
+print 1
+print 2
+print 1000
+print 1999
+print 2000

@@ -1,0 +1,9 @@
+@global_validation validator 
+
+@testset samples
+manual s1.in
+
+@testset handmade
+manual 01.in
+manual 02_extreme_cases.in
+manual random.in
