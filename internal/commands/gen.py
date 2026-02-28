@@ -160,6 +160,7 @@ def command_gen(
             "Testcase hashes does not exist. There is nothing to verify.",
             formatter.ANSI_RESET,
         )
+        summary.hash_mismatch = True
         return summary
 
     context.path.clean_logs()
