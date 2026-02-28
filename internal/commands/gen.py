@@ -2,6 +2,7 @@ import pathlib
 import os
 import hashlib
 import json
+import filecmp
 
 from internal.formatting import Formatter
 from internal.context import (
@@ -116,6 +117,8 @@ class CommandGenSummary:
         self.checker_compilation: CompilationResult | None = None
         self.interactor_compilation: CompilationResult | None = None
 
+        self.hash_mismatch: bool = False
+
     def __bool__(self):
         all_compilations = [
             self.generation_compilation,
@@ -129,6 +132,9 @@ class CommandGenSummary:
             return cresult is not None and not cresult
 
         if any(map(is_compilation_error, all_compilations)):
+            return False
+
+        if self.hash_mismatch:
             return False
 
         return all(self.testcase_results.values())
@@ -154,7 +160,7 @@ def command_gen(
             "Testcase hashes does not exist. There is nothing to verify.",
             formatter.ANSI_RESET,
         )
-        return False
+        return summary
 
     context.path.clean_logs()
     os.makedirs(context.path.logs)
@@ -229,6 +235,8 @@ def command_gen(
 
     # Execute steps
     with open(context.path.testcase_summary, "wt") as testcase_summary_file:
+        summary.testcase_summary_path = context.path.testcase_summary
+
         for testset in context.recipe.testsets.values():
             for test in testset.tests:
                 result = gen_single(
@@ -276,7 +284,12 @@ def command_gen(
             with open(context.path.testcases_hashes, "r") as f:
                 official_testcase_hashes: dict[str, str] = json.load(f)
             formatter.print_hash_diff(official_testcase_hashes, summary.testcase_hashes)
+            summary.hash_mismatch = official_testcase_hashes != summary.testcase_hashes
         else:
+            # Dump hashes first
+            with open(context.path.testcases_hashes, "w") as f:
+                json.dump(summary.testcase_hashes, f, sort_keys=True, indent=4)
+
             # Duplicated test detection
             input_hashes: dict[str, list[str]] = {}
             for file, hash in summary.testcase_hashes.items():
@@ -284,47 +297,45 @@ def command_gen(
                     if hash not in input_hashes:
                         input_hashes[hash] = []
                     input_hashes[hash].append(file)
+
             dupe_hashes = {
                 hash: filelist
                 for hash, filelist in input_hashes.items()
                 if len(filelist) > 1
             }
-            if len(dupe_hashes):
-                formatter.println(
-                    formatter.ANSI_YELLOW,
-                    "Warning: same hash value for input files detected:",
-                )
-                for hash, filelist in dupe_hashes.items():
-                    print(f"\t{hash}: {', '.join(filelist)}")
-                formatter.println(
-                    "Please make sure the possibly duplicated test is intended.",
-                    formatter.ANSI_RESET,
-                )
-                for hash, filelist in dupe_hashes.items():
-                    last_file = open(
-                        file=os.path.join(context.path.testcases, filelist[0])
-                    )
-                    last_file_content = last_file.read()
-                    last_file.close()
-                    for i in range(1, len(filelist)):
-                        current_file = open(
-                            file=os.path.join(context.path.testcases, filelist[i])
+            if not len(dupe_hashes):
+                return summary
+
+            # Warn for same input hashes
+            formatter.println(
+                formatter.ANSI_YELLOW,
+                "Warning: same hash value for input files detected:",
+            )
+            for hash, filelist in dupe_hashes.items():
+                formatter.println(f"    {hash}: {', '.join(filelist)}")
+            formatter.println(
+                "Please make sure the possibly duplicated test is intended.",
+                formatter.ANSI_RESET,
+            )
+
+            # Addtional check for actual file content
+            for hash, filelist in dupe_hashes.items():
+                for i in range(len(filelist) - 1):
+                    if (
+                        filecmp.cmp(
+                            os.path.join(context.path.testcases, filelist[i]),
+                            os.path.join(context.path.testcases, filelist[i + 1]),
+                            shallow=False,
                         )
-                        current_file_content = current_file.read()
-                        current_file.close()
-                        if (
-                            last_file_content != current_file_content
-                        ):  # SHA-256 collision?
-                            formatter.println(
-                                formatter.ANSI_RED_BG,
-                                f"You found a SHA-256 hash collision: {filelist[i - 1]} and {filelist[i]}. You should check whether your disk and RAM are still working properly.",
-                                formatter.ANSI_RESET,
-                            )
-                        last_file_content = current_file_content
+                        is True
+                    ):
+                        continue
+                    # SHA-256 collision?
+                    formatter.println(
+                        formatter.ANSI_RED_BG,
+                        f"You found a SHA-256 hash collision: {filelist[i - 1]} and {filelist[i]}. "
+                        "You should check whether your disk and RAM are still working properly.",
+                        formatter.ANSI_RESET,
+                    )
 
-            # Dump duplicated test
-            with open(context.path.testcases_hashes, "w") as f:
-                json.dump(summary.testcase_hashes, f, sort_keys=True, indent=4)
-
-    summary.testcase_summary_path = context.path.testcase_summary
     return summary
