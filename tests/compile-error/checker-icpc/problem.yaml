@@ -14,7 +14,7 @@ validator:
 solution:
   type: default
   time_limit: 1000 ms
-  memory_limit: 1 GB
+  memory_limit: 1 GiB
   output_limit: unlimited
 
 checker:
@@ -24,3 +24,5 @@ checker:
 answer_generation: 
   type: solution
   filename: sol.cpp
+
+tmt_version: 0.1.0
