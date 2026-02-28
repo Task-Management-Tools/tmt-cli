@@ -34,7 +34,8 @@ class ICPCInteractorStep:
             self.workdir.create()
         if not self.context.path.has_interactor_directory():
             raise TMTMissingFileError(
-                "`interactor' directory not found for an interactive problem."
+                filetype="Directory",
+                filename="interactor"
             )
         if self.context.config.interactor is None:
             raise TMTInvalidConfigError(
@@ -62,7 +63,8 @@ class ICPCInteractorStep:
 
         if comp_result.verdict is CompilationOutcome.SUCCESS:
             if comp_result.produced_file is None:
-                raise TMTMissingFileError("Compilation did not produce an interactor")
+                raise TMTMissingFileError(filetype="interactor (executable)", 
+                                          filename=os.path.splitext(self.context.config.interactor.filename)[0])
             shutil.copy(
                 comp_result.produced_file,
                 self.workdir.path,
@@ -123,7 +125,7 @@ class ICPCInteractorStep:
         )
         if solution_exec_command is None:
             raise TMTMissingFileError(
-                filetype="Solution executable",
+                filetype="solution (executable)",
                 filename=solution_step.executable_name_base,
                 among_str=solution_sandbox_build_dir
             )

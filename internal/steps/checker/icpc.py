@@ -39,7 +39,7 @@ class ICPCCheckerStep(CheckerStep):
                     "Config option `checker.filename` is not present."
                 )
             if not context.path.has_checker_directory():
-                raise TMTMissingFileError(filetype="Directory", filename="checler")
+                raise TMTMissingFileError(filetype="Directory", filename="checker")
 
             checker_name = context.config.checker.filename
         else:
