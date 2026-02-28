@@ -25,4 +25,4 @@ answer_generation:
   type: solution
   filename: sol.cpp
 
-tmt_version: 0.1.0
+tmt_version: latest

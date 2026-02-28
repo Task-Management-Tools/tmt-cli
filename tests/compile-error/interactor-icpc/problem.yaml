@@ -23,3 +23,5 @@ answer_generation:
 
 interactor:
   filename: checker.cpp
+
+tmt_version: latest

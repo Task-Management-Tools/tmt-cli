@@ -24,4 +24,4 @@ answer_generation:
 interactor:
   filename: checker.cc
 
-tmt_version: 0.1.0
+tmt_version: latest

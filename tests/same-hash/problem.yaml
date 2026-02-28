@@ -20,3 +20,5 @@ solution:
 answer_generation: 
   type: solution
   filename: model-solution.cpp
+
+tmt_version: latest

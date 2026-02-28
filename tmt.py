@@ -59,6 +59,14 @@ def main():
     script_dir = str(pathlib.Path(__file__).parent.resolve())
     context = TMTContext(problem_dir, script_dir)
 
+    # This check could be placed inside __init__ of TMTContext and check for certain environments, 
+    # but TMTConfig use __post_init__ for verfication and this is the only entry point of every command from the command line,
+    # so placing it here kind of also make sense.
+    if context.config.tmt_version == "latest":
+        formatter.println(formatter.ANSI_YELLOW,
+                          "Warning: In problem.yaml, tmt_version is set to 'latest' in this problem. You should never use 'latest' in non-unit-test problem repositories.",
+                          formatter.ANSI_RESET)
+
     if args.command == "gen":
         cmd_ret = command_gen(
             formatter=formatter,

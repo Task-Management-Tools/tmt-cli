@@ -20,3 +20,5 @@ solution:
 answer_generation: 
   type: solution
   filename: sol.cpp
+
+tmt_version: latest

@@ -21,4 +21,4 @@ answer_generation:
   type: solution
   filename: sol.py
 
-tmt_version: 0.1.0
+tmt_version: latest
