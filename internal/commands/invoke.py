@@ -39,7 +39,7 @@ class CommandInvokeSummary:
 
         # TODO this should check for expected verdicts; right now only failures are checked against
         def predicate(result: EvaluationResult):
-            return result not in [
+            return result.verdict not in [
                 EvaluationOutcome.MANAGER_CRASHED,
                 EvaluationOutcome.MANAGER_TIMEOUT,
                 EvaluationOutcome.CHECKER_CRASHED,
