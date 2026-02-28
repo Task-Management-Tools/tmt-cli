@@ -321,19 +321,16 @@ def command_gen(
             # Addtional check for actual file content
             for hash, filelist in dupe_hashes.items():
                 for i in range(len(filelist) - 1):
-                    if (
-                        filecmp.cmp(
-                            os.path.join(context.path.testcases, filelist[i]),
-                            os.path.join(context.path.testcases, filelist[i + 1]),
-                            shallow=False,
-                        )
-                        is True
+                    if filecmp.cmp(
+                        os.path.join(context.path.testcases, filelist[i]),
+                        os.path.join(context.path.testcases, filelist[i + 1]),
+                        shallow=False,
                     ):
                         continue
                     # SHA-256 collision?
                     formatter.println(
                         formatter.ANSI_RED_BG,
-                        f"You found a SHA-256 hash collision: {filelist[i - 1]} and {filelist[i]}. "
+                        f"You found a SHA-256 hash collision: {filelist[i]} and {filelist[i + 1]}. "
                         "You should check whether your disk and RAM are still working properly.",
                         formatter.ANSI_RESET,
                     )
