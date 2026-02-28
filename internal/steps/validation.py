@@ -11,6 +11,7 @@ from internal.compilation import (
 from internal.outcomes import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.process import Process, wait_procs
 from internal.exceptions import TMTMissingFileError
+from internal.steps.utils import requires_sandbox
 
 
 class ValidationStep:
@@ -22,6 +23,7 @@ class ValidationStep:
             self.workdir = self.sandbox.validation
             self.workdir.create()
 
+    @requires_sandbox
     def compile(self) -> CompilationResult:
         comp_result = make_compile_wildcard(
             directory=self.context.path.validator,
@@ -34,6 +36,7 @@ class ValidationStep:
     def clean_up(self):
         make_clean(directory=self.context.path.validator)
 
+    @requires_sandbox
     def run_validator(
         self,
         result: GenerationResult,

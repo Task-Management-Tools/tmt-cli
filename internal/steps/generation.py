@@ -11,6 +11,7 @@ from internal.context import TMTContext, SandboxDirectory
 from internal.process import Process, wait_procs
 from internal.outcomes import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.exceptions import TMTMissingFileError
+from internal.steps.utils import requires_sandbox
 
 
 class GenerationStep:
@@ -22,6 +23,7 @@ class GenerationStep:
             self.workdir = self.sandbox.generation
             self.workdir.create()
 
+    @requires_sandbox
     def compile(self) -> CompilationResult:
         comp_result = make_compile_wildcard(
             directory=self.context.path.generator,
@@ -34,6 +36,7 @@ class GenerationStep:
     def clean_up(self):
         make_clean(directory=self.context.path.generator)
 
+    @requires_sandbox
     def run_generator(
         self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]
     ) -> GenerationResult:

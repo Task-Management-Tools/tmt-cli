@@ -11,6 +11,7 @@ from internal.compilation import (
 )
 from internal.formatting import Formatter
 from internal.process import Process, wait_procs
+from internal.steps.utils import requires_sandbox
 from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
@@ -38,7 +39,7 @@ class ICPCCheckerStep(CheckerStep):
                     "Config option `checker.filename` is not present."
                 )
             if not context.path.has_checker_directory():
-                raise TMTMissingFileError("Directory `checker` is not present.")
+                raise TMTMissingFileError(filetype="Directory", filename="checler")
 
             checker_name = context.config.checker.filename
         else:
@@ -58,6 +59,7 @@ class ICPCCheckerStep(CheckerStep):
             return True
         return False
 
+    @requires_sandbox
     def compile(self) -> CompilationResult:
         workdir = self.sandbox.checker_compilation
         workdir.clean()
@@ -95,6 +97,7 @@ class ICPCCheckerStep(CheckerStep):
     def clean_up(self):
         make_clean(directory=self.context.path.checker)
 
+    @requires_sandbox
     def run_checker_during_gen(
         self,
         result: GenerationResult,

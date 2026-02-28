@@ -20,6 +20,7 @@ from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
 )
+from internal.steps.utils import requires_sandbox
 
 
 class ICPCInteractorStep:
@@ -48,6 +49,7 @@ class ICPCInteractorStep:
     def clean_up(self):
         make_clean(directory=self.context.path.interactor)
 
+    @requires_sandbox
     def compile(self) -> CompilationResult:
 
         comp_result = make_compile_targets(
@@ -68,6 +70,7 @@ class ICPCInteractorStep:
 
         return comp_result
 
+    @requires_sandbox
     def run_solution(
         self,
         solution_step: SolutionStep,
@@ -120,7 +123,9 @@ class ICPCInteractorStep:
         )
         if solution_exec_command is None:
             raise TMTMissingFileError(
-                f"Solution executable file not found in {solution_sandbox_build_dir}."
+                filetype="Solution executable",
+                filename=solution_step.executable_name_base,
+                among_str=solution_sandbox_build_dir
             )
         solution = Process(
             solution_exec_command,
