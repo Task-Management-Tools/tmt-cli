@@ -3,7 +3,7 @@ name: Auto-run pytest
 on: [push]
 
 jobs:
-  build:
+  pytest_test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -22,3 +22,16 @@ jobs:
     - name: Run pytest
       run: |
         python -m pytest
+  ruff_lint_format_check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Install ruff without running check or format
+      uses: astral-sh/ruff-action@v3
+      with:
+        args: "--version"
+    - name: Run ruff
+      run: |
+        ruff check .
+        ruff format --check .
+  # TODO add mypy as well
