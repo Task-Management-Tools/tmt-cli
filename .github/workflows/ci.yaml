@@ -1,4 +1,4 @@
-name: Auto-run pytest
+name: Auto-run test/lint/format
 
 on: [push]
 
@@ -22,6 +22,7 @@ jobs:
     - name: Run pytest
       run: |
         python -m pytest
+
   ruff_lint_format_check:
     runs-on: ubuntu-latest
     steps:
