@@ -6,6 +6,7 @@ import pytest
 
 from internal.formatting import EmptyFormatter
 from internal.context import TMTContext, AnswerGenerationType, SandboxDirectory
+from internal.formatting.terminal import TerminalFormatter
 from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
 from internal.steps.solution import SolutionStep, make_solution_step
@@ -122,7 +123,7 @@ def test_gen(
 ):
     script_dir = pathlib.Path(__file__).parent.parent.resolve()
     problem_dir = pathlib.Path(__file__).parent.resolve() / problem_path
-    formatter = EmptyFormatter()
+    formatter = TerminalFormatter()
     context = TMTContext(str(problem_dir), str(script_dir))
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
