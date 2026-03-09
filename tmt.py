@@ -8,7 +8,6 @@ from internal import __version__
 from internal.formatting import TerminalFormatter
 
 
-
 def main():
     parser = argparse.ArgumentParser(description="TMT - Task Management Tools")
     parser.add_argument(
