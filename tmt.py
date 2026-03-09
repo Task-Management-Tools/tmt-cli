@@ -7,6 +7,7 @@ from internal.commands import command_gen, command_invoke, command_clean, comman
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal import __version__
 
+
 def main():
     parser = argparse.ArgumentParser(description="TMT - Task Management Tools")
     parser.add_argument(

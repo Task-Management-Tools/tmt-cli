@@ -1,0 +1,2 @@
+[tool.ruff]
+extend-exclude = ["tests/compile-error/generator/generator/gen2.py"]
