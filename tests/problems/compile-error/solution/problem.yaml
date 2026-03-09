@@ -1,0 +1,24 @@
+title: Model Solution Compilation Error
+short_name: model-ce
+description: Test problem for model solution compilation error
+
+input_extension: .in
+output_extension: .out
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GiB
+  output_limit: unlimited
+
+answer_generation: 
+  type: solution
+  filename: sol.dummy
+
+tmt_version: latest

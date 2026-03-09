@@ -1,17 +1,10 @@
 import os
-import json
 import hashlib
 import pathlib
 import pytest
 
-from internal.formatting import EmptyFormatter
-from internal.context import TMTContext, AnswerGenerationType, SandboxDirectory
+from internal.context import TMTContext
 from internal.formatting.terminal import TerminalFormatter
-from internal.steps.generation import GenerationStep
-from internal.steps.validation import ValidationStep
-from internal.steps.solution import SolutionStep, make_solution_step
-from internal.steps.interactor import ICPCInteractorStep
-from internal.steps.checker.icpc import ICPCCheckerStep
 
 from internal.outcomes import (
     CompilationOutcome,
@@ -20,7 +13,7 @@ from internal.outcomes import (
     ExecutionOutcome,
 )
 from internal.commands import command_clean
-from internal.commands.gen import command_gen, gen_single
+from internal.commands.gen import command_gen
 
 
 def expected_result_helper(*, gen, val, ans, checker=ExecutionOutcome.UNKNOWN):
@@ -110,11 +103,11 @@ expected_results_aplusb_py = (
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-        ("aplusb", expected_results_aplusb),
-        ("aplusb-py", expected_results_aplusb_py),
-        ("floatcmp", expected_results_floatcmp),
-        ("guess", expected_results_guess),
-        ("parity", expected_results_parity),
+        ("problems/aplusb", expected_results_aplusb),
+        ("problems/aplusb-py", expected_results_aplusb_py),
+        ("problems/floatcmp", expected_results_floatcmp),
+        ("problems/guess", expected_results_guess),
+        ("problems/parity", expected_results_parity),
     ],
 )
 def test_gen(

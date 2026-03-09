@@ -59,7 +59,7 @@ def make_compile_wildcard(
 
         make_info = lang.get_make_wildcard_command(executable_stack_size_mib)
 
-        command = _get_make() + ["-C", directory, "-f", make_info.makefile]
+        command = _get_make() + ["--no-print-directory", "-C", directory, "-f", make_info.makefile]
 
         # Run all compilation first, then emit-log;
         # this way, we don't need to get our hands dirty setting them in Makefiles
@@ -119,7 +119,7 @@ def make_compile_targets(
         if all([os.path.splitext(src)[1] in lang.source_extensions for src in sources]):
             make_info = lang.get_make_target_command(executable_stack_size_mib)
 
-            command = _get_make() + ["-C", directory, "-f", make_info.makefile]
+            command = _get_make() + ["--no-print-directory", "-C", directory, "-f", make_info.makefile]
             # Run all compilation first, then emit-log;
             # this way, we don't need to get our hands dirty setting them in Makefiles
             kwargs = {
