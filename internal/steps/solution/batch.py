@@ -40,14 +40,13 @@ class BatchSolutionStep(SolutionStep):
     def compile_solution(self) -> CompilationResult:
         if self.sandbox is None:
             raise RuntimeError("")
-        
+
         if len(self.submission_files) != 1:
             return CompilationResult(
                 verdict=CompilationOutcome.FAILED,
                 exit_status=-1,
                 standard_error="Batch task only supports single file submission.",
             )
-        
 
         workdir = self.sandbox.solution_compilation
         workdir.clean()

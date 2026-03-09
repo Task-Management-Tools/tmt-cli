@@ -33,10 +33,7 @@ class ICPCInteractorStep:
             self.workdir = self.sandbox.interactor
             self.workdir.create()
         if not self.context.path.has_interactor_directory():
-            raise TMTMissingFileError(
-                filetype="Directory",
-                filename="interactor"
-            )
+            raise TMTMissingFileError(filetype="Directory", filename="interactor")
         if self.context.config.interactor is None:
             raise TMTInvalidConfigError(
                 "Config section `interactor` is not present in problems.yaml."
@@ -63,8 +60,12 @@ class ICPCInteractorStep:
 
         if comp_result.verdict is CompilationOutcome.SUCCESS:
             if comp_result.produced_file is None:
-                raise TMTMissingFileError(filetype="interactor (executable)", 
-                                          filename=os.path.splitext(self.context.config.interactor.filename)[0])
+                raise TMTMissingFileError(
+                    filetype="interactor (executable)",
+                    filename=os.path.splitext(self.context.config.interactor.filename)[
+                        0
+                    ],
+                )
             shutil.copy(
                 comp_result.produced_file,
                 self.workdir.path,
@@ -127,7 +128,7 @@ class ICPCInteractorStep:
             raise TMTMissingFileError(
                 filetype="solution (executable)",
                 filename=solution_step.executable_name_base,
-                among_str=solution_sandbox_build_dir
+                among_str=solution_sandbox_build_dir,
             )
         solution = Process(
             solution_exec_command,

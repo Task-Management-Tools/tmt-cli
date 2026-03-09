@@ -1,5 +1,5 @@
 # Test for compilation error reporting:
-# This test uses LanguageDummy to force generate a compilation error, 
+# This test uses LanguageDummy to force generate a compilation error,
 # thus, we can check if the step actually fails and collects the compilation error string.
 import pathlib
 import pytest
@@ -17,6 +17,7 @@ from internal.commands.gen import command_gen
 from tests.languages.dummy import LanguageDummy
 import internal.compilation.languages
 
+
 @pytest.fixture()
 def with_dummy_language():
     original = internal.compilation.languages.languages[:]
@@ -33,21 +34,32 @@ class ExpectedCompilation:
         self.check = check
         self.interact = interact
 
+
 OK = CompilationOutcome.SUCCESS
 TLE = CompilationOutcome.TIMEDOUT
 FAIL = CompilationOutcome.FAILED
 SKIP = CompilationOutcome.SKIPPED
 
+
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-# fmt: off
-        ("problems/compile-error/generator",       ExpectedCompilation(gen=FAIL)),
-        ("problems/compile-error/validator",       ExpectedCompilation(gen=OK, val=FAIL)),
-        ("problems/compile-error/solution",        ExpectedCompilation(gen=OK, val=OK, sol=FAIL)),
-        ("problems/compile-error/checker-icpc",    ExpectedCompilation(gen=OK, val=OK, sol=OK, check=FAIL)),
-        ("problems/compile-error/interactor-icpc", ExpectedCompilation(gen=OK, val=OK, sol=OK, interact=FAIL)),
-# fmt: on
+        # fmt: off
+        ("problems/compile-error/generator", ExpectedCompilation(gen=FAIL)),
+        ("problems/compile-error/validator", ExpectedCompilation(gen=OK, val=FAIL)),
+        (
+            "problems/compile-error/solution",
+            ExpectedCompilation(gen=OK, val=OK, sol=FAIL),
+        ),
+        (
+            "problems/compile-error/checker-icpc",
+            ExpectedCompilation(gen=OK, val=OK, sol=OK, check=FAIL),
+        ),
+        (
+            "problems/compile-error/interactor-icpc",
+            ExpectedCompilation(gen=OK, val=OK, sol=OK, interact=FAIL),
+        ),
+        # fmt: on
     ],
 )
 def test_compilation(
@@ -66,11 +78,13 @@ def test_compilation(
     )
 
     # Check for compilation
-    def check_compilation(expected: CompilationOutcome | None, found: CompilationResult | None):
+    def check_compilation(
+        expected: CompilationOutcome | None, found: CompilationResult | None
+    ):
         if expected is None:
             assert found is None
             return
-    
+
         assert isinstance(found, CompilationResult)
         assert found.verdict == expected
         if found.verdict == FAIL:
