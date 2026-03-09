@@ -7,7 +7,7 @@ problems/**/manager/build
 
 # Testcases
 problems/**/testcases/*
-problems/!**/testcases/hash.json
+!problems/**/testcases/hash.json
 
 # Logs
 problems/**/logs/
