@@ -3,8 +3,6 @@ import resource
 import re
 import dataclasses
 
-from internal import __version__
-
 
 class JudgeConvention(enum.Enum):
     ICPC = "icpc"
