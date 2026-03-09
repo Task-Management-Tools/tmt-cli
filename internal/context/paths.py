@@ -54,6 +54,8 @@ class ProblemDirectoryHelper:
     checker = _problem_path_property("checker")
     checker_build = _extend_path_property(checker, "build")
 
+    grader = _problem_path_property("grader")
+
     interactor = _problem_path_property("interactor")
     interactor_build = _extend_path_property(interactor, "build")
 

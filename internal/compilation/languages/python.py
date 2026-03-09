@@ -5,9 +5,13 @@ from .base import Language, MakeInfo
 
 class LanguagePython3(Language):
     @property
-    def name(self):
+    def id(self):
         return "python3"
 
+    @property
+    def name(self):
+        return "Python 3"
+    
     @property
     def source_extensions(self):
         return [".py"]

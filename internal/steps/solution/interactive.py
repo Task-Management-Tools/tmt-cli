@@ -5,7 +5,7 @@ from pathlib import Path
 import signal
 import subprocess
 
-from internal.compilation.makefile import make_clean, make_compile_targets
+from internal.compilation.makefile import make_clean, make_compile_target
 from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
 from internal.process import Process, wait_procs
 from internal.compilation import get_run_single_command
@@ -44,13 +44,10 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
 
     @requires_sandbox
     def compilation_jobs(self):
-        """
-        Returns a list of compilation jobs to run to prepare for the judging process.
-        """
         yield CompilationJob(
             CompilationSlot.SOLUTION,
             self.compile_solution,
-            ", ".join(self.submission_files),
+            ", ".join(os.path.basename(file) for file in self.submission_files),
         )
         yield CompilationJob(
             CompilationSlot.INTERACTOR, self.compile_interactor, self.interactor_name
@@ -58,7 +55,7 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
 
     @requires_sandbox
     def compile_interactor(self) -> CompilationResult:
-        comp_result = make_compile_targets(
+        comp_result = make_compile_target(
             context=self.context,
             directory=self.context.path.interactor,
             sources=[self.context.config.interactor.filename],

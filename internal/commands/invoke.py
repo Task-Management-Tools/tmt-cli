@@ -163,6 +163,8 @@ def command_invoke(
 
     codename_length = max(map(len, available_testcases)) + 2
 
+    os.makedirs(context.path.logs_invocation, exist_ok=True)
+
     for codename in available_testcases:
         formatter.print(" " * 4)
         formatter.print_fixed_width(codename, width=codename_length)

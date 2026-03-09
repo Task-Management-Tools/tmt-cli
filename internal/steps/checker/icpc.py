@@ -5,7 +5,8 @@ import shutil
 from internal.context import CheckerType, TMTContext, SandboxDirectory
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.compilation import (
-    make_compile_targets,
+    make_compile_target,
+    compile_single,
     make_clean,
     get_run_single_command,
 )
@@ -67,18 +68,15 @@ class ICPCCheckerStep(CheckerStep):
         if self.use_default_checker:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
-            checker_name = self.context.path.default_checker_icpc
-            shutil.copy(checker_name, workdir.path)
-
-            compile_result = make_compile_targets(
+            compile_result = compile_single(
                 context=self.context,
                 directory=workdir.path,
-                sources=[os.path.basename(checker_name)],
-                target="checker",
+                sources=[self.context.path.default_checker_icpc],
+                executable_filename_base="checker",
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
             )
         else:
-            compile_result = make_compile_targets(
+            compile_result = make_compile_target(
                 context=self.context,
                 directory=self.context.path.checker,
                 sources=[self.context.config.checker.filename],

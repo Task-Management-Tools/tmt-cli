@@ -42,7 +42,7 @@ class SolutionStep(ABC):
             self.log_directory = context.path.logs_invocation
 
         self.submission_files = submission_files
-        self.grader = None  # TODO: infer from config file (context)
+        self.grader = context.config.solution.grader_name
 
     @abstractmethod
     def compilation_jobs(self) -> Generator[CompilationJob, None, None]:

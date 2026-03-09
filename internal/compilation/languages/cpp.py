@@ -7,8 +7,12 @@ from .executable import ExecutableLanguage
 
 class LanguageCpp(ExecutableLanguage):
     @property
-    def name(self):
+    def id(self):
         return "cpp"
+
+    @property
+    def name(self):
+        return "C++"
 
     @property
     def source_extensions(self):
@@ -24,7 +28,7 @@ class LanguageCpp(ExecutableLanguage):
         return []
 
     def _construct_make_env(self, executable_stack_mib: int) -> dict[str, str]:
-        compile_flags = self.context.compile_flags(self.name)
+        compile_flags = self.context.compile_flags(self.id)
         compile_flags += self._get_stack_size_args(executable_stack_mib)
         return {
             "CXXFLAGS": " ".join(compile_flags),

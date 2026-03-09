@@ -22,11 +22,19 @@ class Language(ABC):
 
     @property
     @abstractmethod
-    def name(self) -> str:
+    def id(self) -> str:
         """
-        Returns the name of this langauge. It will be used in configuration files.
+        Returns the internal id of this langauge. It will be used in configuration files.
         """
         return "unknown"
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """
+        Returns the display name of this langauge.
+        """
+        return "Unknown"
 
     @property
     @abstractmethod
