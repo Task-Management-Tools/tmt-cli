@@ -13,8 +13,12 @@ class LanguageDummy(Language):
         )
 
     @property
-    def name(self):
+    def id(self):
         return "dummy"
+
+    @property
+    def name(self):
+        return "Dummy (Always Compliation Error)"
 
     @property
     def source_extensions(self):

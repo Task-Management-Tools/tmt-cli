@@ -141,29 +141,29 @@ def make_compile_target(
     lang = lang_type(context)
     make_info = lang.get_make_target_command(executable_stack_size_mib)
 
-            command = _get_make() + [
-                "--no-print-directory",
-                "-C",
-                directory,
-                "-f",
-                make_info.makefile,
-            ]
-            # Run all compilation first, then emit-log;
-            # this way, we don't need to get our hands dirty setting them in Makefiles
-            kwargs = {
-                "stdout": subprocess.PIPE,
-                "stderr": subprocess.PIPE,
-                "time_limit_sec": compilation_time_limit_sec,
-                "memory_limit_mib": compilation_memory_limit_mib,
-                "env": make_info.extra_env
-                | os.environ
-                | {
-                    "SRCS": " ".join(sources),
-                    "TARGET_NAME": target,
-                },
-            }
-            compile_process = Process(command, **kwargs)
-            stdout, stderr = wait_for_outputs(compile_process)
+    command = _get_make() + [
+        "--no-print-directory",
+        "-C",
+        directory,
+        "-f",
+        make_info.makefile,
+    ]
+    # Run all compilation first, then emit-log;
+    # this way, we don't need to get our hands dirty setting them in Makefiles
+    kwargs = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "time_limit_sec": compilation_time_limit_sec,
+        "memory_limit_mib": compilation_memory_limit_mib,
+        "env": make_info.extra_env
+        | os.environ
+        | {
+            "SRCS": " ".join(sources),
+            "TARGET_NAME": target,
+        },
+    }
+    compile_process = Process(command, **kwargs)
+    stdout, stderr = wait_for_outputs(compile_process)
 
     emit_log_process = Process(command + ["emit-log"], **kwargs)
     _, emitted_log = wait_for_outputs(emit_log_process)
@@ -177,7 +177,9 @@ def make_compile_target(
     else:
         verdict = CompilationOutcome.SUCCESS
 
-    executable_file = os.path.join(directory, "build", target + lang.executable_extension)
+    executable_file = os.path.join(
+        directory, "build", target + lang.executable_extension
+    )
     if not os.path.isfile(executable_file):
         executable_file = None
     return SingleCompilationResult(
