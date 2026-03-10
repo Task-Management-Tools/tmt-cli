@@ -7,7 +7,7 @@ SHELL := /bin/bash
 EXES = TODO # add extension if necessary
 LOGS = TODO.compile.log
 
-all: build $(EXES) emit-log
+all: build $(EXES)
 
 # TODO: specify how to build targets
 
@@ -16,11 +16,9 @@ build:
 
 emit-log:
 	@for f in $(LOGS); do \
-		echo "---- $$f ----"; \
 		if [[ -f $$f ]]; then \
+			echo "---- $$f ----" >&2; \
 			cat $$f >&2; \
-		else \
-			echo "warning: compilation log file $$f does not exist"; \
 		fi; \
 	done
 

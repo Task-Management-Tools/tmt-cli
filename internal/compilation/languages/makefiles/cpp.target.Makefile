@@ -23,7 +23,7 @@ ifndef TARGET_NAME
 $(error TARGET_NAME is undefined)
 endif
 
-all: build $(EXE) emit-log
+all: build $(EXE)
 
 $(DEP): build
 	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $(SRCS) -MT $(EXE) -MF $@
@@ -36,7 +36,7 @@ emit-log:
 	@if [[ -f $(LOG) ]]; then \
 		 cat $(LOG) >&2; \
 	 else \
-		 echo "warning: No such file: $$f"; \
+		 echo "warning: No such file: $$f" >&2; \
 	 fi
 
 build:

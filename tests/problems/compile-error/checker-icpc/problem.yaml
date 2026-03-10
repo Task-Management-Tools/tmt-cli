@@ -1,0 +1,28 @@
+title: Validator Compilation Error
+short_name: val-ce
+description: Validator Compilation Error
+
+input_extension: .in
+output_extension: .out
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GiB
+  output_limit: unlimited
+
+checker:
+  type: custom
+  filename: checker.dummy
+
+answer_generation: 
+  type: solution
+  filename: sol.cpp
+
+tmt_version: latest

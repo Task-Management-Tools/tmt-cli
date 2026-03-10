@@ -1,0 +1,9 @@
+@testset handmade
+gen A
+gen B # this actually has no effect
+another C
+another A
+
+@subtask full 100
+@description No additional constraints
+@include handmade

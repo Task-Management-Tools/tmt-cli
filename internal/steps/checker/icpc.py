@@ -1,21 +1,24 @@
 import os
 import shutil
-import pathlib
 
 
-from internal.context import CheckerType, TMTContext
+from internal.context import CheckerType, TMTContext, SandboxDirectory
+from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.compilation import (
     make_compile_targets,
     make_clean,
     get_run_single_command,
 )
+from internal.formatting import Formatter
 from internal.process import Process, wait_procs
+from internal.steps.utils import requires_sandbox
 from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
     ExecutionOutcome,
+    GenerationResult,
     eval_outcome_to_grade_outcome,
 )
 
@@ -23,38 +26,58 @@ from .base import CheckerStep
 
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, context: TMTContext):
-        super().__init__(context)
-        self.limits = context.config  # shorthand
+    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
         self.use_default_checker = (
             context.config.checker is None
             or context.config.checker.type == CheckerType.DEFAULT
-            or not context.path.has_checker_directory()
         )
+        if not self.use_default_checker:
+            if context.config.checker is None:
+                raise TMTInvalidConfigError("Config section `checker` is not present.")
+            if context.config.checker.filename is None:
+                raise TMTInvalidConfigError(
+                    "Config option `checker.filename` is not present."
+                )
+            if not context.path.has_checker_directory():
+                raise TMTMissingFileError(filetype="Directory", filename="checker")
 
+            checker_name = context.config.checker.filename
+        else:
+            checker_name = "(default)"
+
+        super().__init__(context, sandbox, checker_name)
+        self.limits = context.config  # shorthand
+        self.compiled_checker_path: str | None = None
+
+    def check_unused_checker(self, formatter: Formatter) -> bool:
+        if self.context.path.has_checker_directory() and self.use_default_checker:
+            formatter.println(
+                formatter.ANSI_YELLOW,
+                "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
+                formatter.ANSI_RESET,
+            )
+            return True
+        return False
+
+    @requires_sandbox
     def compile(self) -> CompilationResult:
+        workdir = self.sandbox.checker_compilation
+        workdir.clean()
+
         if self.use_default_checker:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
             checker_name = self.context.path.default_checker_icpc
-            shutil.copy(checker_name, self.context.path.sandbox_checker)
+            shutil.copy(checker_name, workdir.path)
 
             compile_result = make_compile_targets(
                 context=self.context,
-                directory=self.context.path.sandbox_checker,
+                directory=workdir.path,
                 sources=[os.path.basename(checker_name)],
                 target="checker",
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
             )
         else:
-            if not self.context.path.has_checker_directory():
-                raise FileNotFoundError("Directory `checker` is not present.")
-            if (
-                self.context.config.checker is None
-                or self.context.config.checker.filename is None
-            ):
-                raise ValueError("Checker config should be present")
-
             compile_result = make_compile_targets(
                 context=self.context,
                 directory=self.context.path.checker,
@@ -63,24 +86,24 @@ class ICPCCheckerStep(CheckerStep):
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
             )
 
-        # Finally, if success, we move the checker into the sandbox, preparing to invoke it.
+        # Finally, if success, ...
         if compile_result.verdict is CompilationOutcome.SUCCESS:
             if compile_result.produced_file is None:
                 raise FileNotFoundError("Compilation did not produce checker")
-            shutil.copy(
-                compile_result.produced_file,
-                self.context.path.sandbox_checker,
-            )
+            self.compiled_checker_path = compile_result.produced_file
 
         return compile_result
-
-    def prepare_sandbox(self):
-        super().prepare_sandbox()
 
     def clean_up(self):
         make_clean(directory=self.context.path.checker)
 
-    def run_checker_during_gen(self, result, codename):
+    @requires_sandbox
+    def run_checker_during_gen(
+        self,
+        result: GenerationResult,
+        sol_result: EvaluationResult | None,
+        codename: str,
+    ):
         if result.output_generation not in [
             ExecutionOutcome.SUCCESS,
             ExecutionOutcome.SKIPPED_SUCCESS,
@@ -108,15 +131,19 @@ class ICPCCheckerStep(CheckerStep):
             self.context.construct_output_filename(codename),
         )
 
-        copied_testcase_output = os.path.join(
-            self.context.path.sandbox_checker,
-            os.path.basename(testcase_answer),
-        )
+        workdir = self.sandbox.checker
+        workdir.clean()
+
+        copied_testcase_output = workdir.file(os.path.basename(testcase_answer))
         shutil.copy(testcase_answer, copied_testcase_output)
 
-        checker_result = self.run_checker(
+        checker_result = self._run_without_clean(
             self.context.config.checker.arguments,
-            EvaluationResult(output_file=copied_testcase_output),
+            EvaluationResult(
+                output_file=testcase_answer
+                if sol_result is None
+                else sol_result.output_file
+            ),
             testcase_input,
             testcase_answer,
         )
@@ -131,6 +158,18 @@ class ICPCCheckerStep(CheckerStep):
         input_file: str,
         answer_file: str,
     ) -> EvaluationResult:
+        self.sandbox.checker.clean()
+        return self._run_without_clean(
+            arguments, evaluation_record, input_file, answer_file
+        )
+
+    def _run_without_clean(
+        self,
+        arguments: list[str] | None,
+        evaluation_record: EvaluationResult,
+        input_file: str,
+        answer_file: str,
+    ) -> EvaluationResult:
         # In ICPC mode we do not need to check anything
         if evaluation_record.verdict is not EvaluationOutcome.RUN_SUCCESS:
             evaluation_record.checker_run = False
@@ -138,15 +177,16 @@ class ICPCCheckerStep(CheckerStep):
 
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
-        feedback_dir = (
-            os.path.join(self.context.path.sandbox_solution, "feedback_dir") + os.sep
-        )
-        if not os.path.isdir(feedback_dir):
-            os.mkdir(feedback_dir)
+        workdir = self.sandbox.checker
+        workdir.clean()
 
+        feedback_dir = workdir.subdir("feedback_dir")
+        feedback_dir.create()
+
+        assert self.compiled_checker_path is not None
         checker_exec_command = get_run_single_command(
             context=self.context,
-            directory=self.context.path.sandbox_checker,
+            directory=os.path.dirname(self.compiled_checker_path),
             executable_filename_base="checker",
             executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
         )
@@ -158,7 +198,10 @@ class ICPCCheckerStep(CheckerStep):
         if arguments is None:
             arguments = []
         checker_process = Process(
-            checker_exec_command + [input_file, answer_file, feedback_dir] + arguments,
+            checker_exec_command
+            + [input_file, answer_file, feedback_dir.path + os.sep]
+            + arguments,
+            preexec_fn=lambda: os.chdir(workdir.path),
             stdin_redirect=evaluation_record.output_file,
             stdout=None,
             stderr=None,
@@ -175,8 +218,8 @@ class ICPCCheckerStep(CheckerStep):
         #  - judgemessage.txt: feedback to the judges, we should report this in our CLI.
         #  - teammessage.txt: feedback to the teams, normally this is not visible just ignore it
         #  - judgeimage.<ext>, teamimage.<ext>: we cannot display any of them in the CLI, so ignore them
-        checker_feedback_file = pathlib.Path(feedback_dir) / "judgemessage.txt"
-        if (checker_feedback_file).is_file():
+        checker_feedback_file = feedback_dir.file("judgemessage.txt")
+        if os.path.isfile(checker_feedback_file):
             with open(checker_feedback_file, "r") as f:
                 evaluation_record.checker_reason = f.readline().strip()
 

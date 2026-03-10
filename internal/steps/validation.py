@@ -2,7 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-from internal.context import JudgeConvention, TMTContext
+from internal.context import JudgeConvention, TMTContext, SandboxDirectory
 from internal.compilation import (
     make_compile_wildcard,
     make_clean,
@@ -11,14 +11,19 @@ from internal.compilation import (
 from internal.outcomes import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.process import Process, wait_procs
 from internal.exceptions import TMTMissingFileError
+from internal.steps.utils import requires_sandbox
 
 
 class ValidationStep:
-    def __init__(self, context: TMTContext):
+    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
         self.context = context
         self.limits = context.config  # for short hand reference
-        self.workdir = self.context.path.sandbox_validation
+        self.sandbox = sandbox
+        if self.sandbox:
+            self.workdir = self.sandbox.validation
+            self.workdir.create()
 
+    @requires_sandbox
     def compile(self) -> CompilationResult:
         comp_result = make_compile_wildcard(
             directory=self.context.path.validator,
@@ -31,9 +36,7 @@ class ValidationStep:
     def clean_up(self):
         make_clean(directory=self.context.path.validator)
 
-    def prepare_sandbox(self):
-        os.makedirs(self.workdir, exist_ok=True)
-
+    @requires_sandbox
     def run_validator(
         self,
         result: GenerationResult,
@@ -49,9 +52,9 @@ class ValidationStep:
         """
         # Prepare directories
         os.makedirs(self.context.path.logs_generation, exist_ok=True)
-        os.makedirs(self.workdir, exist_ok=True)
+
         # There might be failed validation files lingering in the filesystem; remove them.
-        self.context.path.empty_directory(self.workdir)
+        self.workdir.clean()
 
         input_filename = self.context.construct_input_filename(code_name)
         expected_exitcode = (
@@ -81,9 +84,9 @@ class ValidationStep:
                         output_filename = f"{code_name}.val.{i}.out"
                         error_filename = f"{code_name}.val.{i}.err"
 
-                    sandbox_input_file = os.path.join(self.workdir, input_filename)
-                    sandbox_output_file = os.path.join(self.workdir, output_filename)
-                    sandbox_error_file = os.path.join(self.workdir, error_filename)
+                    sandbox_input_file = self.workdir.file(input_filename)
+                    sandbox_output_file = self.workdir.file(output_filename)
+                    sandbox_error_file = self.workdir.file(error_filename)
 
                     # Copy input and extra inputs
                     shutil.copy(
@@ -95,7 +98,7 @@ class ValidationStep:
                         extra_filename = self.context.construct_test_filename(
                             code_name, ext
                         )
-                        sandbox_extra_file = os.path.join(self.workdir, extra_filename)
+                        sandbox_extra_file = self.workdir.file(extra_filename)
                         shutil.copy(
                             os.path.join(self.context.path.testcases, extra_filename),
                             sandbox_extra_file,
@@ -105,7 +108,7 @@ class ValidationStep:
                     # Run validator
                     validator = Process(
                         command,
-                        preexec_fn=lambda: os.chdir(self.workdir),
+                        preexec_fn=lambda: os.chdir(self.workdir.path),
                         stdin_redirect=sandbox_input_file,
                         stdout_redirect=sandbox_output_file,
                         stderr_redirect=sandbox_error_file,

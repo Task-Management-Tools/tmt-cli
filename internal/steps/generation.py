@@ -7,18 +7,23 @@ from internal.compilation import (
     make_clean,
     get_run_single_command,
 )
-from internal.context import TMTContext
+from internal.context import TMTContext, SandboxDirectory
 from internal.process import Process, wait_procs
 from internal.outcomes import CompilationResult, GenerationResult, ExecutionOutcome
 from internal.exceptions import TMTMissingFileError
+from internal.steps.utils import requires_sandbox
 
 
 class GenerationStep:
-    def __init__(self, context: TMTContext):
+    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
         self.context = context
         self.limits = context.config  # for short hand reference
-        self.workdir = self.context.path.sandbox_generation
+        self.sandbox = sandbox
+        if self.sandbox:
+            self.workdir = self.sandbox.generation
+            self.workdir.create()
 
+    @requires_sandbox
     def compile(self) -> CompilationResult:
         comp_result = make_compile_wildcard(
             directory=self.context.path.generator,
@@ -28,12 +33,10 @@ class GenerationStep:
         comp_result.dump_to_logs(self.context.path.logs_generation, "generator")
         return comp_result
 
-    def prepare_sandbox(self):
-        os.makedirs(self.workdir, exist_ok=True)
-
     def clean_up(self):
         make_clean(directory=self.context.path.generator)
 
+    @requires_sandbox
     def run_generator(
         self, commands: list[list[str]], code_name: str, extra_output_exts: list[str]
     ) -> GenerationResult:
@@ -43,6 +46,7 @@ class GenerationStep:
         # Unhandled: they are internal errors
         os.makedirs(self.context.path.logs_generation, exist_ok=True)
         os.makedirs(self.context.path.testcases, exist_ok=True)
+        self.workdir.clean()
 
         testcase_extra = [
             self.context.construct_test_filename(code_name, ext)
@@ -56,18 +60,14 @@ class GenerationStep:
             # Filenames
             testcase_input = self.context.construct_input_filename(code_name)
             testcase_output = self.context.construct_output_filename(code_name)
-            sandbox_testcase_input = os.path.join(
-                self.context.path.sandbox_generation, testcase_input
-            )
-            sandbox_testcase_output = os.path.join(
-                self.context.path.sandbox_generation, testcase_output
-            )
+            sandbox_testcase_input = self.workdir.file(testcase_input)
+            sandbox_testcase_output = self.workdir.file(testcase_output)
 
             sandbox_testcase_extra = []
             sandbox_logs = []
 
             for file in testcase_extra:
-                sandbox_file = os.path.join(self.workdir, file)
+                sandbox_file = self.workdir.file(file)
                 sandbox_testcase_extra.append(sandbox_file)
 
             start_parsing_index = 0
@@ -114,12 +114,12 @@ class GenerationStep:
 
             try:
                 for i, command in enumerate(commands, 1):
-                    sandbox_err_file = os.path.join(
-                        self.workdir,
+                    sandbox_err_file_base = (
                         f"{code_name}.gen.{i}.err"
                         if len(commands) > 1
-                        else f"{code_name}.gen.err",
+                        else f"{code_name}.gen.err"
                     )
+                    sandbox_err_file = self.workdir.file(sandbox_err_file_base)
                     sandbox_logs.append(sandbox_err_file)
 
                     # For the first command, stdin is closed (None)
@@ -134,7 +134,7 @@ class GenerationStep:
 
                     proc = Process(
                         command,
-                        preexec_fn=lambda: os.chdir(self.workdir),
+                        preexec_fn=lambda: os.chdir(self.workdir.path),
                         stdin=stdin,
                         stdout=subprocess.PIPE,
                         stdout_redirect=stdout_redirect,

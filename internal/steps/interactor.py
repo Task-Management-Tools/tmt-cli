@@ -5,6 +5,8 @@ import subprocess
 from pathlib import Path
 
 from internal.context import TMTContext
+from internal.context.directory import SandboxDirectory
+from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.process import Process, wait_procs
 from internal.compilation import (
     make_compile_targets,
@@ -18,49 +20,60 @@ from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
 )
+from internal.steps.utils import requires_sandbox
 
 
-class InteractorStep:
+class ICPCInteractorStep:
     """Implements ICPC interactor compilation and execution."""
 
-    def __init__(self, *, context: TMTContext):
+    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
         self.context = context
-
-    def prepare_sandbox(self) -> None:
-        os.makedirs(self.context.path.sandbox_interactor, exist_ok=True)
+        self.sandbox = sandbox
+        if self.sandbox:
+            self.workdir = self.sandbox.interactor
+            self.workdir.create()
+        if not self.context.path.has_interactor_directory():
+            raise TMTMissingFileError(filetype="Directory", filename="interactor")
+        if self.context.config.interactor is None:
+            raise TMTInvalidConfigError(
+                "Config section `interactor` is not present in problems.yaml."
+            )
+        if self.context.config.interactor.filename is None:
+            raise TMTInvalidConfigError(
+                "Config option `interactor.filename` is not present in problems.yaml."
+            )
+        self.interactor_name = self.context.config.interactor.filename
 
     def clean_up(self):
         make_clean(directory=self.context.path.interactor)
 
+    @requires_sandbox
     def compile(self) -> CompilationResult:
-        if self.context.path.has_interactor_directory():
-            if (
-                self.context.config.interactor is None
-                or self.context.config.interactor.filename is None
-            ):
-                raise ValueError("Interactor config should be present")
 
-            comp_result = make_compile_targets(
-                context=self.context,
-                directory=self.context.path.interactor,
-                sources=[self.context.config.interactor.filename],
-                target="interactor",
-                executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
-            )
-
-            if comp_result.verdict is CompilationOutcome.SUCCESS:
-                if comp_result.produced_file is None:
-                    raise FileNotFoundError("Compilation did not produce interactor")
-                shutil.copy(
-                    comp_result.produced_file,
-                    self.context.path.sandbox_interactor,
-                )
-
-            return comp_result
-        return CompilationResult(
-            CompilationOutcome.FAILED, "`interactor' directory not found."
+        comp_result = make_compile_targets(
+            context=self.context,
+            directory=self.context.path.interactor,
+            sources=[self.context.config.interactor.filename],
+            target="interactor",
+            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
         )
 
+        if comp_result.verdict is CompilationOutcome.SUCCESS:
+            if comp_result.produced_file is None:
+                raise TMTMissingFileError(
+                    filetype="interactor (executable)",
+                    filename=os.path.splitext(self.context.config.interactor.filename)[
+                        0
+                    ],
+                )
+            shutil.copy(
+                comp_result.produced_file,
+                self.workdir.path,
+            )
+
+        return comp_result
+
+    @requires_sandbox
     def run_solution(
         self,
         solution_step: SolutionStep,
@@ -71,6 +84,7 @@ class InteractorStep:
         This function only returns FileNotFoundError for execution error.
         """
         os.makedirs(solution_step.log_directory, exist_ok=True)
+        self.workdir.clean()
 
         file_in_name = self.context.construct_input_filename(code_name)
         file_out_name = self.context.construct_output_filename(code_name)
@@ -79,20 +93,12 @@ class InteractorStep:
 
         testcase_input = os.path.join(self.context.path.testcases, file_in_name)
         testcase_answer = os.path.join(self.context.path.testcases, file_out_name)
-        sandbox_interactor_input_file = os.path.join(
-            self.context.path.sandbox_interactor, file_in_name
-        )
-        sandbox_interactor_answer_file = os.path.join(
-            self.context.path.sandbox_interactor, file_out_name
-        )
-        sandbox_interactor_err_file = os.path.join(
-            self.context.path.sandbox_interactor, file_interactor_err_name
-        )
-        sandbox_interactor_feedback_dir = (
-            os.path.join(self.context.path.sandbox_interactor, "feedback_dir") + os.sep
-        )
-        sandbox_solution_err_file = os.path.join(
-            self.context.path.sandbox_solution, file_sol_err_name
+        sandbox_interactor_input_file = self.workdir.file(file_in_name)
+        sandbox_interactor_answer_file = self.workdir.file(file_out_name)
+        sandbox_interactor_err_file = self.workdir.file(file_interactor_err_name)
+        sandbox_interactor_feedback_dir = self.workdir.subdir("feedback_dir")
+        sandbox_solution_err_file = self.sandbox.solution_invocation.file(
+            file_sol_err_name
         )
 
         # Create dummy output
@@ -103,20 +109,27 @@ class InteractorStep:
         shutil.copy(testcase_input, sandbox_interactor_input_file)
         shutil.copy(testcase_answer, sandbox_interactor_answer_file)
 
-        if not os.path.isdir(sandbox_interactor_feedback_dir):
-            os.mkdir(sandbox_interactor_feedback_dir)
-        self.context.path.empty_directory(sandbox_interactor_feedback_dir)
+        sandbox_interactor_feedback_dir.create()
 
         def solution_preexec_fn():
-            os.chdir(self.context.path.sandbox_solution)
+            os.chdir(self.sandbox.solution_invocation.path)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
+        solution_sandbox_build_dir = self.sandbox.solution_compilation.subdir(
+            "build"
+        ).path
         solution_exec_command = get_run_single_command(
             context=self.context,
-            directory=self.context.path.sandbox_solution,
+            directory=solution_sandbox_build_dir,
             executable_filename_base=solution_step.executable_name_base,
             executable_stack_size_mib=solution_step.memory_limit_mib,
         )
+        if solution_exec_command is None:
+            raise TMTMissingFileError(
+                filetype="solution (executable)",
+                filename=solution_step.executable_name_base,
+                among_str=solution_sandbox_build_dir,
+            )
         solution = Process(
             solution_exec_command,
             preexec_fn=solution_preexec_fn,
@@ -129,12 +142,12 @@ class InteractorStep:
         )
 
         def interactor_preexec_fn():
-            os.chdir(self.context.path.sandbox_interactor)
+            os.chdir(self.workdir.path)
             signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
         interactor_exec_command = get_run_single_command(
             context=self.context,
-            directory=self.context.path.sandbox_interactor,
+            directory=self.context.path.interactor_build,
             executable_filename_base="interactor",
             executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
         )
@@ -142,7 +155,7 @@ class InteractorStep:
         interactor_exec_args = [
             sandbox_interactor_input_file,
             sandbox_interactor_answer_file,
-            sandbox_interactor_feedback_dir,
+            sandbox_interactor_feedback_dir.path + os.sep,  # required in ICPC format
         ]
         interactor = Process(
             interactor_exec_command + interactor_exec_args,
@@ -188,7 +201,7 @@ class InteractorStep:
         if os.path.isdir(interactor_feedback_logs):
             shutil.rmtree(interactor_feedback_logs)
         shutil.copytree(
-            sandbox_interactor_feedback_dir,
+            sandbox_interactor_feedback_dir.path,
             os.path.join(
                 solution_step.log_directory, f"{code_name}.interactor.feedback"
             ),
@@ -215,12 +228,10 @@ class InteractorStep:
 
             # See ICPCCheckerStep.
             interactor_feedback_file = (
-                Path(sandbox_interactor_feedback_dir) / "judgemessage.txt"
+                Path(sandbox_interactor_feedback_dir.path) / "judgemessage.txt"
             )
             if interactor_feedback_file.is_file():
                 with open(interactor_feedback_file, "r") as f:
                     result.checker_reason = f.readline().strip()
-
-        shutil.rmtree(sandbox_interactor_feedback_dir)
 
         return result

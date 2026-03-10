@@ -1,7 +1,7 @@
 import signal
 from abc import ABC, abstractmethod
 
-from internal.context import TMTContext
+from internal.context import TMTContext, SandboxDirectory
 from internal.outcomes import (
     EvaluationResult,
     EvaluationOutcome,
@@ -12,9 +12,18 @@ from internal.process import Process
 
 class SolutionStep(ABC):
     def __init__(
-        self, *, context: TMTContext, is_generation: bool, submission_files: list[str]
+        self,
+        *,
+        context: TMTContext,
+        sandbox: SandboxDirectory | None,
+        is_generation: bool,
+        submission_files: list[str],
     ):
         self.context = context
+        self.sandbox = sandbox
+        if self.sandbox:
+            self.sandbox.solution_compilation.create()
+            self.sandbox.solution_invocation.create()
 
         self.executable_name_base = self.context.config.short_name
         # TODO: if is_generation, moves the output (and remove save_output in run_solution method)
@@ -45,10 +54,6 @@ class SolutionStep(ABC):
     # @classmethod
     # def skip_checker(cls):
     #     return False
-
-    @abstractmethod
-    def prepare_sandbox(self):
-        pass
 
     @abstractmethod
     def clean_up(self):

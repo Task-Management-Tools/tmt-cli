@@ -89,6 +89,12 @@ class CompilationResult:
     standard_error: str = ""
     exit_status: int = 0
 
+    def __bool__(self):
+        return self.verdict in [
+            CompilationOutcome.SUCCESS,
+            CompilationOutcome.SKIPPED,
+        ]
+
     def dump_to_logs(self, log_directory: str, job_name: str):
         os.makedirs(log_directory, exist_ok=True)
         with open(os.path.join(log_directory, job_name + ".compile.out"), "w+") as f:

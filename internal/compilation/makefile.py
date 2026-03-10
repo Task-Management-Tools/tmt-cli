@@ -40,7 +40,7 @@ def make_compile_wildcard(
 
     allout, allerr = "", ""
 
-    compile_process: Process | None = None
+    make_all_process: Process | None = None
 
     executables = {}
     for source in pathlib.Path(directory).glob("*"):
@@ -59,28 +59,41 @@ def make_compile_wildcard(
 
         make_info = lang.get_make_wildcard_command(executable_stack_size_mib)
 
-        command = _get_make() + ["-C", directory, "-f", make_info.makefile]
-        compile_process = Process(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            time_limit_sec=compilation_time_limit_sec,
-            memory_limit_mib=compilation_memory_limit_mib,
-            env=make_info.extra_env | os.environ,
-        )
-        stdout, stderr = wait_for_outputs(compile_process)
+        command = _get_make() + [
+            "--no-print-directory",
+            "-C",
+            directory,
+            "-f",
+            make_info.makefile,
+        ]
+
+        # Run all compilation first, then emit-log;
+        # this way, we don't need to get our hands dirty setting them in Makefiles
+        kwargs = {
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.PIPE,
+            "time_limit_sec": compilation_time_limit_sec,
+            "memory_limit_mib": compilation_memory_limit_mib,
+            "env": make_info.extra_env | os.environ,
+        }
+        make_all_process = Process(command + ["all"], **kwargs)
+        stdout, stderr = wait_for_outputs(make_all_process)
         allout += stdout
         allerr += stderr
 
-        if compile_process.status != 0 or compile_process.is_timedout:
+        make_emit_log_process = Process(command + ["emit-log"], **kwargs)
+        _, stderr = wait_for_outputs(make_emit_log_process)
+        allerr += stderr
+
+        if make_all_process.status != 0 or make_all_process.is_timedout:
             break
 
     verdict: CompilationOutcome
-    if compile_process is None:
+    if make_all_process is None:
         verdict = CompilationOutcome.SUCCESS
-    elif compile_process.is_timedout:
+    elif make_all_process.is_timedout:
         verdict = CompilationOutcome.TIMEDOUT
-    elif compile_process.status != 0:
+    elif make_all_process.status != 0:
         verdict = CompilationOutcome.FAILED
     else:
         verdict = CompilationOutcome.SUCCESS
@@ -89,7 +102,7 @@ def make_compile_wildcard(
         verdict=verdict,
         standard_output=allout,
         standard_error=allerr,
-        exit_status=(compile_process.status if compile_process is not None else 0),
+        exit_status=(make_all_process.status if make_all_process is not None else 0),
     )
 
 
@@ -112,22 +125,33 @@ def make_compile_targets(
         if all([os.path.splitext(src)[1] in lang.source_extensions for src in sources]):
             make_info = lang.get_make_target_command(executable_stack_size_mib)
 
-            command = _get_make() + ["-C", directory, "-f", make_info.makefile]
-            compile_process = Process(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                time_limit_sec=compilation_time_limit_sec,
-                memory_limit_mib=compilation_memory_limit_mib,
-                env=make_info.extra_env
+            command = _get_make() + [
+                "--no-print-directory",
+                "-C",
+                directory,
+                "-f",
+                make_info.makefile,
+            ]
+            # Run all compilation first, then emit-log;
+            # this way, we don't need to get our hands dirty setting them in Makefiles
+            kwargs = {
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.PIPE,
+                "time_limit_sec": compilation_time_limit_sec,
+                "memory_limit_mib": compilation_memory_limit_mib,
+                "env": make_info.extra_env
                 | os.environ
                 | {
                     "SRCS": " ".join(sources),
                     "TARGET_NAME": target,
                 },
-            )
-
+            }
+            compile_process = Process(command, **kwargs)
             stdout, stderr = wait_for_outputs(compile_process)
+
+            emit_log_process = Process(command + ["emit-log"], **kwargs)
+            _, emitted_log = wait_for_outputs(emit_log_process)
+            stderr += emitted_log
 
             verdict: CompilationOutcome
             if compile_process.is_timedout:

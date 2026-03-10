@@ -16,8 +16,7 @@ ifndef TARGET_NAME
 $(error TARGET_NAME is undefined)
 endif
 
-# Target all should emit-log at the end
-all: build $(EXE) emit-log
+all: build $(EXE)
 
 # TODO: specify how to build target
 
@@ -25,7 +24,7 @@ emit-log:
 	@if [[ -f $(LOG) ]]; then \
 		 cat $(LOG) >&2; \
 	 else \
-		 echo "warning: No such file: $$f"; \
+		 echo "warning: No such file: $$f" >&2; \
 	 fi
 
 build:

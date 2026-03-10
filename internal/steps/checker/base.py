@@ -1,21 +1,23 @@
-import os
 from abc import ABC, abstractmethod
 
-from internal.context import TMTContext
+from internal.context import TMTContext, SandboxDirectory
 from internal.outcomes import EvaluationResult, CompilationResult
 
 
 class CheckerStep(ABC):
-    def __init__(self, context: TMTContext):
+    def __init__(
+        self, context: TMTContext, sandbox: SandboxDirectory | None, checker_name: str
+    ):
         self.context = context
+        self.sandbox = sandbox
+        if self.sandbox:
+            self.sandbox.checker.create()
+            self.sandbox.checker_compilation.create()
+        self.checker_name = checker_name
 
     @abstractmethod
     def compile(self) -> CompilationResult:
         raise NotImplementedError
-
-    @abstractmethod
-    def prepare_sandbox(self):
-        os.makedirs(self.context.path.sandbox_checker, exist_ok=True)
 
     @abstractmethod
     def run_checker(

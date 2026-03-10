@@ -1,11 +1,11 @@
 import argparse
 import pathlib
 
-from internal.formatting import Formatter
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import command_gen, command_invoke, command_clean, command_export
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal import __version__
+from internal.formatting import TerminalFormatter
 
 
 def main():
@@ -53,42 +53,55 @@ def main():
         print("Directory initialization is not implemented yet.")
         return
 
-    formatter = Formatter()
+    formatter = TerminalFormatter()
     cwd = pathlib.Path.cwd()
     problem_dir = find_problem_dir(cwd)  # TODO specify it in args
     script_dir = str(pathlib.Path(__file__).parent.resolve())
     context = TMTContext(problem_dir, script_dir)
 
+    # This check could be placed inside __init__ of TMTContext and check for certain environments,
+    # but TMTConfig use __post_init__ for verfication and this is the only entry point of every command from the command line,
+    # so placing it here kind of also make sense.
+    if context.config.tmt_version == "latest":
+        formatter.println(
+            formatter.ANSI_YELLOW,
+            "Warning: In problem.yaml, tmt_version is set to 'latest' in this problem. You should never use 'latest' in non-unit-test problem repositories.",
+            formatter.ANSI_RESET,
+        )
+
     if args.command == "gen":
-        command_gen(
+        cmd_ret = command_gen(
             formatter=formatter,
             context=context,
             verify_hash=args.verify_hash,
             show_reason=args.show_reason,
         )
-        return
+        return bool(cmd_ret)
 
     if args.command == "invoke":
-        command_invoke(
+        cmd_ret = command_invoke(
             formatter=formatter,
             context=context,
             show_reason=args.show_reason,
             submission_files=args.submission_files,
         )
-        return
+        return bool(cmd_ret)
 
     if args.command == "clean":
         command_clean(formatter=formatter, context=context, skip_confirm=args.yes)
-        return
+        return True  # Does not fail without exception
 
     if args.command == "export":
         command_export(formatter=formatter, context=context, output_path=args.output)
-        return
+        return True  # Does not fail without exception
+
+    return False
 
 
 if __name__ == "__main__":
     try:
-        main()
+        success = main()
+        exit(0 if success else 1)
     except TMTMissingFileError as e:
         print()
         print(e)

@@ -10,7 +10,7 @@ SRCS = $(wildcard *.py)
 EXES = $(SRCS:%.py=build/%.pyz)
 LOGS = $(SRCS:%.py=build/%.compile.log)
 
-all: $(EXES) emit-log
+all: $(EXES)
 
 build/%.pyz: %.py build
 	mkdir -p build/$*
@@ -23,11 +23,9 @@ build:
 
 emit-log:
 	@for f in $(LOGS); do \
-		echo "---- $$f ----"; \
 		if [[ -f $$f ]]; then \
+			echo "---- $$f ----" >&2; \
 			cat $$f >&2; \
-		else \
-			echo "warning: compilation log file $$f does not exist"; \
 		fi; \
 	done
 

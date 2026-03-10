@@ -1,0 +1,24 @@
+title: Generator Compilation Error
+short_name: gen-ce
+description: Test problem for generator compilation error
+
+input_extension: .in
+output_extension: .out
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GiB
+  output_limit: unlimited
+
+answer_generation: 
+  type: solution
+  filename: sol.cpp
+
+tmt_version: latest
