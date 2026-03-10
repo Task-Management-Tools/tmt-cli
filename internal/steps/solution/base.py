@@ -1,13 +1,14 @@
 import signal
 from abc import ABC, abstractmethod
+from typing import Generator
 
 from internal.context import TMTContext, SandboxDirectory
 from internal.outcomes import (
     EvaluationResult,
     EvaluationOutcome,
-    CompilationResult,
 )
 from internal.process import Process
+from internal.steps.utils import CompilationJob
 
 
 class SolutionStep(ABC):
@@ -43,31 +44,16 @@ class SolutionStep(ABC):
         self.submission_files = submission_files
         self.grader = None  # TODO: infer from config file (context)
 
-    # @classmethod
-    # def has_interactor(cls):
-    #     return False
-    #
-    # @classmethod
-    # def has_manager(cls):
-    #     return False
-    #
-    # @classmethod
-    # def skip_checker(cls):
-    #     return False
+    @abstractmethod
+    def compilation_jobs(self) -> Generator[CompilationJob, None, None]:
+        """
+        Returns a list of compilation jobs to run to prepare for the judging process.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def clean_up(self):
         pass
-
-    @abstractmethod
-    def compile_solution(self) -> CompilationResult:
-        pass
-
-    # def compile_interactor(self) -> CompilationResult:
-    #     return CompilationResult(CompilationOutcome.SKIPPED)
-    #
-    # def compile_manager(self) -> CompilationResult:
-    #     return CompilationResult(CompilationOutcome.SKIPPED)
 
     @abstractmethod
     def run_solution(self, code_name: str) -> EvaluationResult:

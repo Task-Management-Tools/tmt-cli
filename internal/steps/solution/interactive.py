@@ -1,34 +1,28 @@
 import os
 import shutil
+
+from pathlib import Path
 import signal
 import subprocess
-from pathlib import Path
 
-from internal.context import TMTContext
-from internal.context.directory import SandboxDirectory
-from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
+from internal.compilation.makefile import make_clean, make_compile_targets
+from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
 from internal.process import Process, wait_procs
-from internal.compilation import (
-    make_compile_targets,
-    make_clean,
-    get_run_single_command,
-)
-from internal.steps.solution import SolutionStep
+from internal.compilation import get_run_single_command
 from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
 )
-from internal.steps.utils import requires_sandbox
+from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
+
+from .batch import BatchSolutionStep
 
 
-class ICPCInteractorStep:
-    """Implements ICPC interactor compilation and execution."""
-
-    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
-        self.context = context
-        self.sandbox = sandbox
+class ICPCInteractiveSolutionStep(BatchSolutionStep):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         if self.sandbox:
             self.workdir = self.sandbox.interactor
             self.workdir.create()
@@ -45,11 +39,25 @@ class ICPCInteractorStep:
         self.interactor_name = self.context.config.interactor.filename
 
     def clean_up(self):
+        super().clean_up()
         make_clean(directory=self.context.path.interactor)
 
     @requires_sandbox
-    def compile(self) -> CompilationResult:
+    def compilation_jobs(self):
+        """
+        Returns a list of compilation jobs to run to prepare for the judging process.
+        """
+        yield CompilationJob(
+            CompilationSlot.SOLUTION,
+            self.compile_solution,
+            ", ".join(self.submission_files),
+        )
+        yield CompilationJob(
+            CompilationSlot.INTERACTOR, self.compile_interactor, self.interactor_name
+        )
 
+    @requires_sandbox
+    def compile_interactor(self) -> CompilationResult:
         comp_result = make_compile_targets(
             context=self.context,
             directory=self.context.path.interactor,
@@ -74,16 +82,11 @@ class ICPCInteractorStep:
         return comp_result
 
     @requires_sandbox
-    def run_solution(
-        self,
-        solution_step: SolutionStep,
-        code_name: str,
-    ) -> EvaluationResult:
-        # TODO use solution_step.xxx instead of self.context.config.soution xxx
+    def run_solution(self, code_name: str) -> EvaluationResult:
         """
         This function only returns FileNotFoundError for execution error.
         """
-        os.makedirs(solution_step.log_directory, exist_ok=True)
+        os.makedirs(self.log_directory, exist_ok=True)
         self.workdir.clean()
 
         file_in_name = self.context.construct_input_filename(code_name)
@@ -102,7 +105,7 @@ class ICPCInteractorStep:
         )
 
         # Create dummy output
-        if solution_step.is_generation:
+        if self.is_generation:
             with open(testcase_answer, "w+b"):
                 pass  # Truncate the file
 
@@ -121,13 +124,13 @@ class ICPCInteractorStep:
         solution_exec_command = get_run_single_command(
             context=self.context,
             directory=solution_sandbox_build_dir,
-            executable_filename_base=solution_step.executable_name_base,
-            executable_stack_size_mib=solution_step.memory_limit_mib,
+            executable_filename_base=self.executable_name_base,
+            executable_stack_size_mib=self.memory_limit_mib,
         )
         if solution_exec_command is None:
             raise TMTMissingFileError(
                 filetype="solution (executable)",
-                filename=solution_step.executable_name_base,
+                filename=self.executable_name_base,
                 among_str=solution_sandbox_build_dir,
             )
         solution = Process(
@@ -136,9 +139,9 @@ class ICPCInteractorStep:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr_redirect=sandbox_solution_err_file,
-            time_limit_sec=solution_step.time_limit_sec,
-            memory_limit_mib=solution_step.memory_limit_mib,
-            output_limit_mib=solution_step.output_limit_mib,
+            time_limit_sec=self.time_limit_sec,
+            memory_limit_mib=self.memory_limit_mib,
+            output_limit_mib=self.output_limit_mib,
         )
 
         def interactor_preexec_fn():
@@ -164,7 +167,7 @@ class ICPCInteractorStep:
             stdout=solution.stdin,
             stderr_redirect=sandbox_interactor_err_file,
             time_limit_sec=max(
-                solution_step.time_limit_sec * 2,
+                self.time_limit_sec * 2,
                 self.context.config.trusted_step_time_limit_sec,
             )
             + 1,
@@ -187,24 +190,22 @@ class ICPCInteractorStep:
         Path(sandbox_interactor_err_file).touch()
         shutil.move(
             sandbox_interactor_err_file,
-            os.path.join(solution_step.log_directory, file_interactor_err_name),
+            os.path.join(self.log_directory, file_interactor_err_name),
         )
         Path(sandbox_solution_err_file).touch()
         shutil.move(
             sandbox_solution_err_file,
-            os.path.join(solution_step.log_directory, file_sol_err_name),
+            os.path.join(self.log_directory, file_sol_err_name),
         )
 
         interactor_feedback_logs = os.path.join(
-            solution_step.log_directory, f"{code_name}.interactor.feedback"
+            self.log_directory, f"{code_name}.interactor.feedback"
         )
         if os.path.isdir(interactor_feedback_logs):
             shutil.rmtree(interactor_feedback_logs)
         shutil.copytree(
             sandbox_interactor_feedback_dir.path,
-            os.path.join(
-                solution_step.log_directory, f"{code_name}.interactor.feedback"
-            ),
+            os.path.join(self.log_directory, f"{code_name}.interactor.feedback"),
         )
 
         result = EvaluationResult(
@@ -218,7 +219,7 @@ class ICPCInteractorStep:
         elif interactor.is_signaled_exit:
             result.verdict = EvaluationOutcome.CHECKER_CRASHED
         # else, we check if solution executed successfully
-        elif solution_step.is_solution_abormal_exit(solution, result):
+        elif self.is_solution_abormal_exit(solution, result):
             pass
         # Now, we can check if the solution is actually correct
         elif interactor.exit_code == 42:

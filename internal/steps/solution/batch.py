@@ -3,7 +3,6 @@ import shutil
 
 from pathlib import Path
 
-from internal.context import TMTContext, SandboxDirectory
 from internal.process import Process, wait_procs
 from internal.compilation import compile_single, get_run_single_command
 from internal.outcomes import (
@@ -12,29 +11,27 @@ from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
 )
-from internal.steps.utils import requires_sandbox
+from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
 
 from .base import SolutionStep
 
 
 class BatchSolutionStep(SolutionStep):
-    def __init__(
-        self,
-        *,
-        context: TMTContext,
-        sandbox: SandboxDirectory | None,
-        is_generation: bool,
-        submission_files: list[str],
-    ):
-        super().__init__(
-            context=context,
-            sandbox=sandbox,
-            is_generation=is_generation,
-            submission_files=submission_files,
-        )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def clean_up(self):
         pass
+
+    def compilation_jobs(self):
+        """
+        Returns a list of compilation jobs to run to prepare for the judging process.
+        """
+        yield CompilationJob(
+            CompilationSlot.SOLUTION,
+            self.compile_solution,
+            ", ".join(self.submission_files),
+        )
 
     @requires_sandbox
     def compile_solution(self) -> CompilationResult:

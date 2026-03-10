@@ -61,7 +61,7 @@ class TerminalFormatter(Formatter):
                 if result.standard_error.find("warning") > 0:
                     self.print("[", self.ANSI_YELLOW, "WARN", self.ANSI_RESET, "]")
                 else:
-                    self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]")
+                    self.print("[", self.ANSI_GREEN, "OK", self.ANSI_RESET, "]  ")
             case _:
                 raise ValueError("Invaid enum")
 

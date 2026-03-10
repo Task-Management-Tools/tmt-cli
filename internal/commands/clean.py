@@ -5,9 +5,8 @@ from internal.formatting import Formatter
 from internal.context import CheckerType, TMTContext
 from internal.steps.generation import GenerationStep
 from internal.steps.validation import ValidationStep
-from internal.steps.solution import make_solution_step
+from internal.steps.solution import make_solution_step_type
 from internal.steps.checker.icpc import ICPCCheckerStep
-from internal.steps.interactor import ICPCInteractorStep
 
 
 def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bool):
@@ -43,10 +42,12 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
             and context.config.checker.type is not CheckerType.DEFAULT
         ):
             ICPCCheckerStep(context=context, sandbox=None).clean_up()
-        if context.config.interactor is not None:
-            ICPCInteractorStep(context=context, sandbox=None).clean_up()
-        make_solution_step(
-            solution_type=context.config.solution.type,
+
+        solution_step_type = make_solution_step_type(
+            problem_type=context.config.problem_type,
+            judge_convention=context.config.judge_convention,
+        )
+        solution_step_type(
             context=context,
             sandbox=None,
             is_generation=False,

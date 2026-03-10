@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import os
 import hashlib
 import pathlib
@@ -14,6 +15,7 @@ from internal.outcomes import (
 )
 from internal.commands import command_clean
 from internal.commands.gen import command_gen
+from internal.steps.utils import CompilationSlot
 
 
 def expected_result_helper(*, gen, val, ans, checker=ExecutionOutcome.UNKNOWN):
@@ -25,13 +27,14 @@ def expected_result_helper(*, gen, val, ans, checker=ExecutionOutcome.UNKNOWN):
     return result
 
 
+@dataclass(kw_only=True)
 class ExpectedCompilation:
-    def __init__(self, *, gen=False, val=False, sol=False, check=False, interact=False):
-        self.gen = gen
-        self.val = val
-        self.sol = sol
-        self.check = check
-        self.interact = interact
+    gen: bool = False
+    val: bool = False
+    sol: bool = False
+    check: bool = False
+    interact: bool = False
+    manager: bool = False
 
 
 OK = ExecutionOutcome.SUCCESS
@@ -134,12 +137,25 @@ def test_gen(
         else:
             assert found is None
 
-    check_compilation(expected_compilation.gen, command_result.generation_compilation)
-    check_compilation(expected_compilation.val, command_result.validation_compilation)
-    check_compilation(expected_compilation.sol, command_result.solution_compilation)
-    check_compilation(expected_compilation.check, command_result.checker_compilation)
+    compilation_result = command_result.compilation_result
     check_compilation(
-        expected_compilation.interact, command_result.interactor_compilation
+        expected_compilation.gen, compilation_result.get(CompilationSlot.GENERATOR)
+    )
+    check_compilation(
+        expected_compilation.val, compilation_result.get(CompilationSlot.VALIDATOR)
+    )
+    check_compilation(
+        expected_compilation.sol, compilation_result.get(CompilationSlot.SOLUTION)
+    )
+    check_compilation(
+        expected_compilation.check, compilation_result.get(CompilationSlot.CHECKER)
+    )
+    check_compilation(
+        expected_compilation.interact,
+        compilation_result.get(CompilationSlot.INTERACTOR),
+    )
+    check_compilation(
+        expected_compilation.manager, compilation_result.get(CompilationSlot.MANAGER)
     )
 
     for testset in context.recipe.testsets.values():

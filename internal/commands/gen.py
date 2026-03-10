@@ -19,10 +19,10 @@ from internal.outcomes import (
 )
 
 from internal.steps.generation import GenerationStep
+from internal.steps.utils import CompilationJob, CompilationSlot
 from internal.steps.validation import ValidationStep
-from internal.steps.solution import SolutionStep, make_solution_step
+from internal.steps.solution import SolutionStep, make_solution_step_type
 from internal.steps.checker.icpc import ICPCCheckerStep
-from internal.steps.interactor import ICPCInteractorStep
 
 
 def gen_single(
@@ -32,7 +32,6 @@ def gen_single(
     validation_step: ValidationStep,
     solution_step: SolutionStep,
     checker_step: ICPCCheckerStep | None,
-    interactor_step: ICPCInteractorStep | None,
     codename_display_width: int,
     show_reason: bool,
     testset,
@@ -77,13 +76,7 @@ def gen_single(
     elif result.output_generation is ExecutionOutcome.SKIPPED_SUCCESS:
         pass
     else:
-        if interactor_step is None:
-            solution_result = solution_step.run_solution(codename)
-        else:
-            solution_result = interactor_step.run_solution(
-                solution_step,
-                codename,
-            )
+        solution_result = solution_step.run_solution(codename)
         result.output_generation = eval_outcome_to_run_outcome(solution_result)
         result.reason = solution_result.checker_reason
     formatter.print_exec_result(result.output_generation)
@@ -111,27 +104,15 @@ class CommandGenSummary:
         self.testcase_summary_path: str | None = None
         self.testcase_hashes: dict[str, str] = {}
 
-        self.generation_compilation: CompilationResult | None = None
-        self.validation_compilation: CompilationResult | None = None
-        self.solution_compilation: CompilationResult | None = None
-        self.checker_compilation: CompilationResult | None = None
-        self.interactor_compilation: CompilationResult | None = None
+        self.compilation_result: dict[CompilationSlot, CompilationResult] = {}
 
         self.hash_mismatch: bool = False
 
     def __bool__(self):
-        all_compilations = [
-            self.generation_compilation,
-            self.validation_compilation,
-            self.solution_compilation,
-            self.checker_compilation,
-            self.interactor_compilation,
-        ]
-
         def is_compilation_error(cresult: CompilationResult | None):
             return cresult is not None and not cresult
 
-        if any(map(is_compilation_error, all_compilations)):
+        if any(map(is_compilation_error, self.compilation_result.values())):
             return False
 
         if self.hash_mismatch:
@@ -172,8 +153,11 @@ def command_gen(
     validation_step = ValidationStep(context=context, sandbox=sandbox)
 
     assert context.config.answer_generation.type is AnswerGenerationType.SOLUTION
-    solution_step: SolutionStep = make_solution_step(
-        solution_type=context.config.solution.type,
+    solution_step_type = make_solution_step_type(
+        problem_type=context.config.problem_type,
+        judge_convention=context.config.judge_convention,
+    )
+    solution_step = solution_step_type(
         context=context,
         sandbox=sandbox,
         is_generation=True,
@@ -185,45 +169,22 @@ def command_gen(
         checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
         checker_step.check_unused_checker(formatter)
 
-    interactor_step: ICPCInteractorStep | None = None
-    if context.config.interactor is not None:
-        interactor_step = ICPCInteractorStep(context=context, sandbox=sandbox)
-
     # Compile steps
-    formatter.print("Generator   compile ")
-    summary.generation_compilation = generation_step.compile()
-    formatter.print_compile_result(summary.generation_compilation)
-    if not summary.generation_compilation:
-        return summary
+    def compilation_jobs():
+        yield CompilationJob(CompilationSlot.GENERATOR, generation_step.compile, "")
+        yield CompilationJob(CompilationSlot.VALIDATOR, validation_step.compile, "")
+        yield from solution_step.compilation_jobs()
+        if checker_step is not None:
+            yield CompilationJob(
+                CompilationSlot.CHECKER, checker_step.compile, checker_step.checker_name
+            )
 
-    formatter.print("Validator   compile ")
-    summary.validation_compilation = validation_step.compile()
-    formatter.print_compile_result(summary.validation_compilation)
-    if not summary.validation_compilation:
-        return summary
-
-    formatter.print("Solution    compile ")
-    summary.solution_compilation = solution_step.compile_solution()
-    formatter.print_compile_result(summary.solution_compilation)
-    if not summary.solution_compilation:
-        return summary
-
-    if interactor_step is not None:
-        formatter.print("Interactor  compile ")
-        summary.interactor_compilation = interactor_step.compile()
-        formatter.print_compile_result(
-            summary.interactor_compilation, name=interactor_step.interactor_name
-        )
-        if not summary.interactor_compilation:
-            return summary
-
-    if checker_step is not None:
-        formatter.print("Checker     compile ")
-        summary.checker_compilation = checker_step.compile()
-        formatter.print_compile_result(
-            summary.checker_compilation, name=checker_step.checker_name
-        )
-        if not summary.checker_compilation:
+    for job in compilation_jobs():
+        formatter.print(f"{job.slot.display_name.ljust(10)}  compile ")
+        result = job.compile_fn()
+        summary.compilation_result[job.slot] = result
+        formatter.print_compile_result(result, name=job.display_file)
+        if not result:
             return summary
 
     # TODO: in case of update testcases, these should be mkdir
@@ -247,7 +208,6 @@ def command_gen(
                     validation_step=validation_step,
                     solution_step=solution_step,
                     checker_step=checker_step,
-                    interactor_step=interactor_step,
                     show_reason=show_reason,
                     testset=testset,
                     test=test,

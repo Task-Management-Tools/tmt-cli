@@ -14,6 +14,7 @@ from internal.outcomes import (
 from internal.commands import command_clean
 from internal.commands.gen import command_gen
 
+from internal.steps.utils import CompilationSlot
 from tests.languages.dummy import LanguageDummy
 import internal.compilation.languages
 
@@ -90,8 +91,11 @@ def test_compilation(
         if found.verdict == FAIL:
             assert "DUMMY_COMPILATION_ERROR" in found.standard_error
 
-    check_compilation(expected_results.gen, command_result.generation_compilation)
-    check_compilation(expected_results.val, command_result.validation_compilation)
-    check_compilation(expected_results.sol, command_result.solution_compilation)
-    check_compilation(expected_results.check, command_result.checker_compilation)
-    check_compilation(expected_results.interact, command_result.interactor_compilation)
+    cresult = command_result.compilation_result
+    check_compilation(expected_results.gen, cresult.get(CompilationSlot.GENERATOR))
+    check_compilation(expected_results.val, cresult.get(CompilationSlot.VALIDATOR))
+    check_compilation(expected_results.sol, cresult.get(CompilationSlot.SOLUTION))
+    check_compilation(expected_results.check, cresult.get(CompilationSlot.CHECKER))
+    check_compilation(
+        expected_results.interact, cresult.get(CompilationSlot.INTERACTOR)
+    )
