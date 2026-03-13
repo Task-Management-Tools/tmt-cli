@@ -1,9 +1,10 @@
 import os
+import pathlib
 import shutil
 
 from pathlib import Path
 
-from internal.context import TMTContext, SandboxDirectory
+from internal.compilation.utils import recognize_language
 from internal.process import Process, wait_procs
 from internal.compilation import compile_single, get_run_single_command
 from internal.outcomes import (
@@ -12,35 +13,28 @@ from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
 )
-from internal.steps.utils import requires_sandbox
+from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
 
 from .base import SolutionStep
 
 
 class BatchSolutionStep(SolutionStep):
-    def __init__(
-        self,
-        *,
-        context: TMTContext,
-        sandbox: SandboxDirectory | None,
-        is_generation: bool,
-        submission_files: list[str],
-    ):
-        super().__init__(
-            context=context,
-            sandbox=sandbox,
-            is_generation=is_generation,
-            submission_files=submission_files,
-        )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def clean_up(self):
         pass
 
     @requires_sandbox
-    def compile_solution(self) -> CompilationResult:
-        if self.sandbox is None:
-            raise RuntimeError("")
+    def compilation_jobs(self):
+        yield CompilationJob(
+            CompilationSlot.SOLUTION,
+            self.compile_solution,
+            ", ".join(os.path.basename(file) for file in self.submission_files),
+        )
 
+    @requires_sandbox
+    def compile_solution(self) -> CompilationResult:
         if len(self.submission_files) != 1:
             return CompilationResult(
                 verdict=CompilationOutcome.FAILED,
@@ -51,15 +45,50 @@ class BatchSolutionStep(SolutionStep):
         workdir = self.sandbox.solution_compilation
         workdir.clean()
 
-        files = self.submission_files
+        lang_type = recognize_language(self.submission_files, self.context)
+        if lang_type is None:
+            return CompilationResult(
+                verdict=CompilationOutcome.FAILED,
+                exit_status=-1,
+                standard_error=f"Source files {self.submission_files} are not recognized by any language.",
+            )
+
+        # Replace the solution file with absolute path, then we try to add grader if the config exists
+        # TODO: what is the specification of graders in ICPC format?
+        sources = self.submission_files
+        sources = [self.context.path.replace_with_solution(f) for f in sources]
+        headers = []
+
         if self.grader is not None:
-            files.append(self.context.path.replace_with_grader(self.grader))
-        files = [self.context.path.replace_with_solution(f) for f in files]
+            lang = lang_type(self.context)
+            graders = []
+            grader_dir = pathlib.Path(self.context.path.grader) / lang.id
+
+            # We only iterate the immediate files in the directory, because most of the time the judge won't support nested directories in the graders
+            for file in grader_dir.iterdir():
+                if not file.is_file():
+                    continue
+                base, ext = os.path.splitext(os.path.basename(file))
+                if base == self.grader and ext in lang.source_extensions:
+                    graders.append(str(file.absolute()))
+                else:
+                    headers.append(str(file.absolute()))
+            if len(graders) == 0:
+                return CompilationResult(
+                    verdict=CompilationOutcome.FAILED,
+                    exit_status=-1,
+                    standard_error=f"Grader of language {lang.name} is not found in directory {grader_dir.relative_to(os.getcwd())}.",
+                )
+
+            sources += graders
+            del lang
+        del lang_type
 
         comp_result = compile_single(
             context=self.context,
             directory=workdir.path,
-            sources=files,
+            sources=sources,
+            headers=headers,
             executable_filename_base=self.executable_name_base,
             executable_stack_size_mib=self.memory_limit_mib,
         )

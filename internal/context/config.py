@@ -84,9 +84,10 @@ class SolutionType(enum.Enum):
     GRADER = "grader"  # means the solution should be compiled with grader
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(kw_only=True)
 class Solution:
     type: SolutionType
+    grader_name: str | None = None
     time_limit: str
     time_limit_sec: float = dataclasses.field(init=False)
     memory_limit: str
@@ -112,8 +113,8 @@ class Solution:
         self.type = SolutionType(self.type)
         self.parse_limits()
 
-        if self.type is not SolutionType.DEFAULT:
-            raise ValueError(f"solution.type {self.type} is not supported yet.")
+        if self.type is SolutionType.GRADER and self.grader_name is None:
+            raise ValueError("Tasks with grader must supply solution.grader_name.")
 
 
 class AnswerGenerationType(enum.Enum):

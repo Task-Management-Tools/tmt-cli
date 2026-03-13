@@ -5,13 +5,14 @@ import subprocess
 from internal.formatting import Formatter
 from internal.context import TMTContext, SandboxDirectory
 from internal.outcomes import (
+    CompilationResult,
     EvaluationOutcome,
     EvaluationResult,
     eval_outcome_to_run_outcome,
 )
-from internal.steps.solution import SolutionStep, make_solution_step
+from internal.steps.solution import make_solution_step_type
 from internal.steps.checker.icpc import ICPCCheckerStep
-from internal.steps.interactor import ICPCInteractorStep
+from internal.steps.utils import CompilationJob, CompilationSlot
 
 
 def is_apport_active():
@@ -31,10 +32,16 @@ class CommandInvokeSummary:
     def __init__(self):
         self.testcase_results: dict[str, EvaluationResult | None] = {}
         self.directory_error: bool = False
-        self.compilation_error: bool = False
+        self.compilation_result: dict[CompilationSlot, CompilationResult] = {}
 
     def __bool__(self):
-        if self.directory_error or self.compilation_error:
+        if self.directory_error:
+            return False
+
+        def is_compilation_error(cresult: CompilationResult | None):
+            return cresult is not None and not cresult
+
+        if any(map(is_compilation_error, self.compilation_result.values())):
             return False
 
         # TODO this should check for expected verdicts; right now only failures are checked against
@@ -96,50 +103,35 @@ def command_invoke(
     assert pathlib.Path(context.path.testcase_summary).exists()
 
     # Make every steps first
-
-    solution_step: SolutionStep = make_solution_step(
-        solution_type=context.config.solution.type,
+    solution_step_type = make_solution_step_type(
+        problem_type=context.config.problem_type,
+        judge_convention=context.config.judge_convention,
+    )
+    solution_step = solution_step_type(
         context=context,
         sandbox=sandbox,
-        is_generation=False,
+        is_generation=True,
         submission_files=actual_files,
     )
 
-    interactor_step = None
-    if context.config.interactor is not None:
-        interactor_step = ICPCInteractorStep(context=context, sandbox=sandbox)
-
-    # TODO manager
-
-    # TODO option to skip_checker:
     checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
     checker_step.check_unused_checker(formatter)
 
-    formatter.print("Solution    compile ")
-    solution_compilation_result = solution_step.compile_solution()
-    formatter.print_compile_result(solution_compilation_result)
-    if not solution_compilation_result:
-        return summary.compilation_fail()
+    # TODO option to skip_checker:
+    def compilation_jobs():
+        yield from solution_step.compilation_jobs()
+        if checker_step is not None:
+            yield CompilationJob(
+                CompilationSlot.CHECKER, checker_step.compile, checker_step.checker_name
+            )
 
-    if interactor_step is not None:
-        formatter.print("Interactor  compile ")
-        interactor_compilation_result = interactor_step.compile()
-        formatter.print_compile_result(
-            interactor_compilation_result, name=interactor_step.interactor_name
-        )
-        if not interactor_compilation_result:
-            return summary.compilation_fail()
-
-    # TODO manager
-
-    if checker_step is not None:
-        formatter.print("Checker     compile ")
-        checker_compilation_result = checker_step.compile()
-        formatter.print_compile_result(
-            checker_compilation_result, name=checker_step.checker_name
-        )
-        if not checker_compilation_result:
-            return summary.compilation_fail()
+    for job in compilation_jobs():
+        formatter.print(f"{job.slot.display_name.ljust(10)}  compile ")
+        result = job.compile_fn()
+        summary.compilation_result[job.slot] = result
+        formatter.print_compile_result(result, name=job.display_file)
+        if not result:
+            return summary
 
     all_testcases = [
         test.test_name
@@ -171,18 +163,15 @@ def command_invoke(
 
     codename_length = max(map(len, available_testcases)) + 2
 
+    os.makedirs(context.path.logs_invocation, exist_ok=True)
+
     for codename in available_testcases:
         formatter.print(" " * 4)
         formatter.print_fixed_width(codename, width=codename_length)
 
         formatter.print("sol ")
-        if interactor_step is None:
-            solution_result = solution_step.run_solution(codename)
-        else:
-            solution_result = interactor_step.run_solution(
-                solution_step,
-                codename,
-            )
+        solution_result = solution_step.run_solution(codename)
+
         formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
         formatter.print(
             f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  "

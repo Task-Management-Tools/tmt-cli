@@ -5,7 +5,7 @@ from internal.context import TMTContext
 from internal.outcomes import SingleCompilationResult
 
 from .languages import languages
-from .makefile import make_compile_targets
+from .makefile import make_compile_target
 
 
 def compile_single(
@@ -19,6 +19,7 @@ def compile_single(
 ) -> SingleCompilationResult:
     """
     Compiles a single executable from sources and headers in directory.
+    The sources and headers will be all copied into the directory after it is completely cleared.
 
     All paths and directories should be absolute paths.
     """
@@ -42,7 +43,7 @@ def compile_single(
         if not os.path.samefile(os.path.dirname(headers[i]), directory):
             shutil.copy(headers[i], directory)
 
-    return make_compile_targets(
+    return make_compile_target(
         context=context,
         directory=directory,
         sources=sources,
