@@ -114,7 +114,7 @@ class Solution:
         self.parse_limits()
 
         if self.type is SolutionType.GRADER and self.grader_name is None:
-            raise ValueError(f"Tasks with grader must supply solution.grader_name.")
+            raise ValueError("Tasks with grader must supply solution.grader_name.")
 
 
 class AnswerGenerationType(enum.Enum):

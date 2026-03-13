@@ -79,7 +79,7 @@ class BatchSolutionStep(SolutionStep):
                     exit_status=-1,
                     standard_error=f"Grader of language {lang.name} is not found in directory {grader_dir.relative_to(os.getcwd())}.",
                 )
-            
+
             sources += graders
             del lang
         del lang_type

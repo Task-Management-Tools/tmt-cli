@@ -11,7 +11,7 @@ class LanguagePython3(Language):
     @property
     def name(self):
         return "Python 3"
-    
+
     @property
     def source_extensions(self):
         return [".py"]
