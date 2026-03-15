@@ -100,6 +100,16 @@ expected_results_aplusb_py = (
         "1_handmade_6":       expected_result_helper(gen=OK,   val=OK,   ans=OK)
     }
 )
+
+expected_results_communication_1_proc_with_grader = (
+    ExpectedCompilation(gen=True, val=True, manager=True, sol=True),
+    {
+        "1_all_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_all_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_all_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_all_4":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    }
+)
 # fmt: on
 
 
@@ -111,6 +121,10 @@ expected_results_aplusb_py = (
         ("problems/floatcmp", expected_results_floatcmp),
         ("problems/guess", expected_results_guess),
         ("problems/parity", expected_results_parity),
+        (
+            "problems/communication/1-proc-with-grader",
+            expected_results_communication_1_proc_with_grader,
+        ),
     ],
 )
 def test_gen(

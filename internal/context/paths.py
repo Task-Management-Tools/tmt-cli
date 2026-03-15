@@ -59,6 +59,9 @@ class ProblemDirectoryHelper:
     interactor = _problem_path_property("interactor")
     interactor_build = _extend_path_property(interactor, "build")
 
+    manager = _problem_path_property("manager")
+    manager_build = _extend_path_property(manager, "build")
+
     testcases = _problem_path_property("testcases")
     testcase_summary = _extend_path_property(testcases, "summary")
     testcases_hashes = _extend_path_property(testcases, "hash.json")
@@ -135,6 +138,9 @@ class ProblemDirectoryHelper:
 
     def has_interactor_directory(self):
         return self._is_directory(self.interactor)
+
+    def has_manager_directory(self):
+        return self._is_directory(self.manager)
 
     def replace_with_solution(self, full_filename: str):
         test_files = [

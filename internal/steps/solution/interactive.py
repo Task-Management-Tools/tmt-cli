@@ -71,10 +71,6 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
                         0
                     ],
                 )
-            shutil.copy(
-                comp_result.produced_file,
-                self.workdir.path,
-            )
 
         return comp_result
 
@@ -216,7 +212,7 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         elif interactor.is_signaled_exit:
             result.verdict = EvaluationOutcome.CHECKER_CRASHED
         # else, we check if solution executed successfully
-        elif self.is_solution_abormal_exit(solution, result):
+        elif self.is_solution_abormal_exit(result):
             pass
         # Now, we can check if the solution is actually correct
         elif interactor.exit_code == 42:
@@ -230,6 +226,6 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             )
             if interactor_feedback_file.is_file():
                 with open(interactor_feedback_file, "r") as f:
-                    result.checker_reason = f.readline().strip()
+                    result.reason = f.readline().strip()
 
         return result

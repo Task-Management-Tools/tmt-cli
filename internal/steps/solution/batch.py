@@ -167,7 +167,7 @@ class BatchSolutionStep(SolutionStep):
 
         if no_output_file:
             result.verdict = EvaluationOutcome.NO_FILE
-        elif self.is_solution_abormal_exit(solution, result):
+        elif self.is_solution_abormal_exit(result):
             pass
 
         return result

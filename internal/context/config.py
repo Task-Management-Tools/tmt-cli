@@ -14,6 +14,7 @@ class JudgeConvention(enum.Enum):
 class ProblemType(enum.Enum):
     BATCH = "batch"
     INTERACTIVE = "interactive"
+    COMMUNICATION = "communication"
 
 
 class CheckerType(enum.Enum):
@@ -58,6 +59,11 @@ class Interactor:
     arguments: str | None = None
 
 
+@dataclasses.dataclass
+class Manager:
+    filename: str
+
+
 # TODO: document time limit format and memory limit format
 def parse_time_to_second(field_name: str, input_str: str) -> float:
     match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", input_str)
@@ -94,6 +100,10 @@ class Solution:
     memory_limit_mib: int = dataclasses.field(init=False)
     output_limit: str
     output_limit_mib: int = dataclasses.field(init=False)
+
+    # Communication only attributes
+    num_procs: int | None = None
+    use_fifo: bool | None = None
 
     def parse_limits(self):
         self.time_limit_sec = parse_time_to_second(
@@ -162,7 +172,7 @@ class TMTConfig:
 
     checker: Checker | None = None
     interactor: Interactor | None = None
-    # TODO: manager
+    manager: Manager | None = None
 
     compile_time_limit: str | None = None
     compile_memory_limit: str | None = None
@@ -184,6 +194,8 @@ class TMTConfig:
             self.checker = Checker(**self.checker)
         if self.interactor is not None:
             self.interactor = Interactor(**self.interactor)
+        if self.manager is not None:
+            self.manager = Manager(**self.manager)
 
         # TODO: validate the fields,
         # e.g. batch problem should not have interactor

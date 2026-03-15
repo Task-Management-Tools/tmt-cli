@@ -174,13 +174,13 @@ def command_invoke(
 
         formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
         formatter.print(
-            f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  "
+            f"{solution_result.cpu_time_sec:6.3f} s / {solution_result.max_memory_kib / 1024:5.4g} MiB  "
         )
 
         with open(
             os.path.join(context.path.logs_invocation, f"{codename}.sol.log"), "w+"
         ) as f:
-            f.write(solution_result.checker_reason)
+            f.write(solution_result.reason)
 
         # TODO option to skip_checker
         if checker_step is not None:

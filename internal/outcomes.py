@@ -51,24 +51,29 @@ class EvaluationOutcome(Enum):
 @dataclass
 class EvaluationResult:
     verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+    override_verdict_display: str | None = None
+    reason: str = ""
 
-    solution_cpu_time_sec: float = 0.0
-    solution_wall_clock_time_sec: float = 0.0
-    solution_max_memory_kib: int = 0
-    solution_exit_code: int = 0
-    solution_exit_signal: int = 0
+    cpu_time_sec: float = 0.0
+    wall_clock_time_sec: float = 0.0
+    max_memory_kib: int = 0
+    exit_code: int = 0
+    exit_signal: int = 0
 
     output_file: str | None = None
 
     checker_run: bool = False
-    checker_reason: str = ""
 
     def fill_from_solution_process(self, solution: Process):
-        self.solution_cpu_time_sec = solution.cpu_time_sec
-        self.solution_wall_clock_time_sec = solution.wall_clock_time_sec
-        self.solution_max_memory_kib = solution.max_rss_kib
-        self.solution_exit_code = solution.exit_code
-        self.solution_exit_signal = solution.exit_signal
+        self.cpu_time_sec += solution.cpu_time_sec
+        self.wall_clock_time_sec = max(
+            self.wall_clock_time_sec, solution.wall_clock_time_sec
+        )
+        self.max_memory_kib = max(self.max_memory_kib, solution.max_rss_kib)
+        self.exit_code = solution.exit_code if self.exit_code == 0 else self.exit_code
+        self.exit_signal = (
+            solution.exit_signal if self.exit_signal == 0 else self.exit_signal
+        )
 
 
 class CompilationOutcome(Enum):

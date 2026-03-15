@@ -173,11 +173,15 @@ class TerminalFormatter(Formatter):
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
         def print_result(content_color: str):
+            if result.override_verdict_display is not None:
+                verdict_display = result.override_verdict_display
+            else:
+                verdict_display = result.verdict.value
             self.print_fixed_width(
-                content_color, result.verdict.value, self.ANSI_RESET, " ", width=16
+                content_color, verdict_display, self.ANSI_RESET, " ", width=16
             )
             if print_reason:
-                self.print_checker_reason(result.checker_reason)
+                self.print_checker_reason(result.reason)
 
         if result.verdict in self.group_accepted:
             return print_result(self.ANSI_GREEN)

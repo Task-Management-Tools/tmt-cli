@@ -49,7 +49,6 @@ class Process(subprocess.Popen):
         self._preexec_fn = kwargs.get("preexec_fn", None)
         kwargs["preexec_fn"] = self.prepare
 
-        super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
 
@@ -60,6 +59,7 @@ class Process(subprocess.Popen):
             wall_time_limit_sec = time_limit_sec + 1.0
         self.timer = Timer(wall_time_limit_sec, self.timer_kill)
         self.timer.start()
+        super().__init__(*args, **kwargs)
 
         self.status: int
         self.rusage: resource.struct_rusage

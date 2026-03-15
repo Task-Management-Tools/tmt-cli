@@ -146,7 +146,7 @@ class ICPCCheckerStep(CheckerStep):
             testcase_answer,
         )
         result.output_validation = eval_outcome_to_grade_outcome(checker_result)
-        result.reason = checker_result.checker_reason
+        result.reason = checker_result.reason
         return checker_result
 
     def run_checker(
@@ -219,7 +219,7 @@ class ICPCCheckerStep(CheckerStep):
         checker_feedback_file = feedback_dir.file("judgemessage.txt")
         if os.path.isfile(checker_feedback_file):
             with open(checker_feedback_file, "r") as f:
-                evaluation_record.checker_reason = f.readline().strip()
+                evaluation_record.reason = f.readline().strip()
 
         if checker_process.is_timedout:
             evaluation_record.verdict = EvaluationOutcome.CHECKER_TIMEDOUT

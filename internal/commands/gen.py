@@ -78,7 +78,7 @@ def gen_single(
     else:
         solution_result = solution_step.run_solution(codename)
         result.output_generation = eval_outcome_to_run_outcome(solution_result)
-        result.reason = solution_result.checker_reason
+        result.reason = solution_result.reason
     formatter.print_exec_result(result.output_generation)
 
     # Run checker

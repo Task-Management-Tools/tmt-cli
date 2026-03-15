@@ -7,7 +7,6 @@ from internal.outcomes import (
     EvaluationResult,
     EvaluationOutcome,
 )
-from internal.process import Process
 from internal.steps.utils import CompilationJob
 
 
@@ -64,29 +63,33 @@ class SolutionStep(ABC):
         """
         raise NotImplementedError
 
-    def is_solution_abormal_exit(
-        self, process: Process, eval_res: EvaluationResult
-    ) -> bool:
-        if process.max_rss_kib > self.memory_limit_mib * 1024:
+    def is_solution_abormal_exit(self, eval_res: EvaluationResult) -> bool:
+        """
+        Determine whether the solution didn't terminate normally.
+        Returns True if not, and fills respective EvaluationOutcome eval_res.
+
+        Args:
+            eval_res (EvaluationResult): The EvaluationResult to be filled.
+        """
+
+        if eval_res.max_memory_kib > self.memory_limit_mib * 1024:
             eval_res.verdict = EvaluationOutcome.RUNERROR_MEMORY
-        if process.cpu_time_sec > self.time_limit_sec:
+        if eval_res.cpu_time_sec > self.time_limit_sec:
             eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif process.wall_clock_time_sec > self.time_limit_sec:
+        elif eval_res.wall_clock_time_sec > self.time_limit_sec:
             eval_res.verdict = EvaluationOutcome.TIMEOUT_WALL
-        elif process.exit_signal == signal.SIGXFSZ:
+        elif eval_res.exit_signal == signal.SIGXFSZ:
             eval_res.verdict = EvaluationOutcome.OUTPUT_LIMIT
-        elif process.exit_signal == signal.SIGXCPU:  # this can happen
+        elif eval_res.exit_signal == signal.SIGXCPU:  # this can happen
             eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif process.exit_signal != 0:
+        elif eval_res.exit_signal != 0:
             eval_res.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            eval_res.checker_reason = (
-                f"Execution killed by signal ({signal.strsignal(process.exit_signal)})"
+            eval_res.reason = (
+                f"Execution killed by signal ({signal.strsignal(eval_res.exit_signal)})"
             )
-        elif process.exit_code != 0:
+        elif eval_res.exit_code != 0:
             eval_res.verdict = EvaluationOutcome.RUNERROR_EXITCODE
-            eval_res.checker_reason = (
-                f"Execution exited with exit code {process.exit_code}"
-            )
+            eval_res.reason = f"Execution exited with exit code {eval_res.exit_code}"
         else:
             return False
         return True
