@@ -110,7 +110,7 @@ def command_invoke(
     solution_step = solution_step_type(
         context=context,
         sandbox=sandbox,
-        is_generation=True,
+        is_generation=False,
         submission_files=actual_files,
     )
 
