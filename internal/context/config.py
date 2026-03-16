@@ -126,6 +126,14 @@ class Solution:
         if self.type is SolutionType.GRADER and self.grader_name is None:
             raise ValueError("Tasks with grader must supply solution.grader_name.")
 
+        if self.num_procs is not None:
+            if self.num_procs <= 0:
+                raise ValueError("Config option solution.num_procs must be positive.")
+            if self.num_procs > 10:
+                raise ValueError(
+                    "CMS does not support Communication task with more than 10 solution processes. See https://github.com/cms-dev/cms/issues/1207."
+                )
+
 
 class AnswerGenerationType(enum.Enum):
     SOLUTION = "solution"

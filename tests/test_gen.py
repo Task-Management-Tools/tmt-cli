@@ -101,17 +101,12 @@ expected_results_aplusb_py = (
     }
 )
 
-expected_results_communication_1_proc_with_grader = (
+expected_results_communication_general = (
     ExpectedCompilation(gen=True, val=True, manager=True, sol=True),
     {
-        "1_all_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_all_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_all_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_all_4":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
     }
 )
-# fmt: on
-
 
 @pytest.mark.parametrize(
     "problem_path, expected_results",
@@ -121,12 +116,13 @@ expected_results_communication_1_proc_with_grader = (
         ("problems/floatcmp", expected_results_floatcmp),
         ("problems/guess", expected_results_guess),
         ("problems/parity", expected_results_parity),
-        (
-            "problems/communication/1-proc-with-grader",
-            expected_results_communication_1_proc_with_grader,
-        ),
+        ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
+        ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
+        ("problems/communication/2-proc-grader-stdio", expected_results_communication_general),
+        ("problems/communication/2-proc-grader-stdio", expected_results_communication_general),
     ],
 )
+# fmt: on
 def test_gen(
     problem_path: str,
     expected_results: tuple[ExpectedCompilation, dict[str, GenerationResult]],

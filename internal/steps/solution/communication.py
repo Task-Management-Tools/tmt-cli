@@ -204,7 +204,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
         for i in range(self.num_procs):
             solution_exec_args = []
 
-            if not self.use_fifo:
+            if self.use_fifo:
                 solution_exec_args += [
                     solution_m2s_fifo_filename[i],
                     solution_s2m_fifo_filename[i],
@@ -269,18 +269,17 @@ class CommunicationSolutionStep(BatchSolutionStep):
                         raise ValueError(
                             "run_solution: manager score is NaN or infinities"
                         )
+                if score <= 0:
+                    result.verdict = EvaluationOutcome.WRONG
+                elif score < 1:
+                    result.verdict = EvaluationOutcome.PARTIAL
+                else:
+                    result.verdict = EvaluationOutcome.ACCEPTED
             except ValueError:
                 result.verdict = EvaluationOutcome.MANAGER_CRASHED
                 result.reason = (
                     "Manager did not print a floating point number to standard output"
                 )
-
-            if score <= 0:
-                result.verdict = EvaluationOutcome.WRONG
-            elif score < 1:
-                result.verdict = EvaluationOutcome.PARTIAL
-            else:
-                result.verdict = EvaluationOutcome.ACCEPTED
 
             with open(manager_err_filename) as f:
                 display = f.readline().strip()
