@@ -107,10 +107,11 @@ class CommunicationSolutionStep(BatchSolutionStep):
             self.context.path.testcases,
             self.context.construct_input_filename(code_name),
         )
-        output_filename = os.path.join(
-            self.context.path.testcases,
-            self.context.construct_output_filename(code_name),
-        )
+        # Unused for now
+        # output_filename = os.path.join(
+        #     self.context.path.testcases,
+        #     self.context.construct_output_filename(code_name),
+        # )
 
         manager_in_filename = self.sandbox.manager.file(f"{code_name}.manager.in")
         manager_out_filename = self.sandbox.manager.file(f"{code_name}.manager.out")
@@ -240,15 +241,9 @@ class CommunicationSolutionStep(BatchSolutionStep):
         for i in range(self.num_procs):
             copy_to_log(solution_err_filename[i])
 
-        # Save output
-        if self.is_generation:
-            # TODO do I really detect for empty output file?
-            # Actually, CMS communication "never" receieves output, so maybe just a dummy
-            shutil.copy(manager_out_filename, output_filename)
-
         # Get verdict
         result = EvaluationResult(
-            verdict=EvaluationOutcome.RUN_SUCCESS, output_file=None
+            verdict=EvaluationOutcome.RUN_SUCCESS, output_file=manager_out_filename
         )
         result.fill_from_solution_process(solution)
 

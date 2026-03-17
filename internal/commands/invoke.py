@@ -191,13 +191,7 @@ def command_invoke(
             testcase_answer = os.path.join(
                 context.path.testcases, context.construct_output_filename(codename)
             )
-            checker_arguments = (
-                context.config.checker.arguments
-                if context.config.checker is not None
-                else []
-            )
             solution_result = checker_step.run_checker(
-                checker_arguments,
                 solution_result,
                 testcase_input,
                 testcase_answer,

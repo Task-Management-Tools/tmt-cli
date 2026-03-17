@@ -3,6 +3,7 @@ import os
 import hashlib
 import json
 import filecmp
+import shutil
 
 from internal.formatting import Formatter
 from internal.context import (
@@ -13,8 +14,10 @@ from internal.context import (
 from internal.exceptions import TMTInvalidConfigError
 from internal.outcomes import (
     CompilationResult,
+    EvaluationResult,
     ExecutionOutcome,
     GenerationResult,
+    eval_outcome_to_grade_outcome,
     eval_outcome_to_run_outcome,
 )
 
@@ -27,6 +30,7 @@ from internal.steps.checker.icpc import ICPCCheckerStep
 
 def gen_single(
     *,
+    context: TMTContext,
     formatter: Formatter,
     generation_step: GenerationStep,
     validation_step: ValidationStep,
@@ -71,21 +75,62 @@ def gen_single(
     formatter.print("ans ")
     solution_result = None
 
+    testcase_answer_file = os.path.join(
+        context.path.testcases, context.construct_output_filename(codename)
+    )
     if result.input_validation is not ExecutionOutcome.SUCCESS:
         result.output_generation = ExecutionOutcome.SKIPPED
     elif result.output_generation is ExecutionOutcome.SKIPPED_SUCCESS:
-        pass
+        solution_result = EvaluationResult(output_file=testcase_answer_file)
     else:
         solution_result = solution_step.run_solution(codename)
         result.output_generation = eval_outcome_to_run_outcome(solution_result)
         result.reason = solution_result.reason
+
+        if solution_result.output_file is not None:
+            shutil.copy(solution_result.output_file, testcase_answer_file)
+        else:
+            # Create dummy output & truncate it
+            with open(testcase_answer_file, "w+b"):
+                pass
     formatter.print_exec_result(result.output_generation)
 
-    # Run checker
     # If both input is validated and output is available, run checker if the testcase type should apply check
-    if checker_step is not None:
-        formatter.print("val ")
-        checker_step.run_checker_during_gen(result, solution_result, codename)
+    success_verdicts = [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]
+
+    # Not meaningful to run checker
+    if (
+        result.output_generation not in success_verdicts
+        or result.input_validation not in success_verdicts
+    ):
+        result.output_validation = ExecutionOutcome.SKIPPED
+    else:
+        # The config explicitly asked so
+        if context.config.checker and (
+            (result.is_output_forced and not context.config.checker.check_forced_output)
+            or (
+                not result.is_output_forced
+                and not context.config.checker.check_generated_output
+            )
+        ):
+            result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+
+    if (
+        checker_step is not None
+        and result.output_validation is ExecutionOutcome.UNKNOWN
+    ):
+        formatter.print("check ")
+        testcase_input = os.path.join(
+            context.path.testcases, context.construct_input_filename(codename)
+        )
+        testcase_answer = os.path.join(
+            context.path.testcases, context.construct_output_filename(codename)
+        )
+        checker_result = checker_step.run_checker(
+            solution_result, testcase_input, testcase_answer
+        )
+        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
+        result.reason = checker_result.reason
         formatter.print_exec_result(result.output_validation)
     else:
         result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
@@ -202,6 +247,7 @@ def command_gen(
         for testset in context.recipe.testsets.values():
             for test in testset.tests:
                 result = gen_single(
+                    context=context,
                     formatter=formatter,
                     codename_display_width=codename_display_width,
                     generation_step=generation_step,

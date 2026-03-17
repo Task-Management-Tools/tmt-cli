@@ -118,8 +118,6 @@ class BatchSolutionStep(SolutionStep):
         sandbox_output_file = workdir.file(file_out_name)
         sandbox_error_file = workdir.file(file_err_name)
 
-        no_output_file = False
-
         shutil.copy(testcase_input, sandbox_input_file)
 
         # TODO: noramlly judge should use pipe for I/O, which might make some subtle differences
@@ -149,24 +147,16 @@ class BatchSolutionStep(SolutionStep):
         Path(sandbox_error_file).touch()
         shutil.move(sandbox_error_file, os.path.join(self.log_directory, file_err_name))
 
-        # Move output
-        if Path(sandbox_output_file).exists():
-            if self.is_generation:
-                shutil.copy(
-                    sandbox_output_file,
-                    os.path.join(self.context.path.testcases, file_out_name),
-                )
-        else:
-            no_output_file = True
-
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
             output_file=sandbox_output_file,
         )
         result.fill_from_solution_process(solution)
 
-        if no_output_file:
+        if not Path(sandbox_output_file).exists():
             result.verdict = EvaluationOutcome.NO_FILE
+            result.output_file = None
+
         elif self.is_solution_abormal_exit(result):
             pass
 
