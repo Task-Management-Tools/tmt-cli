@@ -26,7 +26,7 @@ class SolutionStep(ABC):
             self.sandbox.solution_invocation.create()
 
         self.executable_name_base = self.context.config.short_name
-        # TODO: if is_generation, moves the output (and remove save_output in run_solution method)
+
         if is_generation:
             self.time_limit_sec = self.context.config.trusted_step_time_limit_sec
             self.memory_limit_mib = self.context.config.trusted_step_memory_limit_mib

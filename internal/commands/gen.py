@@ -120,15 +120,7 @@ def gen_single(
         and result.output_validation is ExecutionOutcome.UNKNOWN
     ):
         formatter.print("check ")
-        testcase_input = os.path.join(
-            context.path.testcases, context.construct_input_filename(codename)
-        )
-        testcase_answer = os.path.join(
-            context.path.testcases, context.construct_output_filename(codename)
-        )
-        checker_result = checker_step.run_checker(
-            solution_result, testcase_input, testcase_answer
-        )
+        checker_result = checker_step.run_checker(solution_result, codename)
         result.output_validation = eval_outcome_to_grade_outcome(checker_result)
         result.reason = checker_result.reason
         formatter.print_exec_result(result.output_validation)
@@ -211,7 +203,9 @@ def command_gen(
 
     checker_step: ICPCCheckerStep | None = None
     if context.config.checker is not None:
-        checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
+        checker_step = ICPCCheckerStep(
+            context=context, sandbox=sandbox, is_generation=True
+        )
         checker_step.check_unused_checker(formatter)
 
     # Compile steps

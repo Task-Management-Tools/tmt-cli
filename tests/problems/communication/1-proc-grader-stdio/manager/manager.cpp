@@ -56,5 +56,5 @@ int main(int argc, char **argv)
 
     std::fprintf(stdout, "%.6lf\n", 1.0);
     std::fflush(stdout);
-    std::fprintf(stderr, "translate:correct\n");
+    std::fprintf(stderr, "translate:success\n");
 }

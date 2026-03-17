@@ -1,7 +1,7 @@
 import os
+import shutil
 
 
-from internal.context import TMTContext, SandboxDirectory
 from internal.compilation import (
     make_compile_target,
     compile_single,
@@ -21,10 +21,16 @@ from .base import CheckerStep
 
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
-        super().__init__(context, sandbox)
+    """
+    CheckerStep class implementing ICPC checker behavior.
 
-        self.limits = context.config  # shorthand
+    See :class:`CheckerStep`.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.limits = self.context.config  # shorthand
         self.compiled_checker_path: str | None = None
 
     @requires_sandbox
@@ -65,15 +71,22 @@ class ICPCCheckerStep(CheckerStep):
     @requires_sandbox
     def run_checker(
         self,
-        evaluation_record: EvaluationResult,
-        input_file: str,
-        answer_file: str,
+        result: EvaluationResult,
+        codename: str,
     ) -> EvaluationResult:
 
+        input_file = os.path.join(
+            self.context.path.testcases, self.context.construct_input_filename(codename)
+        )
+        answer_file = os.path.join(
+            self.context.path.testcases,
+            self.context.construct_output_filename(codename),
+        )
+
         # In ICPC mode we do not need to check anything
-        if evaluation_record.verdict is not EvaluationOutcome.RUN_SUCCESS:
-            evaluation_record.checker_run = False
-            return evaluation_record
+        if result.verdict is not EvaluationOutcome.RUN_SUCCESS:
+            result.checker_run = False
+            return result
 
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
@@ -98,7 +111,7 @@ class ICPCCheckerStep(CheckerStep):
             + [input_file, answer_file, feedback_dir.path + os.sep]
             + self.arguments,
             preexec_fn=lambda: os.chdir(self.sandbox.checker.path),
-            stdin_redirect=evaluation_record.output_file,
+            stdin_redirect=result.output_file,
             stdout=None,
             stderr=None,
             time_limit_sec=self.limits.trusted_step_time_limit_sec,
@@ -117,20 +130,21 @@ class ICPCCheckerStep(CheckerStep):
         checker_feedback_file = feedback_dir.file("judgemessage.txt")
         if os.path.isfile(checker_feedback_file):
             with open(checker_feedback_file, "r") as f:
-                evaluation_record.reason = f.readline().strip()
+                result.reason = f.readline().strip()
+            shutil.copy(
+                checker_feedback_file,
+                os.path.join(self.log_directory, f"{codename}.check.feedback"),
+            )
 
         if checker_process.is_timedout:
-            evaluation_record.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
+            result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
         elif checker_process.is_signaled_exit:
-            evaluation_record.verdict = EvaluationOutcome.CHECKER_CRASHED
+            result.verdict = EvaluationOutcome.CHECKER_CRASHED
         elif checker_process.exit_code == 42:
-            evaluation_record.verdict = EvaluationOutcome.ACCEPTED
+            result.verdict = EvaluationOutcome.ACCEPTED
         else:
-            evaluation_record.verdict = EvaluationOutcome.WRONG
-            if (
-                evaluation_record.output_file is None
-                or os.path.getsize(evaluation_record.output_file) == 0
-            ):
-                evaluation_record.verdict = EvaluationOutcome.NO_OUTPUT
+            result.verdict = EvaluationOutcome.WRONG
+            if result.output_file is None or os.path.getsize(result.output_file) == 0:
+                result.verdict = EvaluationOutcome.NO_OUTPUT
 
-        return evaluation_record
+        return result

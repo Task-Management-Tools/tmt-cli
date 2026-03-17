@@ -41,7 +41,9 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
             context.config.checker is not None
             and context.config.checker.type is not CheckerType.DEFAULT
         ):
-            ICPCCheckerStep(context=context, sandbox=None).clean_up()
+            ICPCCheckerStep(
+                context=context, sandbox=None, is_generation=False
+            ).clean_up()
 
         solution_step_type = make_solution_step_type(
             problem_type=context.config.problem_type,

@@ -9,47 +9,69 @@ from internal.process import Process
 class EvaluationOutcome(Enum):
     # The submission has run successfully.
     RUN_SUCCESS = "Solution ran successfully"
+
     # The submission has run successfully and is correct.
     ACCEPTED = "Correct"
+
     # The submission has run successfully and is partially correct.
     PARTIAL = "Partially Correct"
+
     # The submission has run successfully but is not correct (typical sense of WA).
     WRONG = "Wrong Answer"
+
     # CMS no-output: not producing the required file
     NO_FILE = "No Output File Found"
+
     # DOMJudge no-output (incorrect and not producing output)
     NO_OUTPUT = "No Output"
+
     # classic TLE
     TIMEOUT = "Time Limit Exceeded"
+
     # This is wall-clock exceeded TLE; DOMJudge, CMS, and Codeforces all supports this result.
     TIMEOUT_WALL = "Time Limit Exceeded (wall clock)"
+
     # Output limit exceeded. Since DOMJudge actually detects output limit by truncating the stream
     # instead of TIOJ-style signal detection, we will need separate verdicts.
     OUTPUT_LIMIT = "Output Limit Exceeded"
+
     # Runtime error caused by signal SIGXFSZ. TIOJ treat this as OLE.
     RUNERROR_OUTPUT = "Runtime Error (output limit exceeded)"
+
     # Runtime error caused by signal (FPE, SEGV, etc.) except SIGXFSZ.
     RUNERROR_SIGNAL = "Runtime Error (signaled)"
+
     # Runtime error caused by non-zero exitcode.
     RUNERROR_MEMORY = "Runtime Error (memory limit exceeded)"
+
     # Runtime error caused by memory limit exceeded; this verdict only exists since we support MLE detection without cgroup.
     RUNERROR_EXITCODE = "Runtime Error (non-zero exit code)"
+
     # Manager/Interactor crashed.
     MANAGER_CRASHED = "Judge Error: Manager Crashed"
+
+    # Manager/Interactor failed (did not meet the requirement of a manager/interactor).
+    MANAGER_FAILED = "Judge Error: Checker Failed"
+
     # Manager/Interactor timed out.
     MANAGER_TIMEOUT = "Judge Error: Manager Timed-out"
-    # Checker crashed (this is checker exited by signaled).
+
+    # Checker crashed.
     CHECKER_CRASHED = "Judge Error: Checker Crashed"
-    # Checker failed (this is checker exit with non-zero return code).
+
+    # Checker failed (checker did not meet the requirement of a checker).
     CHECKER_FAILED = "Judge Error: Checker Failed"
+
     # Checker timed-out.
     CHECKER_TIMEDOUT = "Judge Error: Checker Timed-out"
+
     # Internal error.
     INTERNAL_ERROR = "Internal Error"
 
 
 @dataclass
 class EvaluationResult:
+    score: float = 0.0
     verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
     override_verdict_display: str | None = None
     reason: str = ""
@@ -179,6 +201,7 @@ def eval_outcome_to_run_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
     ]
     group_judge_error = [
         EvaluationOutcome.MANAGER_CRASHED,
+        EvaluationOutcome.MANAGER_FAILED,
         EvaluationOutcome.MANAGER_TIMEOUT,
         EvaluationOutcome.CHECKER_CRASHED,
         EvaluationOutcome.CHECKER_FAILED,

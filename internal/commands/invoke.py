@@ -114,7 +114,9 @@ def command_invoke(
         submission_files=actual_files,
     )
 
-    checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
+    checker_step = ICPCCheckerStep(
+        context=context, sandbox=sandbox, is_generation=False
+    )
     checker_step.check_unused_checker(formatter)
 
     # TODO option to skip_checker:
@@ -185,17 +187,7 @@ def command_invoke(
         # TODO option to skip_checker
         if checker_step is not None:
             formatter.print("check ")
-            testcase_input = os.path.join(
-                context.path.testcases, context.construct_input_filename(codename)
-            )
-            testcase_answer = os.path.join(
-                context.path.testcases, context.construct_output_filename(codename)
-            )
-            solution_result = checker_step.run_checker(
-                solution_result,
-                testcase_input,
-                testcase_answer,
-            )
+            solution_result = checker_step.run_checker(solution_result, codename)
 
         formatter.print_checker_status(solution_result)
         formatter.print_checker_verdict(solution_result, print_reason=show_reason)

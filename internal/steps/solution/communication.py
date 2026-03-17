@@ -1,4 +1,3 @@
-import math
 import os
 import shutil
 
@@ -15,6 +14,7 @@ from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
 )
+from internal.steps.checker.cms import CMSCheckerStep
 from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
 
 from .batch import BatchSolutionStep
@@ -257,37 +257,13 @@ class CommunicationSolutionStep(BatchSolutionStep):
             pass
         # We read the standard manager output to determine the result:
         else:
-            try:
-                with open(manager_out_filename) as f:
-                    score = float(f.readline().strip())
-                    if math.isnan(score) or math.isinf(score):
-                        raise ValueError(
-                            "run_solution: manager score is NaN or infinities"
-                        )
-                if score <= 0:
-                    result.verdict = EvaluationOutcome.WRONG
-                elif score < 1:
-                    result.verdict = EvaluationOutcome.PARTIAL
-                else:
-                    result.verdict = EvaluationOutcome.ACCEPTED
-            except ValueError:
-                result.verdict = EvaluationOutcome.MANAGER_CRASHED
-                result.reason = (
-                    "Manager did not print a floating point number to standard output"
-                )
+            score, verdict, display, reason = CMSCheckerStep.parse_std_manager_output(
+                manager_out_filename, manager_err_filename, False
+            )
 
-            with open(manager_err_filename) as f:
-                display = f.readline().strip()
-                reason = f.readline().strip()
-
-                if display == "translate:correct":
-                    display = EvaluationOutcome.ACCEPTED.value
-                if display == "translate:wrong":
-                    display = EvaluationOutcome.WRONG.value
-                if display == "translate:partial":
-                    display = EvaluationOutcome.PARTIAL.value
-
-                result.override_verdict_display = display
-                result.reason = reason
+            result.score = score
+            result.verdict = verdict
+            result.override_verdict_display = display
+            result.reason = result.reason or reason or ""
 
         return result
