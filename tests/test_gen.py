@@ -118,7 +118,7 @@ expected_results_communication_general = (
         ("problems/parity", expected_results_parity),
         ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
-        ("problems/communication/2-proc-grader-stdio", expected_results_communication_general),
+        ("problems/communication/2-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/2-proc-grader-stdio", expected_results_communication_general),
     ],
 )

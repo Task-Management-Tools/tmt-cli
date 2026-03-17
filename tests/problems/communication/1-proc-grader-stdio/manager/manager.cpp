@@ -1,19 +1,21 @@
 #include <csignal>
-#include <cstdlib>
 #include <cstring>
-#include <fstream>
-#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+
+using namespace std::string_literals;
 
 [[noreturn]] inline void abort_with_reason(const char *reason)
 {
-    std::cerr << reason << std::endl;
+    std::fprintf(stderr, "%s\n", reason);
     std::abort();
 }
 [[noreturn]] inline void wrong_with_reason(const char *reason)
 {
-    std::cout << 0.0 << std::endl;
-    std::cerr << "translate:wrong" << std::endl
-              << reason << std::endl;
+    std::fprintf(stdout, "%.6lf\n", 0.0);
+    std::fflush(stdout);
+    std::fprintf(stderr, "translate:wrong\n%s\n", reason);
     std::abort();
 }
 
@@ -24,32 +26,35 @@ int main(int argc, char **argv)
     if (argc < 3)
         abort_with_reason("Invalid argument count");
 
-    std::ofstream mgr2sol(argv[2]);
-    std::ifstream sol2mgr(argv[1]);
+    FILE *mgr2sol = std::fopen(argv[2], "a");
+    FILE *sol2mgr = std::fopen(argv[1], "r");
 
     if (!mgr2sol)
         abort_with_reason("Cannot open mgr2sol");
     if (!sol2mgr)
         abort_with_reason("Cannot open sol2mgr");
 
-    std::string input;
-    if (!(std::cin >> input))
+    char input[16] = {};
+    if (std::fscanf(stdin, "%15s", input) != 1)
         abort_with_reason("Cannot read input");
-    if (input != "input")
+    if (input != "input"s)
         abort_with_reason("Input mismatch");
 
     for (int i = 0; i < 256; i++)
     {
-        mgr2sol << i << std::endl;
+        std::fprintf(mgr2sol, "%d\n", i);
+        std::fflush(mgr2sol);
 
-        int ret;
-        if (!(sol2mgr >> ret))
+        int ret = -1;
+        if (std::fscanf(sol2mgr, "%d", &ret) != 1)
             wrong_with_reason("Cannot read participant reply");
         if (ret != i % 2)
             wrong_with_reason("Participant reply wrong");
     }
-    mgr2sol << -1 << std::endl;
+    std::fprintf(mgr2sol, "-1\n");
+    std::fflush(mgr2sol);
 
-    std::cout << 1.0 << std::endl;
-    std::cout << "translate:correct" << std::endl;
+    std::fprintf(stdout, "%.6lf\n", 1.0);
+    std::fflush(stdout);
+    std::fprintf(stderr, "translate:correct\n");
 }

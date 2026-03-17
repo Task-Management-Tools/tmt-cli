@@ -1,18 +1,23 @@
 #include "accumulate.h"
 #include <charconv>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
-#include <iostream>
 
 using namespace std;
+
+std::FILE* fin = stdin;
+std::FILE* fout = stdout;
 
 int main(int argc, char **argv)
 {
     std::signal(SIGPIPE, SIG_IGN);
 
     if (argc < 2)
+        std::abort();
+
+    if (!fin || !fout)
         std::abort();
 
     int id = -1;
@@ -30,15 +35,16 @@ int main(int argc, char **argv)
 
     while (true)
     {
-        int n;
-        if (!(std::cin >> n))
+        int n = -1;
+        if (std::fscanf(fin, "%d", &n) != 1)
             std::abort();
 
         if (n == -1)
             break;
 
         int upd = (id == 0 ? accumulateA(n) : accumulateB(n));
-        std::cout << upd << std::endl;
+        std::fprintf(fout, "%d\n", upd);
+        std::fflush(fout);
     }
     return 0;
 }

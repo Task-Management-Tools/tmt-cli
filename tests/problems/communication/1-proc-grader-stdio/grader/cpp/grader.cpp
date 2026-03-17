@@ -5,19 +5,23 @@
 
 using namespace std;
 
+std::FILE* fin = stdin;
+std::FILE* fout = stdout;
+
 int main()
 {
     std::signal(SIGPIPE, SIG_IGN);
 
     while (true)
     {
-        int n;
-        if (!(std::cin >> n))
+        int n = -1;
+        if (std::fscanf(fin, "%d", &n) != 1)
             std::abort();
 
         if (n == -1)
             break;
-        std::cout << modulo2(n) << std::endl;
+        std::fprintf(fout, "%d\n", modulo2(n));
+        std::fflush(fout);
     }
     return 0;
 }

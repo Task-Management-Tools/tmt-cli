@@ -1,12 +1,14 @@
 #include "accumulate.h"
 #include <charconv>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
-#include <iostream>
 
 using namespace std;
+
+std::FILE* fin = nullptr;
+std::FILE* fout = nullptr;
 
 int main(int argc, char **argv)
 {
@@ -15,8 +17,8 @@ int main(int argc, char **argv)
     if (argc < 4)
         std::abort();
 
-    std::ifstream fin(argv[1]);
-    std::ofstream fout(argv[2]);
+    fin = std::fopen(argv[1], "r");
+    fout = std::fopen(argv[2], "w");
 
     if (!fin || !fout)
         std::abort();
@@ -37,14 +39,15 @@ int main(int argc, char **argv)
     while (true)
     {
         int n = -1;
-        if (!(fin >> n))
+        if (std::fscanf(fin, "%d", &n) != 1)
             std::abort();
 
         if (n == -1)
             break;
 
         int upd = (id == 0 ? accumulateA(n) : accumulateB(n));
-        fout << upd << std::endl;
+        std::fprintf(fout, "%d\n", upd);
+        std::fflush(fout);
     }
     return 0;
 }

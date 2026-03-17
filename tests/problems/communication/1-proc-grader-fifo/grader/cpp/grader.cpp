@@ -1,8 +1,12 @@
 #include "modulo.h"
 #include <csignal>
-#include <fstream>
+#include <cstdio>
+#include <cstdlib>
 
 using namespace std;
+
+std::FILE* fin = nullptr;
+std::FILE* fout = nullptr;
 
 int main(int argc, char **argv)
 {
@@ -11,8 +15,8 @@ int main(int argc, char **argv)
     if (argc < 3)
         std::abort();
 
-    std::ifstream fin(argv[1]);
-    std::ofstream fout(argv[2]);
+    fin = std::fopen(argv[1], "r");
+    fout = std::fopen(argv[2], "w");
 
     if (!fin || !fout)
         std::abort();
@@ -20,12 +24,13 @@ int main(int argc, char **argv)
     while (true)
     {
         int n = -1;
-        if (!(fin >> n))
+        if (std::fscanf(fin, "%d", &n) != 1)
             std::abort();
 
         if (n == -1)
             break;
-        fout << modulo2(n) << std::endl;
+        std::fprintf(fout, "%d\n", modulo2(n));
+        std::fflush(fout);
     }
     return 0;
 }

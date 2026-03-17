@@ -1,22 +1,27 @@
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
-#include <iostream>
 #include <random>
+#include <string>
+
+using namespace std::string_literals;
 
 [[noreturn]] inline void abort_with_reason(const char *reason)
 {
-    std::cerr << reason << std::endl;
+    std::fprintf(stderr, "%s\n", reason);
     std::abort();
 }
 [[noreturn]] inline void wrong_with_reason(const char *reason)
 {
-    std::cout << 0.0 << std::endl;
-    std::cerr << "translate:wrong" << std::endl
-              << reason << std::endl;
+    std::fprintf(stdout, "%.6lf\n", 0.0);
+    std::fflush(stdout);
+    std::fprintf(stderr, "translate:wrong\n%s\n", reason);
     std::abort();
 }
+
+FILE *mgr2sol[2] = {};
+FILE *sol2mgr[2] = {};
 
 int main(int argc, char **argv)
 {
@@ -25,24 +30,24 @@ int main(int argc, char **argv)
     if (argc < 5)
         abort_with_reason("Invalid argument count");
 
-    std::ofstream mgr2sol_0(argv[2]);
-    std::ifstream sol2mgr_0(argv[1]);
-    std::ofstream mgr2sol_1(argv[4]);
-    std::ifstream sol2mgr_1(argv[3]);
+    mgr2sol[0] = std::fopen(argv[2], "a");
+    sol2mgr[0] = std::fopen(argv[1], "r");
+    mgr2sol[1] = std::fopen(argv[4], "a");
+    sol2mgr[1] = std::fopen(argv[3], "r");
 
-    if (!mgr2sol_0)
+    if (!mgr2sol[0])
         abort_with_reason("Cannot open mgr2sol 0");
-    if (!sol2mgr_0)
+    if (!sol2mgr[0])
         abort_with_reason("Cannot open sol2mgr 0");
-    if (!mgr2sol_1)
+    if (!mgr2sol[1])
         abort_with_reason("Cannot open mgr2sol 1");
-    if (!sol2mgr_1)
+    if (!sol2mgr[1])
         abort_with_reason("Cannot open sol2mgr 1");
 
-    std::string input;
-    if (!(std::cin >> input))
+    char input[16] = {};
+    if (std::fscanf(stdin, "%15s", input) != 1)
         abort_with_reason("Cannot read input");
-    if (input != "input")
+    if (input != "input"s)
         abort_with_reason("Input mismatch");
 
     std::mt19937 rd(0xABC);
@@ -54,20 +59,25 @@ int main(int argc, char **argv)
         int inc_a = rd() % 256;
         int inc_b = rd() % 256;
 
-        mgr2sol_0 << inc_a << std::endl;
-        mgr2sol_1 << inc_b << std::endl;
+        std::fprintf(mgr2sol[0], "%d\n", inc_a);
+        std::fflush(mgr2sol[0]);
+        std::fprintf(mgr2sol[1], "%d\n", inc_b);
+        std::fflush(mgr2sol[1]);
 
         int ret_a, ret_b;
-        if (!(sol2mgr_0 >> ret_a))
+        if (std::fscanf(sol2mgr[0], "%d", &ret_a) != 1)
             wrong_with_reason("Cannot read participant 0 reply");
-        if (!(sol2mgr_1 >> ret_b))
+        if (std::fscanf(sol2mgr[1], "%d", &ret_b) != 1)
             wrong_with_reason("Cannot read participant 1 reply");
         if (ret_a != (cnt_a += inc_a) && ret_b != (cnt_b += inc_b))
             wrong_with_reason("Participant reply wrong");
     }
-    mgr2sol_0 << -1 << std::endl;
-    mgr2sol_1 << -1 << std::endl;
+    std::fprintf(mgr2sol[0], "-1\n");
+    std::fflush(mgr2sol[0]);
+    std::fprintf(mgr2sol[1], "-1\n");
+    std::fflush(mgr2sol[1]);
 
-    std::cout << 1.0 << std::endl;
-    std::cout << "translate:correct" << std::endl;
+    std::fprintf(stdout, "%.6lf\n", 1.0);
+    std::fflush(stdout);
+    std::fprintf(stderr, "translate:correct\n");
 }
