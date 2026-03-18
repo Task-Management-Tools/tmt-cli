@@ -1,0 +1,2 @@
+void graderfunc();
+void userfunc();

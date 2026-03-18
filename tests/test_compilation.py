@@ -45,7 +45,6 @@ SKIP = CompilationOutcome.SKIPPED
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-        # fmt: off
         ("problems/compile-error/generator", ExpectedCompilation(gen=FAIL)),
         ("problems/compile-error/validator", ExpectedCompilation(gen=OK, val=FAIL)),
         (
@@ -60,7 +59,6 @@ SKIP = CompilationOutcome.SKIPPED
             "problems/compile-error/interactor-icpc",
             ExpectedCompilation(gen=OK, val=OK, sol=OK, interact=FAIL),
         ),
-        # fmt: on
     ],
 )
 def test_compilation(

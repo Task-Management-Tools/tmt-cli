@@ -21,6 +21,7 @@ from .base import SolutionStep
 class BatchSolutionStep(SolutionStep):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.submission_format = [self.context.config.short_name]
 
     def clean_up(self):
         pass
@@ -35,33 +36,45 @@ class BatchSolutionStep(SolutionStep):
 
     @requires_sandbox
     def compile_solution(self) -> CompilationResult:
-        if len(self.submission_files) != 1:
+        if len(self.submission_files) != len(self.submission_format):
             return CompilationResult(
                 verdict=CompilationOutcome.FAILED,
                 exit_status=-1,
-                standard_error="Batch task only supports single file submission.",
+                standard_error=f"Submission file count mismatch (found {len(self.submission_files)}, expect {len(self.submission_format)}).",
             )
 
         workdir = self.sandbox.solution_compilation
         workdir.clean()
+
+        # Replace the solution file with absolute path, then we try to add grader if the config exists
+        sources = list(
+            map(self.context.path.replace_with_solution, self.submission_files)
+        )
+        source_rename = [
+            f + os.path.splitext(s)[1] for f, s in zip(self.submission_format, sources)
+        ]
+        headers = []
+        graders = []
+
+        for source in sources:
+            if not Path(source).exists() or not Path(source).is_file():
+                return CompilationResult(
+                    verdict=CompilationOutcome.FAILED,
+                    exit_status=-1,
+                    standard_error=f"Source file {os.path.basename(source)} is not a file.",
+                )
 
         lang_type = recognize_language(self.submission_files, self.context)
         if lang_type is None:
             return CompilationResult(
                 verdict=CompilationOutcome.FAILED,
                 exit_status=-1,
-                standard_error=f"Source files {self.submission_files} are not recognized by any language.",
+                standard_error=f"Source files {' ,'.join(map(os.path.basename, self.submission_files))} are not recognized by any language.",
             )
 
-        # Replace the solution file with absolute path, then we try to add grader if the config exists
         # TODO: what is the specification of graders in ICPC format?
-        sources = self.submission_files
-        sources = [self.context.path.replace_with_solution(f) for f in sources]
-        headers = []
-
         if self.grader is not None:
             lang = lang_type(self.context)
-            graders = []
             grader_dir = pathlib.Path(self.context.path.grader) / lang.id
 
             # We only iterate the immediate files in the directory, because most of the time the judge won't support nested directories in the graders
@@ -80,14 +93,15 @@ class BatchSolutionStep(SolutionStep):
                     standard_error=f"Grader of language {lang.name} is not found in directory {grader_dir.relative_to(os.getcwd())}.",
                 )
 
-            sources += graders
             del lang
         del lang_type
 
+        workdir.clean()
         comp_result = compile_single(
             context=self.context,
             directory=workdir.path,
-            sources=sources,
+            sources=graders + sources,
+            source_rename=[None] * len(graders) + source_rename,
             headers=headers,
             executable_filename_base=self.executable_name_base,
             executable_stack_size_mib=self.memory_limit_mib,

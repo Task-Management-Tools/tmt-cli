@@ -1,2 +1,2 @@
 [tool.ruff]
-
+exclude = ["tests/problems/batch/cms-grader/grader/"]

@@ -47,10 +47,18 @@ expected_results_batch_cms_whitediff = {
     "without_last_eol.py":    { "1_full_1": (AC, 1.0) },
 }
 
+expected_results_batch_cms_grader = {
+    "model_solution.cpp":     { "1_full_1": (AC, 1.0) },
+    "model_solution.py":      { "1_full_1": (AC, 1.0) },
+    "wrong.cpp":              { "1_full_1": (WA, 0.0) },
+    "wrong.py":               { "1_full_1": (WA, 0.0) },
+}
+
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
+        ("problems/batch/cms-grader",    expected_results_batch_cms_grader),
     ],
 )
 # fmt: on

@@ -103,16 +103,17 @@ expected_results_aplusb_py = (
 
 expected_results_batch_cms_whitediff = (
     ExpectedCompilation(gen=True, val=True, sol=True),
-    {
-        "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
-    }
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+)
+
+expected_results_batch_cms_grader = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
 )
 
 expected_results_communication_general = (
     ExpectedCompilation(gen=True, val=True, manager=True, sol=True),
-    {
-        "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
-    }
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
 )
 
 @pytest.mark.parametrize(
@@ -124,6 +125,7 @@ expected_results_communication_general = (
         ("problems/guess", expected_results_guess),
         ("problems/parity", expected_results_parity),
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
+        ("problems/batch/cms-grader", expected_results_batch_cms_grader),
         ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
         ("problems/communication/2-proc-grader-fifo", expected_results_communication_general),
