@@ -79,9 +79,9 @@ class SolutionStep(ABC):
         elif eval_res.wall_clock_time_sec > self.time_limit_sec:
             eval_res.verdict = EvaluationOutcome.TIMEOUT_WALL
         elif eval_res.exit_signal == signal.SIGXFSZ:
-            eval_res.verdict = EvaluationOutcome.OUTPUT_LIMIT
-        elif eval_res.exit_signal == signal.SIGXCPU:  # this can happen
-            eval_res.verdict = EvaluationOutcome.TIMEOUT
+            eval_res.verdict = EvaluationOutcome.RUNERROR_OUTPUT
+        # elif eval_res.exit_signal == signal.SIGXCPU:
+        #     eval_res.verdict = EvaluationOutcome.TIMEOUT
         elif eval_res.exit_signal != 0:
             eval_res.verdict = EvaluationOutcome.RUNERROR_SIGNAL
             eval_res.reason = (

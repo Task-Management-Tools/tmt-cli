@@ -19,6 +19,7 @@ class TerminalFormatter(Formatter):
         self.ANSI_PURPLE = self.AnsiSequence("\033[35m")
         self.ANSI_RED_BG = self.AnsiSequence("\033[41m")
         self.ANSI_GREY = self.AnsiSequence("\033[90m")
+        self.ANSI_ORANGE = self.AnsiSequence("\033[38:5:172m")
 
         try:
             self.terminal_width = os.get_terminal_size().columns
@@ -132,7 +133,6 @@ class TerminalFormatter(Formatter):
     ]
     group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
     group_runtime_error = [
-        EvaluationOutcome.RUNERROR_OUTPUT,
         EvaluationOutcome.RUNERROR_SIGNAL,
         EvaluationOutcome.RUNERROR_EXITCODE,
         EvaluationOutcome.RUNERROR_MEMORY,
@@ -144,6 +144,10 @@ class TerminalFormatter(Formatter):
         EvaluationOutcome.CHECKER_FAILED,
         EvaluationOutcome.CHECKER_TIMEDOUT,
         EvaluationOutcome.INTERNAL_ERROR,
+    ]
+    group_output_limit = [
+        EvaluationOutcome.RUNERROR_OUTPUT,
+        EvaluationOutcome.OUTPUT_LIMIT,
     ]
 
     def print_checker_status(self, result):
@@ -163,6 +167,8 @@ class TerminalFormatter(Formatter):
         elif result.verdict in self.group_timeout:
             return print_result(self.ANSI_GREY, "SKIP")
         elif result.verdict in self.group_runtime_error:
+            return print_result(self.ANSI_GREY, "SKIP")
+        elif result.verdict in self.group_output_limit:
             return print_result(self.ANSI_GREY, "SKIP")
         elif result.verdict in self.group_judge_error:
             return print_result(self.ANSI_RED_BG, "FAIL")
@@ -193,6 +199,8 @@ class TerminalFormatter(Formatter):
             return print_result(self.ANSI_BLUE)
         elif result.verdict in self.group_runtime_error:
             return print_result(self.ANSI_PURPLE)
+        elif result.verdict in self.group_output_limit:
+            return print_result(self.ANSI_ORANGE)
         elif result.verdict in self.group_judge_error:
             return print_result(self.ANSI_RED)
         else:

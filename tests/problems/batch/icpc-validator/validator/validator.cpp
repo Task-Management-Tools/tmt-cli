@@ -59,7 +59,7 @@ void remove_stdin()
         return 0;
     }
 #elif defined(__linux__)
-    ssize_t len = readlink("/proc/self/fd/1", path, sizeof(path) - 1);
+    ssize_t len = readlink("/proc/self/fd/0", path, sizeof(path) - 1);
     if (len == -1)
     {
         perror("readlink");

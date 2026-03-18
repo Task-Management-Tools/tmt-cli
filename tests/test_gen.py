@@ -45,38 +45,6 @@ SKIP_OK = ExecutionOutcome.SKIPPED_SUCCESS
 TLE = ExecutionOutcome.TIMEDOUT
 
 # fmt: off
-expected_results_generator = (
-    ExpectedCompilation(gen=True, val=True, sol=True),
-    {
-        "1_good_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_2":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_3":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_4":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_6":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "2_proof_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "3_bad_1":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "3_bad_2":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "3_bad_3":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad_4":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad_5":   expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
-        "3_bad_6":   expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
-        "3_bad_7":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-    }
-)
-
-expected_results_validator = (
-    ExpectedCompilation(gen=True, val=True, sol=True),
-    {
-        "1_normal_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_normal_2":  expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "1_normal_3":  expected_result_helper(gen=OK,   val=RTE,  ans=SKIP),
-        "1_normal_4":  expected_result_helper(gen=OK,   val=TLE,  ans=SKIP),
-        "1_normal_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "2_proof_1":   expected_result_helper(gen=OK,   val=OK,   ans=OK),
-    }
-)
-
 expected_results_batch_cms_checker = (
     ExpectedCompilation(gen=True, val=True, sol=True, check=True),
     { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK,   checker=OK), }
@@ -108,6 +76,38 @@ expected_results_batch_icpc_floatcmp = (
     }
 )
 
+expected_results_batch_icpc_generator = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    {
+        "1_good_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_2":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_3":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_4":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_6":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2_proof_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "3_bad_1":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3_bad_2":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3_bad_3":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3_bad_4":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3_bad_5":   expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
+        "3_bad_6":   expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
+        "3_bad_7":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+    }
+)
+
+expected_results_batch_icpc_validator = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    {
+        "1_normal_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_normal_2":  expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "1_normal_3":  expected_result_helper(gen=OK,   val=RTE,  ans=SKIP),
+        "1_normal_4":  expected_result_helper(gen=OK,   val=TLE,  ans=SKIP),
+        "1_normal_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2_proof_1":   expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    }
+)
+
 expected_results_interactive_guess = (
     ExpectedCompilation(gen=True, val=True, sol=True, interact=True),
     {
@@ -126,13 +126,13 @@ expected_results_communication_general = (
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-        ("problems/generator", expected_results_generator),
-        ("problems/validator", expected_results_validator),
         ("problems/batch/cms-checker", expected_results_batch_cms_checker),
         ("problems/batch/cms-grader", expected_results_batch_cms_grader),
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
         ("problems/batch/icpc-checker", expected_results_batch_icpc_checker),
         ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_floatcmp),
+        ("problems/batch/icpc-generator", expected_results_batch_icpc_generator),
+        ("problems/batch/icpc-validator", expected_results_batch_icpc_validator),
         ("problems/interactive/guess", expected_results_interactive_guess),
         ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),

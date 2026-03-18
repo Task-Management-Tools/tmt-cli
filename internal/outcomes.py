@@ -41,10 +41,10 @@ class EvaluationOutcome(Enum):
     # Runtime error caused by signal (FPE, SEGV, etc.) except SIGXFSZ.
     RUNERROR_SIGNAL = "Runtime Error (signaled)"
 
-    # Runtime error caused by non-zero exitcode.
+    # Runtime error caused by memory limit exceeded; this verdict only exists since we support MLE detection without cgroup.
     RUNERROR_MEMORY = "Runtime Error (memory limit exceeded)"
 
-    # Runtime error caused by memory limit exceeded; this verdict only exists since we support MLE detection without cgroup.
+    # Runtime error caused by non-zero exitcode.
     RUNERROR_EXITCODE = "Runtime Error (non-zero exit code)"
 
     # Manager/Interactor crashed.

@@ -121,6 +121,33 @@ expected_results_batch_cms_grader = {
     "wrong.py":           { "1_full_1": (WRONG,   zero_score) },
 }
 
+expected_results_batch_cms_verdict = {
+    "cpp.cpp":     { "1_full_01": (CORRECT,  full_score),
+                     "1_full_02": (WRONG,    zero_score),
+                     "1_full_03": (WRONG,    zero_score), # CMS has no "no output" verdict
+                     "1_full_04": (NO_FILE,  zero_score),
+                     "1_full_05": (TLE_CPU,  zero_score),
+                     "1_full_06": (TLE_WALL, zero_score),
+                     "1_full_07": (RTE_EXIT, zero_score),
+                     "1_full_08": (RTE_SIG,  zero_score),
+                     "1_full_09": (RTE,      zero_score), # CMS has no explicit OLE signal, any RTE is fine here
+                     "1_full_10": (RTE_SIG,  zero_score), # We don't send SIGXCPU anymore, just a normal signal
+                     "1_full_11": (RTE,      zero_score),
+                     "1_full_12": (MLE,      zero_score), },
+    "python3.py":  { "1_full_01": (CORRECT,  full_score),
+                     "1_full_02": (WRONG,    zero_score),
+                     "1_full_03": (WRONG,    zero_score), # CMS has no "no output" verdict
+                     "1_full_04": (WRONG,    zero_score), # Did not implement this in Python
+                     "1_full_05": (TLE_CPU,  zero_score),
+                     "1_full_06": (TLE_WALL, zero_score),
+                     "1_full_07": (RTE_EXIT, zero_score),
+                     "1_full_08": (RTE_SIG,  zero_score),
+                     "1_full_09": (RTE,      zero_score), # CMS has no explicit OLE signal, any RTE is fine here
+                     "1_full_10": (RTE_SIG,  zero_score), # We don't send SIGXCPU anymore, just a normal signal
+                     "1_full_11": (RTE,      zero_score),
+                     "1_full_12": (MLE,      zero_score), },
+}
+
 expected_results_batch_icpc_checker = {
     # Only test the first file because the second is the same
     "model-solution.cpp":  { "1_input_1": (CORRECT,   full_score, reason("correct feedback")) },
@@ -144,8 +171,9 @@ expected_results_batch_icpc_default_floatcmp = {
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-        ("problems/batch/cms-checker", expected_results_batch_cms_checker),
+        ("problems/batch/cms-checker",   expected_results_batch_cms_checker),
         ("problems/batch/cms-grader",    expected_results_batch_cms_grader),
+        ("problems/batch/cms-verdict",   expected_results_batch_cms_verdict),
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
         ("problems/batch/icpc-checker",  expected_results_batch_icpc_checker),
         ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_default_floatcmp),

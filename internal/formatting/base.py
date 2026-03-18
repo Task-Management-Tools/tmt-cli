@@ -29,6 +29,7 @@ class Formatter(ABC):
         self.ANSI_PURPLE = ""
         self.ANSI_RED_BG = ""
         self.ANSI_GREY = ""
+        self.ANSI_ORANGE = ""
 
     @abstractmethod
     def print(self, *args, endl=False) -> None:

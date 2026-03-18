@@ -1,0 +1,13 @@
+@testset full
+print correct
+print wrong
+print empty
+print remove-stdout
+print timeout-cpu
+print timeout-wall
+print runerror-exit
+print runerror-signal
+print runerror-sigxfsz
+print runerror-sigxcpu
+print runerror-any
+print memory-limit
