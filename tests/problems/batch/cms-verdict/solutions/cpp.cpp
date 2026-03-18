@@ -91,7 +91,7 @@ void remove_stdout()
     if (fcntl(STDOUT_FILENO, F_GETPATH, path) == -1)
     {
         std::perror("fcntl F_GETPATH");
-        return 0;
+        return;
     }
 #elif defined(__linux__)
     ssize_t len = readlink("/proc/self/fd/1", path, sizeof(path) - 1);
