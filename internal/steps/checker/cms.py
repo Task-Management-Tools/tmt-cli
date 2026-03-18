@@ -1,6 +1,7 @@
 import math
 import os
 from pathlib import Path
+import shutil
 import typing
 from internal.compilation.makefile import make_clean, make_compile_target
 from internal.compilation.single import get_run_single_command
@@ -226,18 +227,27 @@ class CMSCheckerStep(CheckerStep):
                 self.sandbox.checker.path, f"{codename}.check.out"
             )
             checker_err_file = os.path.join(
-                self.sandbox.checker.path, f"{codename}.check.out"
+                self.sandbox.checker.path, f"{codename}.check.err"
             )
 
             checker_process = Process(
                 checker_exec_command + [input_file, answer_file, output_file],
                 preexec_fn=lambda: os.chdir(self.sandbox.checker.path),
                 stdin=None,
-                stdout=checker_out_file,
-                stderr=checker_err_file,
+                stdout_redirect=checker_out_file,
+                stderr_redirect=checker_err_file,
                 time_limit_sec=self.limits.trusted_step_time_limit_sec,
                 memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
                 output_limit_mib=self.limits.trusted_step_output_limit_mib,
+            )
+
+            shutil.copy(
+                checker_out_file,
+                os.path.join(self.log_directory, os.path.basename(checker_out_file)),
+            )
+            shutil.copy(
+                checker_err_file,
+                os.path.join(self.log_directory, os.path.basename(checker_err_file)),
             )
 
             wait_procs([checker_process])

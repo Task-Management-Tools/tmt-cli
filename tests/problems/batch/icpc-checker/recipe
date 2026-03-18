@@ -1,0 +1,8 @@
+@testset input
+manual input.in
+
+@testset override
+manual input.in correct.ans
+
+@testset bad_override
+manual input.in wrong.ans

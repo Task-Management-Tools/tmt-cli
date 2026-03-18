@@ -106,20 +106,35 @@ class ICPCCheckerStep(CheckerStep):
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
 
+        checker_out_file = os.path.join(
+            self.sandbox.checker.path, f"{codename}.check.out"
+        )
+        checker_err_file = os.path.join(
+            self.sandbox.checker.path, f"{codename}.check.err"
+        )
+
         checker_process = Process(
             checker_exec_command
             + [input_file, answer_file, feedback_dir.path + os.sep]
             + self.arguments,
             preexec_fn=lambda: os.chdir(self.sandbox.checker.path),
             stdin_redirect=result.output_file,
-            stdout=None,
-            stderr=None,
+            stdout_redirect=checker_out_file,
+            stderr_redirect=checker_err_file,
             time_limit_sec=self.limits.trusted_step_time_limit_sec,
             memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
             output_limit_mib=self.limits.trusted_step_output_limit_mib,
         )
         wait_procs([checker_process])
 
+        shutil.copy(
+            checker_out_file,
+            os.path.join(self.log_directory, os.path.basename(checker_out_file)),
+        )
+        shutil.copy(
+            checker_err_file,
+            os.path.join(self.log_directory, os.path.basename(checker_err_file)),
+        )
         # the interesting files in the directory are:
         #  - nextpass.in: the input for the next pass, the checker must succeed to run the next pass
         #  - score.txt, score_multiplier.txt: the first is a solid number, while the second behaves like CMS.
@@ -142,6 +157,7 @@ class ICPCCheckerStep(CheckerStep):
             result.verdict = EvaluationOutcome.CHECKER_CRASHED
         elif checker_process.exit_code == 42:
             result.verdict = EvaluationOutcome.ACCEPTED
+            result.score = 1.0
         else:
             result.verdict = EvaluationOutcome.WRONG
             if result.output_file is None or os.path.getsize(result.output_file) == 0:

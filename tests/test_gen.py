@@ -79,16 +79,6 @@ expected_results_guess = (
     }
 )
 
-expected_results_parity = (
-    ExpectedCompilation(gen=True, val=True, sol=True, check=True),
-    {
-        "1_handmade_1":               expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
-        "1_handmade_2":               expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
-        "2_override_1":               expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
-        "3_override-wrong-answer_1":  expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
-    }
-)
-
 expected_results_aplusb_py = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     {
@@ -101,6 +91,11 @@ expected_results_aplusb_py = (
     }
 )
 
+expected_results_batch_cms_checker = (
+    ExpectedCompilation(gen=True, val=True, sol=True, check=True),
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK,   checker=OK), }
+)
+
 expected_results_batch_cms_whitediff = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
@@ -109,6 +104,22 @@ expected_results_batch_cms_whitediff = (
 expected_results_batch_cms_grader = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+)
+
+expected_results_batch_icpc_checker = (
+    ExpectedCompilation(gen=True, val=True, sol=True, check=True),
+    {
+        "1_input_1":        expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
+        "2_override_1":     expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
+        "3_bad_override_1": expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
+    }
+)
+
+expected_results_batch_icpc_floatcmp = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    {
+        "1_full_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
+    }
 )
 
 expected_results_communication_general = (
@@ -121,11 +132,12 @@ expected_results_communication_general = (
     [
         ("problems/aplusb", expected_results_aplusb),
         ("problems/aplusb-py", expected_results_aplusb_py),
-        ("problems/floatcmp", expected_results_floatcmp),
         ("problems/guess", expected_results_guess),
-        ("problems/parity", expected_results_parity),
-        ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
+        ("problems/batch/cms-checker", expected_results_batch_cms_checker),
         ("problems/batch/cms-grader", expected_results_batch_cms_grader),
+        ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
+        ("problems/batch/icpc-checker", expected_results_batch_icpc_checker),
+        ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_floatcmp),
         ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
         ("problems/communication/2-proc-grader-fifo", expected_results_communication_general),
@@ -141,6 +153,10 @@ def test_gen(
     problem_dir = pathlib.Path(__file__).parent.resolve() / problem_path
     formatter = TerminalFormatter()
     context = TMTContext(str(problem_dir), str(script_dir))
+
+    # Force shorter trusted step time to speed up unit test
+    # TODO document this
+    context.config.trusted_step_time_limit_sec = 1.0
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
     command_result = command_gen(

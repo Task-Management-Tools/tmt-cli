@@ -1,4 +1,5 @@
 import pathlib
+from typing import Callable
 import pytest
 
 from internal.commands.invoke import command_invoke
@@ -7,69 +8,162 @@ from internal.formatting.terminal import TerminalFormatter
 
 from internal.outcomes import (
     EvaluationOutcome,
+    EvaluationResult,
     GenerationResult,
 )
 from internal.commands import command_clean
 from internal.commands.gen import command_gen
 
-AC = EvaluationOutcome.ACCEPTED
-PC = EvaluationOutcome.PARTIAL
-WA = EvaluationOutcome.WRONG
-NO_FILE = EvaluationOutcome.NO_FILE
-NO_OUTPUT = EvaluationOutcome.NO_OUTPUT
-TLE_CPU = EvaluationOutcome.TIMEOUT
-TLE_WALL = EvaluationOutcome.TIMEOUT_WALL
-# TODO: think a better name for that
-# OLE = EvaluationOutcome.OUTPUT_LIMIT
-# RTE_OUTPUT = EvaluationOutcome.RUNERROR_OUTPUT
-RTE_OUTPUT = EvaluationOutcome.RUNERROR_OUTPUT
-RTE_SIG = EvaluationOutcome.RUNERROR_SIGNAL
-MLE = EvaluationOutcome.RUNERROR_MEMORY
-RTE_EXIT = EvaluationOutcome.RUNERROR_EXITCODE
-MANAGER_CRASH = EvaluationOutcome.MANAGER_CRASHED
-MANAGER_FAIL = EvaluationOutcome.MANAGER_FAILED
-MANAGER_TLE = EvaluationOutcome.MANAGER_TIMEOUT
-CHECKER_CRASH = EvaluationOutcome.CHECKER_CRASHED
-CHECKER_FAIL = EvaluationOutcome.CHECKER_FAILED
-CHECKER_TLE = EvaluationOutcome.CHECKER_TIMEDOUT
 
 # fmt: off
+def verdict(outcome: EvaluationOutcome):
+    def predicate(result: EvaluationResult):
+        assert result.verdict == outcome
+    return predicate
+
+def verdicts(*args: EvaluationOutcome):
+    def predicate(result: EvaluationResult):
+        assert result.verdict in args
+    return predicate
+
+CORRECT   = verdict(EvaluationOutcome.ACCEPTED)
+PARTIAL   = verdict(EvaluationOutcome.PARTIAL)
+WRONG     = verdict(EvaluationOutcome.WRONG)
+NO_FILE   = verdict(EvaluationOutcome.NO_FILE)
+NO_OUTPUT = verdict(EvaluationOutcome.NO_OUTPUT)
+TLE_CPU   = verdict(EvaluationOutcome.TIMEOUT)
+TLE_WALL  = verdict(EvaluationOutcome.TIMEOUT_WALL)
+OLE       = verdicts(EvaluationOutcome.OUTPUT_LIMIT, EvaluationOutcome.RUNERROR_OUTPUT)
+RTE       = verdicts(EvaluationOutcome.RUNERROR_MEMORY, EvaluationOutcome.RUNERROR_SIGNAL,
+                     EvaluationOutcome.RUNERROR_EXITCODE, EvaluationOutcome.RUNERROR_OUTPUT)
+MLE       = verdict(EvaluationOutcome.RUNERROR_MEMORY)
+RTE_SIG   = verdict(EvaluationOutcome.RUNERROR_SIGNAL)
+RTE_EXIT  = verdict(EvaluationOutcome.RUNERROR_EXITCODE)
+MGR_CRASH = verdict(EvaluationOutcome.MANAGER_CRASHED)
+MGR_FAIL  = verdict(EvaluationOutcome.MANAGER_FAILED)
+MGR_TLE   = verdict(EvaluationOutcome.MANAGER_TIMEOUT)
+CHK_CRASH = verdict(EvaluationOutcome.CHECKER_CRASHED)
+CHK_FAIL  = verdict(EvaluationOutcome.CHECKER_FAILED)
+CHK_TLE   = verdict(EvaluationOutcome.CHECKER_TIMEDOUT)
+# fmt: on
+
+
+def score_eq(score: float):
+    def predicate(result: EvaluationResult):
+        assert abs(result.score - score) <= 1e-6
+
+    return predicate
+
+
+def score_geq(score: float):
+    def predicate(result: EvaluationResult):
+        assert result.score >= score - 1e-6
+
+    return predicate
+
+
+def score_leq(score: float):
+    def predicate(result: EvaluationResult):
+        assert result.score <= score + 1e-6
+
+    return predicate
+
+
+def feedback(feedback: str):
+    def predicate(result: EvaluationResult):
+        assert result.override_verdict_display is not None
+        assert feedback in result.override_verdict_display
+
+    return predicate
+
+
+def reason(reason: str):
+    def predicate(result: EvaluationResult):
+        assert reason in result.reason
+
+    return predicate
+
+
+full_score = score_eq(1.0)
+zero_score = score_eq(0.0)
+
+# fmt: off
+expected_results_batch_cms_checker = {
+    "model_solution.cpp":  { "1_full_1": (CORRECT,   full_score,
+                                          reason("correct reason"), feedback("correct feedback")) },
+    "wrong.cpp":           { "1_full_1": (WRONG,     zero_score,
+                                          reason("wrong reason"), feedback("wrong feedback")) },
+    "partial.cpp":         { "1_full_1": (PARTIAL,   score_eq(0.5),
+                                          reason("partial reason"), feedback("partial feedback")) },
+    "checker_crash.cpp":   { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker_fail.cpp":    { "1_full_1": (CHK_FAIL,  zero_score) },
+    "checker_singal.cpp":  { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker_timeout.cpp": { "1_full_1": (CHK_TLE,   zero_score) },
+}
+
 expected_results_batch_cms_whitediff = {
-    "extra_line.py":          { "1_full_1": (WA, 0.0) },
-    "extra_space.py":         { "1_full_1": (AC, 1.0) },
-    "extra_token.py":         { "1_full_1": (WA, 0.0) },
-    "extra_trailing_line.py": { "1_full_1": (AC, 1.0) },
-    "less_line.py":           { "1_full_1": (WA, 0.0) },
-    "less_space.py":          { "1_full_1": (AC, 1.0) },
-    "less_token.py":          { "1_full_1": (WA, 0.0) },
-    "missing_token.py":       { "1_full_1": (WA, 0.0) },
-    "model_solution.py":      { "1_full_1": (AC, 1.0) },
-    "without_last_eol.py":    { "1_full_1": (AC, 1.0) },
+    "extra_line.py":          { "1_full_1": (WRONG,   zero_score) },
+    "extra_space.py":         { "1_full_1": (CORRECT, full_score) },
+    "extra_token.py":         { "1_full_1": (WRONG,   zero_score) },
+    "extra_trailing_line.py": { "1_full_1": (CORRECT, full_score) },
+    "less_line.py":           { "1_full_1": (WRONG,   zero_score) },
+    "less_space.py":          { "1_full_1": (CORRECT, full_score) },
+    "less_token.py":          { "1_full_1": (WRONG,   zero_score) },
+    "missing_token.py":       { "1_full_1": (WRONG,   zero_score) },
+    "model_solution.py":      { "1_full_1": (CORRECT, full_score) },
+    "without_last_eol.py":    { "1_full_1": (CORRECT, full_score) },
 }
 
 expected_results_batch_cms_grader = {
-    "model_solution.cpp":     { "1_full_1": (AC, 1.0) },
-    "model_solution.py":      { "1_full_1": (AC, 1.0) },
-    "wrong.cpp":              { "1_full_1": (WA, 0.0) },
-    "wrong.py":               { "1_full_1": (WA, 0.0) },
+    "model_solution.cpp": { "1_full_1": (CORRECT, full_score) },
+    "model_solution.py":  { "1_full_1": (CORRECT, full_score) },
+    "wrong.cpp":          { "1_full_1": (WRONG,   zero_score) },
+    "wrong.py":           { "1_full_1": (WRONG,   zero_score) },
+}
+
+expected_results_batch_icpc_checker = {
+    # Only test the first file because the second is the same
+    "model_solution.cpp":  { "1_input_1": (CORRECT,   full_score, reason("correct feedback")) },
+    "wrong.cpp":           { "1_input_1": (WRONG,     zero_score, reason("wrong feedback")) },
+    "checker_crash.cpp":   { "1_input_1": (CHK_CRASH, zero_score) },
+    "checker_timeout.cpp": { "1_input_1": (CHK_TLE,   zero_score) },
+}
+
+expected_results_batch_icpc_default_floatcmp = {
+    "model_solution.cpp":   { "1_full_1": (CORRECT,   full_score) },
+    "abs1e-4.cpp":          { "1_full_1": (WRONG,     zero_score) },
+    "abs1e-6.cpp":          { "1_full_1": (CORRECT,   full_score) },
+    "abs1e-7.cpp":          { "1_full_1": (CORRECT,   full_score) },
+    "rel1e-4.cpp":          { "1_full_1": (WRONG,     zero_score) },
+    "rel1e-6.cpp":          { "1_full_1": (CORRECT,   full_score) },
+    "rel1e-7.cpp":          { "1_full_1": (CORRECT,   full_score) },
+    "exact.cpp":            { "1_full_1": (CORRECT,   full_score) },
+    "no_setprecision.cpp":  { "1_full_1": (WRONG,     zero_score) },
 }
 
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-        ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
+        ("problems/batch/cms-checker", expected_results_batch_cms_checker),
         ("problems/batch/cms-grader",    expected_results_batch_cms_grader),
+        ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
+        ("problems/batch/icpc-checker",  expected_results_batch_icpc_checker),
+        ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_default_floatcmp),
     ],
 )
 # fmt: on
 def test_gen(
     problem_path: str,
-    expected_results: dict[str, dict[str, GenerationResult]],
+    expected_results: dict[str, dict[str, tuple[Callable[[GenerationResult], None]]]],
 ):
     script_dir = pathlib.Path(__file__).parent.parent.resolve()
     problem_dir = pathlib.Path(__file__).parent.resolve() / problem_path
     formatter = TerminalFormatter()
     context = TMTContext(str(problem_dir), str(script_dir))
+
+    # Force shorter trusted step time to speed up unit test
+    # TODO document this
+    context.config.trusted_step_time_limit_sec = 1.0
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
     command_gen(formatter=formatter, context=context, verify_hash=False, show_reason=False)
@@ -80,12 +174,8 @@ def test_gen(
                                         show_reason=False,
                                         submission_files=[str(problem_dir / "solutions" / submission)])
 
-        for codename, expected_invoke_result in expected_result.items():
-            expected_verdict, score_predicate = expected_invoke_result
+        for codename, predicates in expected_result.items():
             invoke_result = invoke_summary.testcase_results[codename]
             assert invoke_result is not None
-            assert invoke_result.verdict == expected_verdict
-            if isinstance(score_predicate, float):
-                assert invoke_result.score == score_predicate
-            else:
-                assert score_predicate(invoke_result.score)
+            for pred in predicates:
+                pred(invoke_result)
