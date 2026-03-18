@@ -24,8 +24,8 @@ from internal.outcomes import (
 from internal.steps.generation import GenerationStep
 from internal.steps.utils import CompilationJob, CompilationSlot
 from internal.steps.validation import ValidationStep
-from internal.steps.solution import SolutionStep, make_solution_step_type
-from internal.steps.checker.icpc import ICPCCheckerStep
+from internal.steps.solution import SolutionStep, get_solution_step_type
+from internal.steps.checker import CheckerStep, get_checker_step_type
 
 
 def gen_single(
@@ -35,7 +35,7 @@ def gen_single(
     generation_step: GenerationStep,
     validation_step: ValidationStep,
     solution_step: SolutionStep,
-    checker_step: ICPCCheckerStep | None,
+    checker_step: CheckerStep | None,
     codename_display_width: int,
     show_reason: bool,
     testset,
@@ -190,7 +190,7 @@ def command_gen(
     validation_step = ValidationStep(context=context, sandbox=sandbox)
 
     assert context.config.answer_generation.type is AnswerGenerationType.SOLUTION
-    solution_step_type = make_solution_step_type(
+    solution_step_type = get_solution_step_type(
         problem_type=context.config.problem_type,
         judge_convention=context.config.judge_convention,
     )
@@ -201,12 +201,20 @@ def command_gen(
         submission_files=[context.config.answer_generation.filename],
     )
 
-    checker_step: ICPCCheckerStep | None = None
-    if context.config.checker is not None:
-        checker_step = ICPCCheckerStep(
+    checker_step_type = get_checker_step_type(
+        problem_type=context.config.problem_type,
+        judge_convention=context.config.judge_convention,
+    )
+    checker_step: CheckerStep | None = None
+    if checker_step_type is not None:
+        checker_step = checker_step_type(
             context=context, sandbox=sandbox, is_generation=True
         )
         checker_step.check_unused_checker(formatter)
+
+        # During generation, if the default checker is used then it is never meaningful to run it because it always succeed
+        if checker_step.use_default_checker:
+            checker_step = None
 
     # Compile steps
     def compilation_jobs():

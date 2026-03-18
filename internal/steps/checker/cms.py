@@ -69,8 +69,8 @@ class CMSCheckerStep(CheckerStep):
         The tokens are taken by treating consecutive ASCII space characters as separator.
 
         Args:
-            output: The output to be checked against.
-            answer: The answre to be checked against.
+            output: The output stream to be checked against.
+            answer: The answer stream to be checked against.
 
         Returns:
             tuple:
@@ -99,11 +99,11 @@ class CMSCheckerStep(CheckerStep):
                 return (
                     0.0,
                     EvaluationOutcome.WRONG,
-                    f'On line {line}, found: "{truncate(line_out)}", expected: "{truncate(line_ans)}"',
+                    f'On line {line}, found: "{truncate(line_out).decode(errors="ignore")}", expected: "{truncate(line_ans).decode(errors="ignore")}"',
                 )
             line += 1
 
-        return 1.0, EvaluationOutcome.ACCEPTED
+        return 1.0, EvaluationOutcome.ACCEPTED, ""
 
     @classmethod
     def parse_std_manager_output(

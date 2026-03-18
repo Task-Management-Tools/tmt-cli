@@ -63,7 +63,7 @@ expected_results_aplusb = (
 )
 
 expected_results_floatcmp = (
-    ExpectedCompilation(gen=True, val=True, sol=True, check=True),
+    ExpectedCompilation(gen=True, val=True, sol=True),
     {
         "1_handmade_1":       expected_result_helper(gen=OK, val=OK, ans=OK),
     }
@@ -101,6 +101,13 @@ expected_results_aplusb_py = (
     }
 )
 
+expected_results_batch_cms_whitediff = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    {
+        "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    }
+)
+
 expected_results_communication_general = (
     ExpectedCompilation(gen=True, val=True, manager=True, sol=True),
     {
@@ -116,6 +123,7 @@ expected_results_communication_general = (
         ("problems/floatcmp", expected_results_floatcmp),
         ("problems/guess", expected_results_guess),
         ("problems/parity", expected_results_parity),
+        ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
         ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
         ("problems/communication/2-proc-grader-fifo", expected_results_communication_general),

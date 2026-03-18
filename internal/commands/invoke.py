@@ -10,8 +10,8 @@ from internal.outcomes import (
     EvaluationResult,
     eval_outcome_to_run_outcome,
 )
-from internal.steps.solution import make_solution_step_type
-from internal.steps.checker.icpc import ICPCCheckerStep
+from internal.steps.checker import get_checker_step_type
+from internal.steps.solution import get_solution_step_type
 from internal.steps.utils import CompilationJob, CompilationSlot
 
 
@@ -103,7 +103,7 @@ def command_invoke(
     assert pathlib.Path(context.path.testcase_summary).exists()
 
     # Make every steps first
-    solution_step_type = make_solution_step_type(
+    solution_step_type = get_solution_step_type(
         problem_type=context.config.problem_type,
         judge_convention=context.config.judge_convention,
     )
@@ -114,10 +114,17 @@ def command_invoke(
         submission_files=actual_files,
     )
 
-    checker_step = ICPCCheckerStep(
-        context=context, sandbox=sandbox, is_generation=False
+    checker_step_type = get_checker_step_type(
+        problem_type=context.config.problem_type,
+        judge_convention=context.config.judge_convention,
     )
-    checker_step.check_unused_checker(formatter)
+    if checker_step_type is None:
+        checker_step_type = None
+    else:
+        checker_step = checker_step_type(
+            context=context, sandbox=sandbox, is_generation=False
+        )
+        checker_step.check_unused_checker(formatter)
 
     # TODO option to skip_checker:
     def compilation_jobs():
