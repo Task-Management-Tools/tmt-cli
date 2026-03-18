@@ -1,2 +1,3 @@
 [tool.ruff]
-exclude = ["tests/problems/batch/cms-grader/grader/"]
+exclude = ["tests/problems/batch/cms-grader/grader/",
+           "tests/problems/generator/generator/"]

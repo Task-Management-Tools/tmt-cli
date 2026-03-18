@@ -45,49 +45,35 @@ SKIP_OK = ExecutionOutcome.SKIPPED_SUCCESS
 TLE = ExecutionOutcome.TIMEDOUT
 
 # fmt: off
-expected_results_aplusb = (
+expected_results_generator = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     {
-        "1_handmade_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_4":       expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "1_handmade_5":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_6":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "2_with-proof_1":     expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "3_bad-generators_1": expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad-generators_2": expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad-generators_3": expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
-        "3_bad-generators_4": expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
+        "1_good_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_2":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_3":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_4":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_6":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2_proof_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "3_bad_1":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3_bad_2":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3_bad_3":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3_bad_4":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3_bad_5":   expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
+        "3_bad_6":   expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
+        "3_bad_7":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
     }
 )
 
-expected_results_floatcmp = (
+expected_results_validator = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     {
-        "1_handmade_1":       expected_result_helper(gen=OK, val=OK, ans=OK),
-    }
-)
-
-expected_results_guess = (
-    ExpectedCompilation(gen=True, val=True, sol=True, interact=True),
-    {
-        "1_testset_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_testset_2":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_testset_3":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_testset_4":        expected_result_helper(gen=OK, val=OK, ans=OK),
-    }
-)
-
-expected_results_aplusb_py = (
-    ExpectedCompilation(gen=True, val=True, sol=True),
-    {
-        "1_handmade_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_4":       expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "1_handmade_5":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_6":       expected_result_helper(gen=OK,   val=OK,   ans=OK)
+        "1_normal_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_normal_2":  expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "1_normal_3":  expected_result_helper(gen=OK,   val=RTE,  ans=SKIP),
+        "1_normal_4":  expected_result_helper(gen=OK,   val=TLE,  ans=SKIP),
+        "1_normal_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2_proof_1":   expected_result_helper(gen=OK,   val=OK,   ans=OK),
     }
 )
 
@@ -122,6 +108,16 @@ expected_results_batch_icpc_floatcmp = (
     }
 )
 
+expected_results_interactive_guess = (
+    ExpectedCompilation(gen=True, val=True, sol=True, interact=True),
+    {
+        "1_full_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_full_2":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_full_3":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_full_4":        expected_result_helper(gen=OK, val=OK, ans=OK),
+    }
+)
+
 expected_results_communication_general = (
     ExpectedCompilation(gen=True, val=True, manager=True, sol=True),
     { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
@@ -130,14 +126,14 @@ expected_results_communication_general = (
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-        ("problems/aplusb", expected_results_aplusb),
-        ("problems/aplusb-py", expected_results_aplusb_py),
-        ("problems/guess", expected_results_guess),
+        ("problems/generator", expected_results_generator),
+        ("problems/validator", expected_results_validator),
         ("problems/batch/cms-checker", expected_results_batch_cms_checker),
         ("problems/batch/cms-grader", expected_results_batch_cms_grader),
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
         ("problems/batch/icpc-checker", expected_results_batch_icpc_checker),
         ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_floatcmp),
+        ("problems/interactive/guess", expected_results_interactive_guess),
         ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
         ("problems/communication/2-proc-grader-fifo", expected_results_communication_general),
