@@ -19,7 +19,7 @@ solution:
 
 answer_generation:
   type: solution
-  filename: model_solution.cpp
+  filename: model-solution.cpp
 
 checker:
   type: custom

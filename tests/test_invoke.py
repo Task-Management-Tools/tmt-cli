@@ -89,48 +89,48 @@ zero_score = score_eq(0.0)
 
 # fmt: off
 expected_results_batch_cms_checker = {
-    "model_solution.cpp":  { "1_full_1": (CORRECT,   full_score,
+    "model-solution.cpp":  { "1_full_1": (CORRECT,   full_score,
                                           reason("correct reason"), feedback("correct feedback")) },
     "wrong.cpp":           { "1_full_1": (WRONG,     zero_score,
                                           reason("wrong reason"), feedback("wrong feedback")) },
     "partial.cpp":         { "1_full_1": (PARTIAL,   score_eq(0.5),
                                           reason("partial reason"), feedback("partial feedback")) },
-    "checker_crash.cpp":   { "1_full_1": (CHK_CRASH, zero_score) },
-    "checker_fail.cpp":    { "1_full_1": (CHK_FAIL,  zero_score) },
-    "checker_singal.cpp":  { "1_full_1": (CHK_CRASH, zero_score) },
-    "checker_timeout.cpp": { "1_full_1": (CHK_TLE,   zero_score) },
+    "checker-crash.cpp":   { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker-fail.cpp":    { "1_full_1": (CHK_FAIL,  zero_score) },
+    "checker-singal.cpp":  { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker-timeout.cpp": { "1_full_1": (CHK_TLE,   zero_score) },
 }
 
 expected_results_batch_cms_whitediff = {
-    "extra_line.py":          { "1_full_1": (WRONG,   zero_score) },
-    "extra_space.py":         { "1_full_1": (CORRECT, full_score) },
-    "extra_token.py":         { "1_full_1": (WRONG,   zero_score) },
-    "extra_trailing_line.py": { "1_full_1": (CORRECT, full_score) },
-    "less_line.py":           { "1_full_1": (WRONG,   zero_score) },
-    "less_space.py":          { "1_full_1": (CORRECT, full_score) },
-    "less_token.py":          { "1_full_1": (WRONG,   zero_score) },
-    "missing_token.py":       { "1_full_1": (WRONG,   zero_score) },
-    "model_solution.py":      { "1_full_1": (CORRECT, full_score) },
-    "without_last_eol.py":    { "1_full_1": (CORRECT, full_score) },
+    "extra-line.py":          { "1_full_1": (WRONG,   zero_score) },
+    "extra-space.py":         { "1_full_1": (CORRECT, full_score) },
+    "extra-token.py":         { "1_full_1": (WRONG,   zero_score) },
+    "extra-trailing-line.py": { "1_full_1": (CORRECT, full_score) },
+    "less-line.py":           { "1_full_1": (WRONG,   zero_score) },
+    "less-space.py":          { "1_full_1": (CORRECT, full_score) },
+    "less-token.py":          { "1_full_1": (WRONG,   zero_score) },
+    "missing-token.py":       { "1_full_1": (WRONG,   zero_score) },
+    "model-solution.py":      { "1_full_1": (CORRECT, full_score) },
+    "without-last-eol.py":    { "1_full_1": (CORRECT, full_score) },
 }
 
 expected_results_batch_cms_grader = {
-    "model_solution.cpp": { "1_full_1": (CORRECT, full_score) },
-    "model_solution.py":  { "1_full_1": (CORRECT, full_score) },
+    "model-solution.cpp": { "1_full_1": (CORRECT, full_score) },
+    "model-solution.py":  { "1_full_1": (CORRECT, full_score) },
     "wrong.cpp":          { "1_full_1": (WRONG,   zero_score) },
     "wrong.py":           { "1_full_1": (WRONG,   zero_score) },
 }
 
 expected_results_batch_icpc_checker = {
     # Only test the first file because the second is the same
-    "model_solution.cpp":  { "1_input_1": (CORRECT,   full_score, reason("correct feedback")) },
+    "model-solution.cpp":  { "1_input_1": (CORRECT,   full_score, reason("correct feedback")) },
     "wrong.cpp":           { "1_input_1": (WRONG,     zero_score, reason("wrong feedback")) },
-    "checker_crash.cpp":   { "1_input_1": (CHK_CRASH, zero_score) },
-    "checker_timeout.cpp": { "1_input_1": (CHK_TLE,   zero_score) },
+    "checker-crash.cpp":   { "1_input_1": (CHK_CRASH, zero_score) },
+    "checker-timeout.cpp": { "1_input_1": (CHK_TLE,   zero_score) },
 }
 
 expected_results_batch_icpc_default_floatcmp = {
-    "model_solution.cpp":   { "1_full_1": (CORRECT,   full_score) },
+    "model-solution.cpp":   { "1_full_1": (CORRECT,   full_score) },
     "abs1e-4.cpp":          { "1_full_1": (WRONG,     zero_score) },
     "abs1e-6.cpp":          { "1_full_1": (CORRECT,   full_score) },
     "abs1e-7.cpp":          { "1_full_1": (CORRECT,   full_score) },
@@ -138,7 +138,7 @@ expected_results_batch_icpc_default_floatcmp = {
     "rel1e-6.cpp":          { "1_full_1": (CORRECT,   full_score) },
     "rel1e-7.cpp":          { "1_full_1": (CORRECT,   full_score) },
     "exact.cpp":            { "1_full_1": (CORRECT,   full_score) },
-    "no_setprecision.cpp":  { "1_full_1": (WRONG,     zero_score) },
+    "no-setprecision.cpp":  { "1_full_1": (WRONG,     zero_score) },
 }
 
 @pytest.mark.parametrize(

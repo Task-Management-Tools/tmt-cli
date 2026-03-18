@@ -19,7 +19,7 @@ solution:
 
 answer_generation:
   type: solution
-  filename: model_solution.py
+  filename: model-solution.py
 
 compile_time_limit: 60 s
 compile_memory_limit: unlimited

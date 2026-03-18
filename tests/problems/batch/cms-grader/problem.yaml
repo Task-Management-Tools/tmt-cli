@@ -20,7 +20,7 @@ solution:
 
 answer_generation:
   type: solution
-  filename: model_solution.cpp
+  filename: model-solution.cpp
 
 compile_time_limit: 60 s
 compile_memory_limit: unlimited
