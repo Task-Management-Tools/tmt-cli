@@ -1,5 +1,5 @@
 import pathlib
-import sys
+import platform
 from typing import Callable
 import pytest
 
@@ -169,7 +169,7 @@ expected_results_batch_icpc_default_floatcmp = {
     "no-setprecision.cpp":  { "1_full_1": (WRONG,     zero_score) },
 }
 
-if sys.platform != "Darwin":
+if platform.system() != "Darwin":
     expected_results_communication_1_proc_grader_stdio = {
         "model-solution.cpp": { "1_full_1": (CORRECT,   full_score) },
         "exit-0.cpp":         { "1_full_1": (WRONG,     zero_score) },
