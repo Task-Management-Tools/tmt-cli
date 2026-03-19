@@ -30,7 +30,7 @@ class ValidationStep:
             context=self.context,
             executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
         )
-        comp_result.dump_to_logs(self.context.path.logs_generation, "validator")
+        comp_result.dump_to_logs(self.context.log_directory, "validator")
         return comp_result
 
     def clean_up(self):

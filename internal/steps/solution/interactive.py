@@ -21,6 +21,12 @@ from .batch import BatchSolutionStep
 
 
 class ICPCInteractiveSolutionStep(BatchSolutionStep):
+    """
+    Implements ICPC-style interactive solution evaluation step.
+
+    Requires executable "interactor".
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.sandbox:
@@ -79,7 +85,6 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         """
         This function only returns FileNotFoundError for execution error.
         """
-        os.makedirs(self.log_directory, exist_ok=True)
         self.workdir.clean()
 
         file_in_name = self.context.construct_input_filename(code_name)
@@ -182,24 +187,17 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         # Move logs
         Path(sandbox_interactor_err_file).touch()
         shutil.move(
-            sandbox_interactor_err_file,
-            os.path.join(self.log_directory, file_interactor_err_name),
+            sandbox_interactor_err_file, self.context.log_file(file_interactor_err_name)
         )
         Path(sandbox_solution_err_file).touch()
-        shutil.move(
-            sandbox_solution_err_file,
-            os.path.join(self.log_directory, file_sol_err_name),
-        )
+        shutil.move(sandbox_solution_err_file, self.context.log_file(file_sol_err_name))
 
-        interactor_feedback_logs = os.path.join(
-            self.log_directory, f"{code_name}.interactor.feedback"
+        interactor_feedback_logs = self.context.log_file(
+            f"{code_name}.interactor.feedback"
         )
         if os.path.isdir(interactor_feedback_logs):
             shutil.rmtree(interactor_feedback_logs)
-        shutil.copytree(
-            sandbox_interactor_feedback_dir.path,
-            os.path.join(self.log_directory, f"{code_name}.interactor.feedback"),
-        )
+        shutil.copytree(sandbox_interactor_feedback_dir.path, interactor_feedback_logs)
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS, output_file=None

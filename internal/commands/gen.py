@@ -162,6 +162,7 @@ def command_gen(
     *, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool
 ) -> CommandGenSummary:
     """Generate test cases in the given directory."""
+    context.log_directory = context.path.logs_generation
 
     summary = CommandGenSummary()
 
@@ -198,7 +199,11 @@ def command_gen(
         context=context,
         sandbox=sandbox,
         is_generation=True,
-        submission_files=[context.config.answer_generation.filename],
+        submission_files=[
+            os.path.join(
+                context.path.solutions, context.config.answer_generation.filename
+            )
+        ],
     )
 
     checker_step_type = get_checker_step_type(

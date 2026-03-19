@@ -99,7 +99,6 @@ class CommunicationSolutionStep(BatchSolutionStep):
         """
         This function only returns FileNotFoundError for execution error.
         """
-        os.makedirs(self.log_directory, exist_ok=True)
         self.sandbox.manager.clean()
         self.sandbox.solution_invocation.clean()
 
@@ -232,9 +231,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
         # Save logs
         def copy_to_log(abs_path: str):
             Path(abs_path).touch()
-            shutil.copy(
-                abs_path, os.path.join(self.log_directory, os.path.basename(abs_path))
-            )
+            shutil.copy(abs_path, self.context.log_file(os.path.basename(abs_path)))
 
         copy_to_log(manager_out_filename)
         copy_to_log(manager_err_filename)

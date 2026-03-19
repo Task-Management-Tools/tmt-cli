@@ -15,6 +15,7 @@ def command_export(
     create_zip: bool = True,
 ):
     """Export problem package to a sepcific format."""
+    context.log_directory = None
 
     if package_format is None:
         package_format = context.config.judge_convention

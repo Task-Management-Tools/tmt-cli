@@ -73,6 +73,7 @@ def command_invoke(
     show_reason: bool,
     submission_files: list[str],
 ) -> CommandInvokeSummary:
+    context.log_directory = context.path.logs_invocation
 
     sandbox = SandboxDirectory(context.path.default_sandbox)
     sandbox.create()

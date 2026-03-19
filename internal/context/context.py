@@ -1,3 +1,4 @@
+import os
 import pathlib
 import yaml
 
@@ -13,6 +14,7 @@ class TMTContext:
     def __init__(self, problem_dir: str, script_root: str):
         # context.path constructs absolute paths.
         self.path = ProblemDirectoryHelper(problem_dir, script_root)
+        self._log_directory: None
 
         try:
             with open(self.path.problem_yaml, "r") as file:
@@ -68,6 +70,21 @@ class TMTContext:
 
     def construct_output_filename(self, code_name: str):
         return self.construct_test_filename(code_name, self.config.output_extension)
+
+    @property
+    def log_directory(self) -> str | None:
+        return self._log_directory
+
+    @log_directory.setter
+    def log_directory(self, value: str | None) -> None:
+        self._log_directory = value
+        if value is not None:
+            os.makedirs(self._log_directory, exist_ok=True)
+
+    def log_file(self, filename: str):
+        if self.log_directory is None:
+            raise ValueError("Log file required while context holds none")
+        return os.path.join(self.log_directory, filename)
 
 
 def find_problem_dir(cwd: pathlib.Path) -> str:

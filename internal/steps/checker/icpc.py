@@ -128,13 +128,12 @@ class ICPCCheckerStep(CheckerStep):
         wait_procs([checker_process])
 
         shutil.copy(
-            checker_out_file,
-            os.path.join(self.log_directory, os.path.basename(checker_out_file)),
+            checker_out_file, self.context.log_file(os.path.basename(checker_out_file))
         )
         shutil.copy(
-            checker_err_file,
-            os.path.join(self.log_directory, os.path.basename(checker_err_file)),
+            checker_err_file, self.context.log_file(os.path.basename(checker_err_file))
         )
+
         # the interesting files in the directory are:
         #  - nextpass.in: the input for the next pass, the checker must succeed to run the next pass
         #  - score.txt, score_multiplier.txt: the first is a solid number, while the second behaves like CMS.
@@ -148,7 +147,7 @@ class ICPCCheckerStep(CheckerStep):
                 result.reason = f.readline().strip()
             shutil.copy(
                 checker_feedback_file,
-                os.path.join(self.log_directory, f"{codename}.check.feedback"),
+                self.context.log_file(f"{codename}.check.feedback"),
             )
 
         if checker_process.is_timedout:

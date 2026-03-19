@@ -10,6 +10,8 @@ from internal.steps.checker import get_checker_step_type
 
 
 def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bool):
+    context.log_directory = None
+
     def confirm(message: str) -> bool:
         if skip_confirm:
             formatter.println(message + ".")

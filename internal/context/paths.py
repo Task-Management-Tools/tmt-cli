@@ -142,17 +142,6 @@ class ProblemDirectoryHelper:
     def has_manager_directory(self):
         return self._is_directory(self.manager)
 
-    def replace_with_solution(self, full_filename: str):
-        test_files = [
-            os.path.join(self.solutions, full_filename),
-        ]
-        for test_file in test_files:
-            if self._is_regular_file(test_file):
-                return test_file
-        raise TMTMissingFileError("solution", full_filename)
-
-    # def replace_with_grader(self, file: str):
-
     def replace_with_manual(self, full_filename: str):
         if self._is_regular_file(os.path.join(self.generator_manuals, full_filename)):
             return os.path.join(self.generator_manuals, full_filename)

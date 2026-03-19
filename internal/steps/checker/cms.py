@@ -205,9 +205,7 @@ class CMSCheckerStep(CheckerStep):
             result.score = score
             result.verdict = verdict
             result.reason = feedback
-            with open(
-                os.path.join(self.log_directory, f"{codename}.check.err"), "w"
-            ) as f:
+            with open(self.context.log_file(f"{codename}.check.err"), "w") as f:
                 f.write(result.reason)
 
         else:
@@ -243,11 +241,11 @@ class CMSCheckerStep(CheckerStep):
 
             shutil.copy(
                 checker_out_file,
-                os.path.join(self.log_directory, os.path.basename(checker_out_file)),
+                self.context.log_file(os.path.basename(checker_out_file)),
             )
             shutil.copy(
                 checker_err_file,
-                os.path.join(self.log_directory, os.path.basename(checker_err_file)),
+                self.context.log_file(os.path.basename(checker_err_file)),
             )
 
             wait_procs([checker_process])

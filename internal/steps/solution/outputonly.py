@@ -56,9 +56,7 @@ class OutputOnlySolutionStep(BatchSolutionStep):
                 self.context.config.output_extension
             )
 
-        sources = list(
-            map(self.context.path.replace_with_solution, self.submission_files)
-        )
+        sources = self.submission_files
 
         # Directory mode
         directory = pathlib.Path(sources[0])
@@ -79,9 +77,9 @@ class OutputOnlySolutionStep(BatchSolutionStep):
         # Source code mode
         lang_type = recognize_language(sources, self.context)
         if lang_type is not None:
-            if len(self.submission_files) != len(self.submission_format):
+            if len(sources) != len(self.submission_format):
                 return compile_fail(
-                    f"Submission source files count mismatch (found {len(self.submission_files)}, expect {len(self.submission_format)}) "
+                    f"Submission source files count mismatch (found {len(sources)}, expect {len(self.submission_format)}) "
                 )
 
             # TODO: does grader really make sense in OutputOnly tasks?
@@ -103,7 +101,7 @@ class OutputOnlySolutionStep(BatchSolutionStep):
             ):
                 raise FileNotFoundError("Compilation did not produce solution")
 
-            comp_result.dump_to_logs(self.log_directory, "solution")
+            comp_result.dump_to_logs(self.context.log_directory, "solution")
             return comp_result
 
         # Duplication check set for the following two cases
@@ -162,9 +160,6 @@ class OutputOnlySolutionStep(BatchSolutionStep):
 
     @requires_sandbox
     def run_solution(self, code_name: str) -> EvaluationResult:
-
-        os.makedirs(self.log_directory, exist_ok=True)
-
         if self.supplied_output:
             output_file = os.path.join(
                 self.sandbox.solution_invocation.path,

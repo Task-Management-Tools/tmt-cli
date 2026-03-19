@@ -236,7 +236,7 @@ def test_gen(
     command_gen(formatter=formatter, context=context, verify_hash=False, show_reason=False)
 
     def form_submission_fullpath(path: str):
-        return str(problem_dir / "solutions" / path)
+        return str((problem_dir / "solutions" / path).absolute())
 
     for submission, expected_result in expected_results.items():
 

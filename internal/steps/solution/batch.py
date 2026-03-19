@@ -2,8 +2,6 @@ import os
 import pathlib
 import shutil
 
-from pathlib import Path
-
 from internal.compilation.utils import recognize_language
 from internal.process import Process, wait_procs
 from internal.compilation import compile_single, get_run_single_command
@@ -19,6 +17,12 @@ from .base import SolutionStep
 
 
 class BatchSolutionStep(SolutionStep):
+    """
+    Implements Batch solution evaluation step (the classical one).
+
+    Compiles with grader if configured.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.submission_format = [self.context.config.short_name]
@@ -36,6 +40,10 @@ class BatchSolutionStep(SolutionStep):
 
     @requires_sandbox
     def compile_solution(self) -> CompilationResult:
+        """
+        Compiles the solution.
+        """
+
         def compile_fail(reason: str) -> CompilationResult:
             return CompilationResult(
                 verdict=CompilationOutcome.FAILED,
@@ -43,22 +51,17 @@ class BatchSolutionStep(SolutionStep):
                 standard_error=reason,
             )
 
-        sources = list(
-            map(self.context.path.replace_with_solution, self.submission_files)
-        )
-        for source in sources:
-            if not Path(source).exists() or not Path(source).is_file():
+        sources = self.submission_files
+        for source in map(pathlib.Path, sources):
+            if not source.exists() or not source.is_file():
                 return compile_fail(
-                    f"Source file {os.path.basename(source)} is not a file."
+                    f"Source file {os.path.basename(str(source))} is not a file."
                 )
 
-        if len(self.submission_files) != len(self.submission_format):
+        if len(sources) != len(self.submission_format):
             return compile_fail(
-                f"Submission file count mismatch (found {len(self.submission_files)}, expect {len(self.submission_format)})."
+                f"Submission file number mismatch (found {len(sources)}, expect {len(sources)})."
             )
-
-        workdir = self.sandbox.solution_compilation
-        workdir.clean()
 
         # Replace the solution file with absolute path, then we try to add grader if the config exists
         source_rename = [
@@ -95,10 +98,10 @@ class BatchSolutionStep(SolutionStep):
             del lang
         del lang_type
 
-        workdir.clean()
+        self.sandbox.solution_compilation.clean()
         comp_result = compile_single(
             context=self.context,
-            directory=workdir.path,
+            directory=self.sandbox.solution_compilation.path,
             sources=graders + sources,
             source_rename=[None] * len(graders) + source_rename,
             headers=headers,
@@ -112,15 +115,11 @@ class BatchSolutionStep(SolutionStep):
         ):
             raise FileNotFoundError("Compilation did not produce solution")
 
-        comp_result.dump_to_logs(self.log_directory, "solution")
+        comp_result.dump_to_logs(self.context.log_directory, "solution")
         return comp_result
 
     @requires_sandbox
     def run_solution(self, code_name: str) -> EvaluationResult:
-        """
-        This function only returns FileNotFoundError for execution error.
-        """
-        os.makedirs(self.log_directory, exist_ok=True)
         workdir = self.sandbox.solution_invocation
         workdir.clean()
 
@@ -155,12 +154,12 @@ class BatchSolutionStep(SolutionStep):
         )
         wait_procs([solution])
 
-        if Path(sandbox_input_file).exists():
+        if pathlib.Path(sandbox_input_file).exists():
             os.unlink(sandbox_input_file)
 
         # Move logs
-        Path(sandbox_error_file).touch()
-        shutil.move(sandbox_error_file, os.path.join(self.log_directory, file_err_name))
+        pathlib.Path(sandbox_error_file).touch()
+        shutil.move(sandbox_error_file, self.context.log_file(file_err_name))
 
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS,
@@ -168,7 +167,7 @@ class BatchSolutionStep(SolutionStep):
         )
         result.fill_from_solution_process(solution)
 
-        if not Path(sandbox_output_file).exists():
+        if not pathlib.Path(sandbox_output_file).exists():
             result.verdict = EvaluationOutcome.NO_FILE
             result.output_file = None
 

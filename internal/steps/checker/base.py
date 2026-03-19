@@ -39,11 +39,6 @@ class CheckerStep(ABC):
             self.sandbox.checker_compilation.create()
 
         self.is_generation = is_generation
-        self.log_directory = (
-            context.path.logs_generation
-            if self.is_generation
-            else context.path.logs_invocation
-        )
 
         if context.config.checker is None:
             self.use_default_checker = True
