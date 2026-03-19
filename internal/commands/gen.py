@@ -240,7 +240,9 @@ def command_gen(
     os.makedirs(context.path.testcases, exist_ok=True)
     pathlib.Path(context.path.testcase_summary).touch()
 
-    codename_display_width: int = max(map(len, context.recipe.get_all_test_names())) + 2
+    codename_display_width: int = (
+        max(6, max(map(len, context.recipe.get_all_test_names()))) + 2
+    )
 
     # Execute steps
     with open(context.path.testcase_summary, "wt") as testcase_summary_file:

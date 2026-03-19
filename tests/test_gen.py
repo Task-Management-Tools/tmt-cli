@@ -123,6 +123,18 @@ expected_results_communication_general = (
     { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
 )
 
+expected_results_outputonly_basic = (
+    ExpectedCompilation(gen=True, val=True, sol=True, check=True),
+    {
+        "0": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "3": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "4": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "5": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    }
+)
+
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
@@ -138,6 +150,7 @@ expected_results_communication_general = (
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
         ("problems/communication/2-proc-grader-fifo", expected_results_communication_general),
         ("problems/communication/2-proc-grader-stdio", expected_results_communication_general),
+        ("problems/outputonly/basic", expected_results_outputonly_basic),
     ],
 )
 # fmt: on

@@ -38,7 +38,7 @@ class CMSCheckerStep(CheckerStep):
     @requires_sandbox
     def compile(self) -> CompilationResult:
         if self.use_default_checker:
-            return CompilationResult(CompilationOutcome.SUCCESS)
+            return CompilationResult(CompilationOutcome.SKIPPED)
 
         compile_result = make_compile_target(
             context=self.context,

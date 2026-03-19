@@ -23,10 +23,10 @@ class Executable:
 
         """
         Parse and add a command sequence separated by pipes.
-        
+
         Args:
             command_sequence (str): Commands separated by '|' character
-            
+
         Raises:
             ValueError: If command sequence is empty or malformed
         """
@@ -341,8 +341,34 @@ class RecipeData:
         testset_index_width = len(str(max_testset_index))
 
         # Generate names for each testset
-        for testset in self.testsets.values():
+        sorted_testsets = sorted(
+            self.testsets.values(), key=lambda ts: ts.testset_index
+        )
+        for testset in sorted_testsets:
             testset.generate_test_names(testset_index_width)
+
+    def generate_testsetless_test_names(self):
+        """
+        Generate testsetless names for all test cases across all testsets.
+        This is specially designed for OutputOnly tasks.
+        This should be called after parsing is complete.
+        """
+        if not self.testsets:
+            return
+
+        # Calculate the width needed for testset index padding
+        testcases = len(self.get_all_test_names())
+        testcase_index_width = len(str(testcases))
+        sorted_testsets = sorted(
+            self.testsets.values(), key=lambda ts: ts.testset_index
+        )
+
+        i = 0
+        for testset in sorted_testsets:
+            for test in testset.tests:
+                test_name = str(i).zfill(testcase_index_width)
+                test.set_test_name(test_name)
+                i += 1
 
     def push_validation_to_testcases(self):
         """
@@ -690,12 +716,15 @@ class CommandRegistry:
         self.handlers[command] = handler
 
 
-def parse_recipe_data(recipe_lines: List[str]) -> RecipeData:
+def parse_recipe_data(recipe_lines: List[str], is_outputonly: bool) -> RecipeData:
     """
     Parse recipe and return the structured data.
 
     Args:
         recipe_lines (list of str): List of lines in a recipe file
+        is_outputonly (bool):
+            Whether the recipe is for OutputOnly tasks.
+            In this case, the name of each testcase will not contain testset information.
 
     Returns:
         RecipeData: Parsed recipe data structure
@@ -743,7 +772,10 @@ def parse_recipe_data(recipe_lines: List[str]) -> RecipeData:
             raise ValueError(f"Error on line {line_num}: {e}")
 
     # Generate test names after parsing is complete
-    parser_context.recipe_data.generate_all_test_names()
+    if is_outputonly:
+        parser_context.recipe_data.generate_testsetless_test_names()
+    else:
+        parser_context.recipe_data.generate_all_test_names()
 
     # Push validations to all test cases after parsing is complete
     parser_context.recipe_data.push_validation_to_testcases()
@@ -791,7 +823,7 @@ extra --N=5 --note=${NOTE} seed=1
 @subtask s2 30
 @description $N \\leq 2000$
 @include s1
-@include t2 
+@include t2
 @validation validator --N=2000
 
 @subtask s3 50

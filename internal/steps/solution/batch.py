@@ -36,40 +36,41 @@ class BatchSolutionStep(SolutionStep):
 
     @requires_sandbox
     def compile_solution(self) -> CompilationResult:
-        if len(self.submission_files) != len(self.submission_format):
+        def compile_fail(reason: str) -> CompilationResult:
             return CompilationResult(
                 verdict=CompilationOutcome.FAILED,
                 exit_status=-1,
-                standard_error=f"Submission file count mismatch (found {len(self.submission_files)}, expect {len(self.submission_format)}).",
+                standard_error=reason,
+            )
+
+        sources = list(
+            map(self.context.path.replace_with_solution, self.submission_files)
+        )
+        for source in sources:
+            if not Path(source).exists() or not Path(source).is_file():
+                return compile_fail(
+                    f"Source file {os.path.basename(source)} is not a file."
+                )
+
+        if len(self.submission_files) != len(self.submission_format):
+            return compile_fail(
+                f"Submission file count mismatch (found {len(self.submission_files)}, expect {len(self.submission_format)})."
             )
 
         workdir = self.sandbox.solution_compilation
         workdir.clean()
 
         # Replace the solution file with absolute path, then we try to add grader if the config exists
-        sources = list(
-            map(self.context.path.replace_with_solution, self.submission_files)
-        )
         source_rename = [
             f + os.path.splitext(s)[1] for f, s in zip(self.submission_format, sources)
         ]
         headers = []
         graders = []
 
-        for source in sources:
-            if not Path(source).exists() or not Path(source).is_file():
-                return CompilationResult(
-                    verdict=CompilationOutcome.FAILED,
-                    exit_status=-1,
-                    standard_error=f"Source file {os.path.basename(source)} is not a file.",
-                )
-
-        lang_type = recognize_language(self.submission_files, self.context)
+        lang_type = recognize_language(sources, self.context)
         if lang_type is None:
-            return CompilationResult(
-                verdict=CompilationOutcome.FAILED,
-                exit_status=-1,
-                standard_error=f"Source files {' ,'.join(map(os.path.basename, self.submission_files))} are not recognized by any language.",
+            return compile_fail(
+                f"Source files {' ,'.join(map(os.path.basename, sources))} are not recognized by any language."
             )
 
         # TODO: what is the specification of graders in ICPC format?
@@ -87,10 +88,8 @@ class BatchSolutionStep(SolutionStep):
                 else:
                     headers.append(str(file.absolute()))
             if len(graders) == 0:
-                return CompilationResult(
-                    verdict=CompilationOutcome.FAILED,
-                    exit_status=-1,
-                    standard_error=f"Grader of language {lang.name} is not found in directory {grader_dir.relative_to(os.getcwd())}.",
+                return compile_fail(
+                    f"Grader of language {lang.name} is not found in directory {grader_dir.relative_to(os.getcwd())}."
                 )
 
             del lang
@@ -107,9 +106,11 @@ class BatchSolutionStep(SolutionStep):
             executable_stack_size_mib=self.memory_limit_mib,
         )
 
-        if comp_result.verdict is CompilationOutcome.SUCCESS:
-            if comp_result.produced_file is None:
-                raise FileNotFoundError("Compilation did not produce solution")
+        if (
+            comp_result.verdict is CompilationOutcome.SUCCESS
+            and comp_result.produced_file is None
+        ):
+            raise FileNotFoundError("Compilation did not produce solution")
 
         comp_result.dump_to_logs(self.log_directory, "solution")
         return comp_result

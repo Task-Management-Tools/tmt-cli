@@ -4,6 +4,7 @@ from .base import SolutionStep
 from .batch import BatchSolutionStep
 from .interactive import ICPCInteractiveSolutionStep
 from .communication import CommunicationSolutionStep
+from .outputonly import OutputOnlySolutionStep
 
 from internal.context import ProblemType, JudgeConvention
 
@@ -31,6 +32,13 @@ def get_solution_step_type(
         case (ProblemType.COMMUNICATION, _):
             raise ValueError(
                 f"Communication task is not supported in {str(judge_convention)}"
+            )
+
+        case (ProblemType.OUTPUT_ONLY, JudgeConvention.CMS):
+            return OutputOnlySolutionStep
+        case (ProblemType.OUTPUT_ONLY, _):
+            raise ValueError(
+                f"OutputOnly task is not supported in {str(judge_convention)}"
             )
 
         case (_, JudgeConvention.TIOJ_OLD) | (_, JudgeConvention.TIOJ_NEW):

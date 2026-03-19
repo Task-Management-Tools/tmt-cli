@@ -6,7 +6,7 @@ from internal.recipe_parser import parse_recipe_data
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 
 from .paths import ProblemDirectoryHelper
-from .config import TMTConfig
+from .config import ProblemType, TMTConfig
 
 
 class TMTContext:
@@ -38,7 +38,11 @@ class TMTContext:
 
         try:
             with open(self.path.tmt_recipe) as file:
-                self.recipe = parse_recipe_data(file.readlines())
+                # TODO: the last one feels hacky, but unless this is deferred there is no way to do this
+                self.recipe = parse_recipe_data(
+                    file.readlines(),
+                    self.config.problem_type == ProblemType.OUTPUT_ONLY,
+                )
         except OSError as e:
             raise TMTMissingFileError("config", self.path.tmt_recipe) from e
         except ValueError as e:

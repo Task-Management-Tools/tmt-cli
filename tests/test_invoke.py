@@ -168,6 +168,21 @@ expected_results_batch_icpc_default_floatcmp = {
     "no-setprecision.cpp":  { "1_full_1": (WRONG,     zero_score) },
 }
 
+expected_results_outputonly_basic = {
+    "dirtest":     { "0": (WRONG,   zero_score),
+                     "1": (PARTIAL, score_eq(0.5)),
+                     "2": (CORRECT, full_score),
+                     "3": (NO_FILE,) },
+    ("dirtest/0.out","dirtest/1.out","dirtest/2.out"):
+                   { "0": (WRONG,   zero_score),
+                     "1": (PARTIAL, score_eq(0.5)),
+                     "2": (CORRECT, full_score),
+                     "3": (NO_FILE,) },
+    "ziptest.zip": { "1": (WRONG,   zero_score),
+                     "2": (PARTIAL, score_eq(0.5)),
+                     "3": (CORRECT, full_score),
+                     "4": (NO_FILE,) },
+}
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
@@ -177,12 +192,13 @@ expected_results_batch_icpc_default_floatcmp = {
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
         ("problems/batch/icpc-checker",  expected_results_batch_icpc_checker),
         ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_default_floatcmp),
+        ("problems/outputonly/basic",    expected_results_outputonly_basic),
     ],
 )
 # fmt: on
 def test_gen(
     problem_path: str,
-    expected_results: dict[str, dict[str, tuple[Callable[[GenerationResult], None]]]],
+    expected_results: dict[str | tuple[str], dict[str, tuple[Callable[[GenerationResult], None]]]],
 ):
     script_dir = pathlib.Path(__file__).parent.parent.resolve()
     problem_dir = pathlib.Path(__file__).parent.resolve() / problem_path
@@ -196,11 +212,23 @@ def test_gen(
     command_clean(formatter=formatter, context=context, skip_confirm=True)
     command_gen(formatter=formatter, context=context, verify_hash=False, show_reason=False)
 
+    def form_submission_fullpath(path: str):
+        return str(problem_dir / "solutions" / path)
+
     for submission, expected_result in expected_results.items():
+
+        if isinstance(submission, str):
+            submission_files = [form_submission_fullpath(submission)]
+        elif isinstance(submission, tuple):
+            submission_files = list(map(form_submission_fullpath, submission))
+        else:
+            assert False
+        print(submission)
+
         invoke_summary = command_invoke(formatter=formatter,
                                         context=context,
                                         show_reason=False,
-                                        submission_files=[str(problem_dir / "solutions" / submission)])
+                                        submission_files=submission_files)
 
         for codename, predicates in expected_result.items():
             invoke_result = invoke_summary.testcase_results[codename]

@@ -19,6 +19,8 @@ def get_checker_step_type(
             return None
         case (ProblemType.COMMUNICATION, JudgeConvention.CMS):
             return None
+        case (ProblemType.OUTPUT_ONLY, JudgeConvention.CMS):
+            return CMSCheckerStep
         case (_, JudgeConvention.TIOJ_OLD) | (_, JudgeConvention.TIOJ_NEW):
             raise ValueError(str(judge_convention) + " is not supported yet.")
         case _:

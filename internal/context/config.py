@@ -15,6 +15,7 @@ class ProblemType(enum.Enum):
     BATCH = "batch"
     INTERACTIVE = "interactive"
     COMMUNICATION = "communication"
+    OUTPUT_ONLY = "outputonly"
 
 
 class CheckerType(enum.Enum):
@@ -219,12 +220,13 @@ class TMTConfig:
                     "when the problem type is interactive."
                 )
 
-        if self.problem_type is not ProblemType.BATCH:
-            if self.checker is not None:
-                raise ValueError(
-                    "Checker should not be specified "
-                    "when the problem type is not batch."
-                )
+        # TODO: fix these
+        # if self.problem_type is not ProblemType.BATCH:
+        #     if self.checker is not None:
+        #         raise ValueError(
+        #             "Checker should not be specified "
+        #             "when the problem type is not batch."
+        #         )
 
         # TODO maybe these should be in compiler.yaml
         if self.compile_time_limit is None:

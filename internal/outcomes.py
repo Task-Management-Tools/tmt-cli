@@ -1,11 +1,12 @@
 import os
 
-from enum import Enum
+from enum import Enum, unique
 from dataclasses import dataclass
 
 from internal.process import Process
 
 
+@unique
 class EvaluationOutcome(Enum):
     # The submission has run successfully.
     RUN_SUCCESS = "Solution ran successfully"
@@ -51,7 +52,7 @@ class EvaluationOutcome(Enum):
     MANAGER_CRASHED = "Judge Error: Manager Crashed"
 
     # Manager/Interactor failed (did not meet the requirement of a manager/interactor).
-    MANAGER_FAILED = "Judge Error: Checker Failed"
+    MANAGER_FAILED = "Judge Error: Manager Failed"
 
     # Manager/Interactor timed out.
     MANAGER_TIMEOUT = "Judge Error: Manager Timed-out"
@@ -92,10 +93,8 @@ class EvaluationResult:
             self.wall_clock_time_sec, solution.wall_clock_time_sec
         )
         self.max_memory_kib = max(self.max_memory_kib, solution.max_rss_kib)
-        self.exit_code = solution.exit_code if self.exit_code == 0 else self.exit_code
-        self.exit_signal = (
-            solution.exit_signal if self.exit_signal == 0 else self.exit_signal
-        )
+        self.exit_code = self.exit_code or solution.exit_code
+        self.exit_signal = self.exit_signal or solution.exit_signal
 
 
 class CompilationOutcome(Enum):

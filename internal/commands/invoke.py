@@ -170,7 +170,7 @@ def command_invoke(
             formatter.ANSI_RESET,
         )
 
-    codename_length = max(map(len, available_testcases)) + 2
+    codename_length = max(6, max(map(len, available_testcases))) + 2
 
     os.makedirs(context.path.logs_invocation, exist_ok=True)
 
