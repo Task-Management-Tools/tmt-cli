@@ -245,7 +245,8 @@ class CommunicationSolutionStep(BatchSolutionStep):
         result = EvaluationResult(
             verdict=EvaluationOutcome.RUN_SUCCESS, output_file=manager_out_filename
         )
-        result.fill_from_solution_process(solution)
+        for solution in solutions:
+            result.fill_from_solution_process(solution)
 
         # First, we check if the manager crashed
         if manager.is_timedout:

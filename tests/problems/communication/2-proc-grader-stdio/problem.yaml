@@ -13,7 +13,7 @@ validator:
 
 solution:
   type: grader
-  time_limit: 1000 ms
+  time_limit: 200 ms
   memory_limit: 1 G
   output_limit: unlimited
   grader_name: grader

@@ -7,8 +7,8 @@
 
 using namespace std;
 
-std::FILE* fin = stdin;
-std::FILE* fout = stdout;
+std::FILE *fin = stdin;
+std::FILE *fout = stdout;
 
 int main(int argc, char **argv)
 {
@@ -33,18 +33,13 @@ int main(int argc, char **argv)
             std::abort();
     }
 
-    while (true)
-    {
-        int n = -1;
-        if (std::fscanf(fin, "%d", &n) != 1)
-            std::abort();
+    int n;
+    if (std::fscanf(fin, "%d", &n) != 1)
+        std::abort();
 
-        if (n == -1)
-            break;
+    int upd = (id == 0 ? accumulateA(n) : accumulateB(n));
+    std::fprintf(fout, "%d\n", upd);
+    std::fflush(fout);
 
-        int upd = (id == 0 ? accumulateA(n) : accumulateB(n));
-        std::fprintf(fout, "%d\n", upd);
-        std::fflush(fout);
-    }
     return 0;
 }

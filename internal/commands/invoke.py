@@ -119,7 +119,7 @@ def command_invoke(
         judge_convention=context.config.judge_convention,
     )
     if checker_step_type is None:
-        checker_step_type = None
+        checker_step = None
     else:
         checker_step = checker_step_type(
             context=context, sandbox=sandbox, is_generation=False

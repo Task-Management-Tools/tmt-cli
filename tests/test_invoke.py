@@ -168,6 +168,27 @@ expected_results_batch_icpc_default_floatcmp = {
     "no-setprecision.cpp":  { "1_full_1": (WRONG,     zero_score) },
 }
 
+expected_results_communication_1_proc_grader_stdio = {
+    "model-solution.cpp": { "1_full_1": (CORRECT,   full_score) },
+    "exit-0.cpp":         { "1_full_1": (WRONG,     zero_score) },
+    "exit-1.cpp":         { "1_full_1": (RTE_EXIT,  zero_score) },
+    "sleep.cpp":          { "1_full_1": (TLE_WALL,  zero_score) },
+}
+
+expected_results_communication_2_proc_grader_stdio = {
+    "model-solution.cpp":       { "1_full_1": (CORRECT,   full_score) },
+    "first-proc-exit-0.cpp":    { "1_full_1": (WRONG,     zero_score) },
+    "first-proc-exit-1.cpp":    { "1_full_1": (RTE_EXIT,  zero_score) },
+    "second-proc-exit-0.cpp":   { "1_full_1": (WRONG,     zero_score) },
+    "second-proc-exit-1.cpp":   { "1_full_1": (RTE_EXIT,  zero_score) },
+    "one-side-cpu.cpp":         { "1_full_1": (CORRECT,   full_score) },
+    "two-side-cpu.cpp":         { "1_full_1": (TLE_CPU,   zero_score) },
+    "one-side-sleep-short.cpp": { "1_full_1": (CORRECT,   full_score) },
+    "two-side-sleep-short.cpp": { "1_full_1": (CORRECT,   full_score) },
+    "one-side-sleep-long.cpp":  { "1_full_1": (TLE_WALL,  zero_score) },
+    "two-side-sleep-long.cpp":  { "1_full_1": (TLE_WALL,  zero_score) },
+}
+
 expected_results_outputonly_basic = {
     "dirtest":     { "0": (WRONG,   zero_score),
                      "1": (PARTIAL, score_eq(0.5)),
@@ -192,6 +213,8 @@ expected_results_outputonly_basic = {
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
         ("problems/batch/icpc-checker",  expected_results_batch_icpc_checker),
         ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_default_floatcmp),
+        ("problems/communication/1-proc-grader-stdio", expected_results_communication_1_proc_grader_stdio),
+        ("problems/communication/2-proc-grader-stdio", expected_results_communication_2_proc_grader_stdio),
         ("problems/outputonly/basic",    expected_results_outputonly_basic),
     ],
 )

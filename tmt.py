@@ -105,7 +105,9 @@ if __name__ == "__main__":
     except TMTMissingFileError as e:
         print()
         print(e)
+        exit(1)
     except TMTInvalidConfigError as e:
         print()
         print(f'Invalid config, at: "{e}"')
         print(e.__cause__)
+        exit(1)
