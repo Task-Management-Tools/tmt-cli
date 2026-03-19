@@ -131,10 +131,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
             for i in range(self.num_procs)
         ]
 
-        # Create dummy output
-        if self.is_generation:
-            with open(manager_out_filename, "w+b"):
-                pass  # Truncate the file
+        Path(manager_out_filename).touch()
         for fifo in solution_m2s_fifo_filename + solution_s2m_fifo_filename:
             os.mkfifo(fifo)
 

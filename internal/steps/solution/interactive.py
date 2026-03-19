@@ -102,10 +102,8 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             file_sol_err_name
         )
 
-        # Create dummy output
-        if self.is_generation:
-            with open(testcase_answer, "w+b"):
-                pass  # Truncate the file
+        # Create dummy answer if it doesn't exist
+        Path(testcase_answer).touch()
 
         shutil.copy(testcase_input, sandbox_interactor_input_file)
         shutil.copy(testcase_answer, sandbox_interactor_answer_file)

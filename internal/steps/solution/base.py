@@ -49,12 +49,10 @@ class SolutionStep(ABC):
             self.time_limit_sec = self.context.config.trusted_step_time_limit_sec
             self.memory_limit_mib = self.context.config.trusted_step_memory_limit_mib
             self.output_limit_mib = self.context.config.trusted_step_output_limit_mib
-            self.is_generation = True
         else:
             self.time_limit_sec = self.context.config.solution.time_limit_sec
             self.memory_limit_mib = self.context.config.solution.memory_limit_mib
             self.output_limit_mib = self.context.config.solution.output_limit_mib
-            self.is_generation = False
 
         self.submission_files = submission_files
         for file in self.submission_files:
