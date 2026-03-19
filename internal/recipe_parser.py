@@ -716,7 +716,9 @@ class CommandRegistry:
         self.handlers[command] = handler
 
 
-def parse_recipe_data(recipe_lines: List[str], is_outputonly: bool) -> RecipeData:
+def parse_recipe_data(
+    recipe_lines: List[str], is_outputonly: bool = False
+) -> RecipeData:
     """
     Parse recipe and return the structured data.
 

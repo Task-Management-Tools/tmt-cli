@@ -51,7 +51,7 @@ class OutputOnlySolutionStep(BatchSolutionStep):
                 standard_error="Submission contains only output files",
             )
 
-        def is_output_file(file: pathlib.Path) -> bool:
+        def is_output_file(file: pathlib.Path | zipfile.Path) -> bool:
             return file.is_file() and str(file).endswith(
                 self.context.config.output_extension
             )

@@ -131,6 +131,7 @@ class RegexCopyOperation(ConversionOperation):
 
         # Find all matching files recursively
         matching_files = []
+        # TODO: recurse_symlinks is 3.13+ only
         for file_path in Path(context.path.problem_dir).rglob(
             "*", recurse_symlinks=True
         ):

@@ -44,7 +44,7 @@ def make_compile_wildcard(
 
     # First, we detect if any source files could compile to the same executable.
     # This breaks many assuptions of the tool (for example the recipe), therefore it is an immediate error.
-    executables = {}
+    executables: dict[str, str] = {}
     for source in pathlib.Path(directory).glob("*"):
         base, ext = os.path.splitext(source)
         if any(ext in lang(context).source_extensions for lang in languages):
@@ -54,7 +54,7 @@ def make_compile_wildcard(
                     standard_output=f"Source files {source} and {executables[base]} are ambigious. Please rename one of them.",
                     exit_status=-1,
                 )
-            executables[base] = source
+            executables[base] = str(source.relative_to(os.getcwd()))
     del executables
 
     # Run every langauge's wildcard Makefile to compile all possible sources

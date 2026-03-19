@@ -186,6 +186,7 @@ class CMSCheckerStep(CheckerStep):
 
         if output_file is None or not Path(output_file).exists():
             result.verdict = EvaluationOutcome.NO_FILE
+            return result
 
         self.sandbox.checker.clean()
 
