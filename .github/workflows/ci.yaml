@@ -14,9 +14,9 @@ jobs:
     - name: Disable Core Dump
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: echo "core" | sudo tee /proc/sys/kernel/core_pattern
-    - name: Disable Core Dump
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: defaults write com.apple.CrashReporter DialogType none
+    # - name: Disable Core Dump
+    #   if: ${{ matrix.os == 'macos-latest' }}
+    #   run: defaults write com.apple.CrashReporter DialogType none
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
