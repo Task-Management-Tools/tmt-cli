@@ -13,6 +13,6 @@ namespace
 int accumulateA(int n) { return shared_cnt += n; }
 int accumulateB(int n)
 {
-    std::this_thread::sleep_for(150ms);
+    std::this_thread::sleep_for(300ms);
     return shared_cnt += n;
 }

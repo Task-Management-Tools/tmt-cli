@@ -13,13 +13,13 @@ namespace
 int accumulateA(int n)
 {
     auto prev = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - prev <= 150ms);
+    while (std::chrono::steady_clock::now() - prev <= 300ms);
     return shared_cnt += n;
 }
 
 int accumulateB(int n)
 {
     auto prev = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - prev <= 150ms);
+    while (std::chrono::steady_clock::now() - prev <= 300ms);
     return shared_cnt += n;
 }
