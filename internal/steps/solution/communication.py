@@ -190,7 +190,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
             stderr_redirect=manager_err_filename,
             time_limit_sec=max(
                 # Add 3 because our implementation adds at most 2 second to wall clock limit
-                (self.time_limit_sec + 3) * self.num_procs,
+                (self.time_limit_sec + 1) * self.num_procs,
                 self.context.config.trusted_step_time_limit_sec,
             ),
             memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,

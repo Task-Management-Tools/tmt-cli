@@ -53,10 +53,7 @@ class Process(subprocess.Popen):
         self.poll_time: float
 
         wall_time_limit_sec: float
-        if platform.system() == "Darwin":
-            wall_time_limit_sec = time_limit_sec + 2.0
-        else:
-            wall_time_limit_sec = time_limit_sec + 1.0
+        wall_time_limit_sec = time_limit_sec + 1.0
         self.timer = Timer(wall_time_limit_sec, self.timer_kill)
         self.timer.start()
         super().__init__(*args, **kwargs)
