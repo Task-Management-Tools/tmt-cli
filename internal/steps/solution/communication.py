@@ -1,4 +1,5 @@
 import os
+import platform
 import shutil
 
 from pathlib import Path
@@ -182,6 +183,11 @@ class CommunicationSolutionStep(BatchSolutionStep):
             manager_exec_args.append(solution_s2m_fifo_filename[i])
             manager_exec_args.append(solution_m2s_fifo_filename[i])
 
+        if platform.system() == "Darwin":
+            manager_time_limit = (self.time_limit_sec + 3) * self.num_procs
+        else:
+            manager_time_limit = (self.time_limit_sec + 0.5) * self.num_procs
+
         manager = Process(
             manager_exec_command + manager_exec_args,
             preexec_fn=manager_preexec_fn,
@@ -189,9 +195,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
             stdout_redirect=manager_out_filename,
             stderr_redirect=manager_err_filename,
             time_limit_sec=max(
-                (self.time_limit_sec + 2)
-                * self.num_procs,  # Add 2 because our implementation adds at most 2 second to wall clock limit
-                self.context.config.trusted_step_time_limit_sec,
+                manager_time_limit, self.context.config.trusted_step_time_limit_sec
             ),
             memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
             output_limit_mib=self.context.config.trusted_step_output_limit_mib,

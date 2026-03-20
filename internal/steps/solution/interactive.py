@@ -1,4 +1,5 @@
 import os
+import platform
 import shutil
 
 from pathlib import Path
@@ -156,6 +157,10 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             sandbox_interactor_answer_file,
             sandbox_interactor_feedback_dir.path + os.sep,  # required in ICPC format
         ]
+        if platform.system() == "Darwin":
+            interactor_time_limit = (self.time_limit_sec + 3) * 2
+        else:
+            interactor_time_limit = (self.time_limit_sec + 0.5) * 2
         interactor = Process(
             interactor_exec_command + interactor_exec_args,
             preexec_fn=interactor_preexec_fn,
@@ -163,10 +168,8 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             stdout=solution.stdin,
             stderr_redirect=sandbox_interactor_err_file,
             time_limit_sec=max(
-                self.time_limit_sec * 2,
-                self.context.config.trusted_step_time_limit_sec,
-            )
-            + 1,
+                interactor_time_limit, self.context.config.trusted_step_time_limit_sec
+            ),
             memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
             output_limit_mib=self.context.config.trusted_step_output_limit_mib,
         )
