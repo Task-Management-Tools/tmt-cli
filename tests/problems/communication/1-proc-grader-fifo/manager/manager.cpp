@@ -16,7 +16,7 @@ using namespace std::string_literals;
     std::fprintf(stdout, "%.6lf\n", 0.0);
     std::fflush(stdout);
     std::fprintf(stderr, "translate:wrong\n%s\n", reason);
-    std::abort();
+    std::exit(0);
 }
 
 int main(int argc, char **argv)
