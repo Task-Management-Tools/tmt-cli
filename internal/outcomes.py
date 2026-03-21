@@ -30,23 +30,23 @@ class EvaluationOutcome(Enum):
     TIMEOUT = "Time Limit Exceeded"
 
     # This is wall-clock exceeded TLE; DOMJudge, CMS, and Codeforces all supports this result.
-    TIMEOUT_WALL = "Time Limit Exceeded (wall clock)"
+    TIMEOUT_WALL = "Wall Clock Limit Exceeded"
 
     # Output limit exceeded. Since DOMJudge actually detects output limit by truncating the stream
     # instead of TIOJ-style signal detection, we will need separate verdicts.
     OUTPUT_LIMIT = "Output Limit Exceeded"
 
     # Runtime error caused by signal SIGXFSZ. TIOJ treat this as OLE.
-    RUNERROR_OUTPUT = "Runtime Error (output limit exceeded)"
+    RUNERROR_OUTPUT = "Runtime Error (output)"
 
     # Runtime error caused by signal (FPE, SEGV, etc.) except SIGXFSZ.
     RUNERROR_SIGNAL = "Runtime Error (signaled)"
 
     # Runtime error caused by memory limit exceeded; this verdict only exists since we support MLE detection without cgroup.
-    RUNERROR_MEMORY = "Runtime Error (memory limit exceeded)"
+    RUNERROR_MEMORY = "Runtime Error (memory)"
 
     # Runtime error caused by non-zero exitcode.
-    RUNERROR_EXITCODE = "Runtime Error (non-zero exit code)"
+    RUNERROR_EXITCODE = "Runtime Error (exitcode)"
 
     # Manager/Interactor crashed.
     MANAGER_CRASHED = "Judge Error: Manager Crashed"
@@ -72,6 +72,7 @@ class EvaluationOutcome(Enum):
 
 @dataclass
 class EvaluationResult:
+    codename: str
     score: float = 0.0
     verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
     override_verdict_display: str | None = None
@@ -79,7 +80,9 @@ class EvaluationResult:
 
     cpu_time_sec: float = 0.0
     wall_clock_time_sec: float = 0.0
-    max_memory_kib: int = 0
+    timer_triggered: bool = False
+    max_memory_kib: int = -1
+    max_memory_upper_bound_kib: int = 0
     exit_code: int = 0
     exit_signal: int = 0
 
@@ -91,6 +94,10 @@ class EvaluationResult:
         self.cpu_time_sec += solution.cpu_time_sec
         self.wall_clock_time_sec = max(
             self.wall_clock_time_sec, solution.wall_clock_time_sec
+        )
+        self.timer_triggered = self.timer_triggered or solution.timer_triggered
+        self.max_memory_upper_bound_kib = max(
+            self.max_memory_upper_bound_kib, solution.rss_detectable_lb_kib
         )
         self.max_memory_kib = max(self.max_memory_kib, solution.max_rss_kib)
         self.exit_code = self.exit_code or solution.exit_code

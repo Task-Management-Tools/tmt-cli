@@ -96,7 +96,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
         return comp_result
 
     @requires_sandbox
-    def run_solution(self, code_name: str) -> EvaluationResult:
+    def run_solution(self, codename: str) -> EvaluationResult:
         """
         This function only returns FileNotFoundError for execution error.
         """
@@ -105,7 +105,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
 
         input_filename = os.path.join(
             self.context.path.testcases,
-            self.context.construct_input_filename(code_name),
+            self.context.construct_input_filename(codename),
         )
         # Unused for now
         # output_filename = os.path.join(
@@ -113,14 +113,14 @@ class CommunicationSolutionStep(BatchSolutionStep):
         #     self.context.construct_output_filename(code_name),
         # )
 
-        manager_in_filename = self.sandbox.manager.file(f"{code_name}.manager.in")
-        manager_out_filename = self.sandbox.manager.file(f"{code_name}.manager.out")
-        manager_err_filename = self.sandbox.manager.file(f"{code_name}.manager.err")
+        manager_in_filename = self.sandbox.manager.file(f"{codename}.manager.in")
+        manager_out_filename = self.sandbox.manager.file(f"{codename}.manager.out")
+        manager_err_filename = self.sandbox.manager.file(f"{codename}.manager.err")
 
         shutil.copy(input_filename, manager_in_filename)
 
         solution_err_filename = [
-            self.sandbox.solution_invocation.file(f"{code_name}.sol.{i}.err")
+            self.sandbox.solution_invocation.file(f"{codename}.sol.{i}.err")
             for i in range(self.num_procs)
         ]
         solution_m2s_fifo_filename = [
@@ -241,7 +241,9 @@ class CommunicationSolutionStep(BatchSolutionStep):
 
         # Get verdict
         result = EvaluationResult(
-            verdict=EvaluationOutcome.RUN_SUCCESS, output_file=manager_out_filename
+            codename=codename,
+            verdict=EvaluationOutcome.RUN_SUCCESS,
+            output_file=manager_out_filename,
         )
         for solution in solutions:
             result.fill_from_solution_process(solution)

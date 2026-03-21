@@ -159,15 +159,22 @@ class OutputOnlySolutionStep(BatchSolutionStep):
         )
 
     @requires_sandbox
-    def run_solution(self, code_name: str) -> EvaluationResult:
+    def run_solution(self, codename: str) -> EvaluationResult:
         if self.supplied_output:
             output_file = os.path.join(
                 self.sandbox.solution_invocation.path,
-                self.context.construct_output_filename(code_name),
+                self.context.construct_output_filename(codename),
             )
             if pathlib.Path(output_file).exists():
-                return EvaluationResult(output_file=output_file)
-            return EvaluationResult(verdict=EvaluationOutcome.NO_FILE, output_file=None)
+                return EvaluationResult(
+                    codename=codename, output_file=output_file, max_memory_kib=0
+                )
+            return EvaluationResult(
+                codename=codename,
+                verdict=EvaluationOutcome.NO_FILE,
+                output_file=None,
+                max_memory_kib=0,
+            )
 
         else:
-            return super().run_solution(code_name)
+            return super().run_solution(codename)

@@ -41,7 +41,7 @@ def gen_single(
     testset,
     test,
 ):
-    codename = test.test_name
+    codename = test.name
     assert codename is not None, "codename should not be None here"
 
     formatter.print(" " * 4)
@@ -81,7 +81,9 @@ def gen_single(
     if result.input_validation is not ExecutionOutcome.SUCCESS:
         result.output_generation = ExecutionOutcome.SKIPPED
     elif result.output_generation is ExecutionOutcome.SKIPPED_SUCCESS:
-        solution_result = EvaluationResult(output_file=testcase_answer_file)
+        solution_result = EvaluationResult(
+            output_file=testcase_answer_file, codename=codename
+        )
     else:
         solution_result = solution_step.run_solution(codename)
         result.output_generation = eval_outcome_to_run_outcome(solution_result)
@@ -254,7 +256,7 @@ def command_gen(
         summary.testcase_summary_path = context.path.testcase_summary
 
         for testset in context.recipe.testsets.values():
-            for test in testset.tests:
+            for test in testset.testcases:
                 result = gen_single(
                     context=context,
                     formatter=formatter,
@@ -267,7 +269,7 @@ def command_gen(
                     testset=testset,
                     test=test,
                 )
-                codename = test.test_name
+                codename = test.name
                 assert codename is not None
 
                 with open(

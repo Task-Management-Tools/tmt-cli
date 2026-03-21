@@ -1,7 +1,17 @@
-@testset full
+@subtask sample 0
 print 00
+
+@subtask output01 20
 print 01
+
+@subtask output02 20
 print 02
+
+@subtask output03 20
 print 03
+
+@subtask output04 20
 print 04
+
+@subtask output05 20
 print 05

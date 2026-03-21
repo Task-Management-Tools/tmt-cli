@@ -204,8 +204,8 @@ def test_gen(
     )
 
     for testset in context.recipe.testsets.values():
-        for test in testset.tests:
-            codename = test.test_name
+        for test in testset.testcases:
+            codename = test.name
             assert codename is not None
             assert codename in command_result.testcase_results
 

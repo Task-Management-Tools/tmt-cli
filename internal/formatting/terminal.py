@@ -1,6 +1,13 @@
 import os
 
-from internal.outcomes import CompilationOutcome, EvaluationOutcome, ExecutionOutcome
+from internal import commands
+from internal.context.context import TMTContext
+from internal.outcomes import (
+    CompilationOutcome,
+    EvaluationOutcome,
+    EvaluationResult,
+    ExecutionOutcome,
+)
 from .base import Formatter
 
 
@@ -175,36 +182,181 @@ class TerminalFormatter(Formatter):
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
 
-    def print_checker_verdict(self, result, print_reason: bool = False):
+    def get_verdict_color(self, verdict: EvaluationOutcome):
+        if verdict in self.group_accepted:
+            return self.ANSI_GREEN
+        elif verdict in self.group_partial:
+            return self.ANSI_YELLOW
+        elif verdict in self.group_wrong_answer:
+            return self.ANSI_RED
+        elif verdict in self.group_timeout:
+            return self.ANSI_BLUE
+        elif verdict in self.group_runtime_error:
+            return self.ANSI_PURPLE
+        elif verdict in self.group_output_limit:
+            return self.ANSI_ORANGE
+        elif verdict in self.group_judge_error:
+            return self.ANSI_RED
+        else:
+            raise ValueError(f"Unexpected EvaluationOutcome {verdict}")
+
+    def print_testcase_verdict(
+        self,
+        result: EvaluationResult,
+        context: "TMTContext",
+        print_reason: bool = False,
+    ):
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
-        def print_result(content_color: str):
-            if result.override_verdict_display is not None:
-                verdict_display = result.override_verdict_display
-            else:
-                verdict_display = result.verdict.value
-            self.print_fixed_width(
-                content_color, verdict_display, self.ANSI_RESET, " ", width=16
-            )
-            if print_reason:
-                self.print_checker_reason(result.reason)
+        verdict_display = result.override_verdict_display or result.verdict.value
 
-        if result.verdict in self.group_accepted:
-            return print_result(self.ANSI_GREEN)
-        elif result.verdict in self.group_partial:
-            return print_result(self.ANSI_YELLOW)
-        elif result.verdict in self.group_wrong_answer:
-            return print_result(self.ANSI_RED)
-        elif result.verdict in self.group_timeout:
-            return print_result(self.ANSI_BLUE)
-        elif result.verdict in self.group_runtime_error:
-            return print_result(self.ANSI_PURPLE)
-        elif result.verdict in self.group_output_limit:
-            return print_result(self.ANSI_ORANGE)
-        elif result.verdict in self.group_judge_error:
-            return print_result(self.ANSI_RED)
+        self.print(self.get_verdict_color(result.verdict))
+
+        if context.config.judge_convention.display_score:
+            self.print(f"{result.score:<6.4g}  ")
+
+        self.print_fixed_width(verdict_display, self.ANSI_RESET, " ", width=16)
+        if print_reason:
+            self.print_checker_reason(result.reason)
+
+    def format_time_usage(self, time_sec: float, is_timer_triggered: bool):
+        if is_timer_triggered:
+            return f"> {time_sec:.3f}".rjust(7) + " s"
         else:
-            raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
+            return f"{time_sec:.3f}".rjust(7) + " s"
+
+    def format_memory_usage(self, max_memory_kib: int, max_memory_upper_bound_kib: int):
+        if max_memory_kib == -1:
+            return (
+                self.ANSI_GREY,
+                f"< {max_memory_upper_bound_kib // 1024:3} MiB",
+                self.ANSI_RESET,
+            )
+        else:
+            return f"{max_memory_kib / 1024:5.4g} MiB"
+
+    def format_points(self, point: float):
+        return f"{point:.2f}".rstrip("0").rstrip(".")
+
+    def print_exec_details(
+        self, result: EvaluationResult, context: "TMTContext"
+    ) -> None:
+        self.print(
+            self.format_time_usage(result.cpu_time_sec, result.timer_triggered),
+            self.ANSI_RESET,
+        )
+        self.print(" / ")
+        self.print(
+            *self.format_memory_usage(
+                result.max_memory_kib, result.max_memory_upper_bound_kib
+            )
+        )
+        self.print(" " * 2)
+
+    def print_testset_summary(
+        self,
+        results: "list[commands.invoke.TestsetResult]",
+        overall: "commands.invoke.TestsetResult",
+        context: "TMTContext",
+    ):
+
+        if context.config.judge_convention.display_testsets:
+            self.println("Testset summary")
+        else:
+            self.println("Subtask summary")
+
+        name_width = score_width = full_score_width = 0
+        score = max_score = 0
+
+        for r in results:
+            name_width = max(name_width, len(r.testset_name))
+            if not r.num_testcases:
+                r.score = 0.0
+            if r.max_score is not None:
+                r.score *= r.max_score
+                max_score += r.max_score
+                score += r.score
+
+                score_width = max(score_width, len(self.format_points(r.score)))
+                full_score_width = max(
+                    full_score_width, len(self.format_points(r.max_score))
+                )
+
+        overall.score, overall.max_score = score, max_score
+        score_width = max(score_width, len(self.format_points(score)))
+        full_score_width = max(full_score_width, len(self.format_points(max_score)))
+
+        sol_config = context.config.solution
+
+        def print_testset(ts: "commands.invoke.TestsetResult"):
+            # Name
+            self.print(" " * 4, ts.testset_name.ljust(name_width), " " * 4)
+
+            if ts.num_testcases == 0:
+                self.println(self.ANSI_RED, " " * 7, "(empty)", self.ANSI_RESET)
+                return
+
+            # Max time & memory
+            self.print(
+                self.ANSI_BLUE
+                if ts.max_cpu_time_sec > sol_config.time_limit_sec
+                else "",
+                self.format_time_usage(ts.max_cpu_time_sec, ts.is_timer_triggered),
+                self.ANSI_RESET,
+            )
+            self.print(" / ")
+            self.print(
+                self.ANSI_PURPLE
+                if ts.max_memory_kib > sol_config.memory_limit_mib * 1024
+                else "",
+                *self.format_memory_usage(
+                    ts.max_memory_kib, ts.max_memory_upper_bound_kib
+                ),
+                self.ANSI_RESET,
+            )
+            self.print(" " * 4)
+
+            # Score
+            if context.config.judge_convention.display_score:
+                if ts.verdict == EvaluationOutcome.ACCEPTED:
+                    score_color = self.ANSI_GREEN
+                # When the scoring summary is different, it is partial if it obtains any score,
+                # or it has the partial verdict (if the testset is 0 score)
+                elif ts.score > 0 or ts.verdict == EvaluationOutcome.PARTIAL:
+                    score_color = self.ANSI_YELLOW
+                else:
+                    score_color = self.ANSI_RESET
+
+                self.print(
+                    score_color,
+                    self.format_points(ts.score).rjust(score_width),
+                    " / ",
+                    self.format_points(ts.max_score).rjust(full_score_width),
+                    " pts",
+                    self.ANSI_RESET,
+                )
+                self.print(" " * 4)
+
+            # Verdict
+            self.print_fixed_width(
+                self.get_verdict_color(ts.verdict),
+                ts.verdict.value,
+                self.ANSI_RESET,
+                width=28,
+            )
+
+            if ts.worst_testcase and ts.verdict != EvaluationOutcome.ACCEPTED:
+                self.print("@ ", ts.worst_testcase)
+            self.println()
+
+        # Print testsets/subtasks
+        for r in results:
+            print_testset(r)
+        self.println()
+
+        # Print overall
+        self.println("Overall")
+        print_testset(overall)
 
     def print_hash_diff(self, official_testcase_hashes, testcase_hashes):
         if testcase_hashes == official_testcase_hashes:

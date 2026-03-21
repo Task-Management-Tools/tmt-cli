@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import pathlib
 import os
 import subprocess
@@ -10,6 +11,7 @@ from internal.outcomes import (
     EvaluationResult,
     eval_outcome_to_run_outcome,
 )
+import internal.recipe_parser as recipe_parser
 from internal.steps.checker import get_checker_step_type
 from internal.steps.solution import get_solution_step_type
 from internal.steps.utils import CompilationJob, CompilationSlot
@@ -64,6 +66,58 @@ class CommandInvokeSummary:
     def compilation_fail(self):
         self.compilation_error = True
         return self
+
+
+@dataclass
+class TestsetResult:
+    testset_name: str
+
+    max_score: float | None
+    score: float = float("inf")
+    verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+
+    worst_testcase: str = None
+    num_testcases: int = 0
+    expected_testcases: int = 0
+
+    max_cpu_time_sec: float = 0.0
+    is_timer_triggered: bool = False
+
+    max_memory_kib: int = -1
+    max_memory_upper_bound_kib: int = 0
+
+    def combine(self, other: "EvaluationResult | TestsetResult"):
+        if isinstance(other, EvaluationResult):
+            self.max_cpu_time_sec, self.is_timer_triggered = max(
+                (self.max_cpu_time_sec, self.is_timer_triggered),
+                (other.cpu_time_sec, other.timer_triggered),
+            )
+            if other.score < self.score:
+                self.worst_testcase = other.codename
+                self.score = other.score
+                self.verdict = other.verdict
+            self.num_testcases += 1
+            self.expected_testcases += 1
+            self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+            self.max_memory_upper_bound_kib = max(
+                self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+            )
+
+        elif isinstance(other, TestsetResult):
+            self.max_cpu_time_sec, self.is_timer_triggered = max(
+                (self.max_cpu_time_sec, self.is_timer_triggered),
+                (other.max_cpu_time_sec, other.is_timer_triggered),
+            )
+            if other.score < self.score:
+                self.worst_testcase = other.worst_testcase
+                self.score = other.score
+                self.verdict = other.verdict
+            self.num_testcases += other.num_testcases
+            self.expected_testcases += other.expected_testcases
+            self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+            self.max_memory_upper_bound_kib = max(
+                self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+            )
 
 
 def command_invoke(
@@ -144,9 +198,9 @@ def command_invoke(
             return summary
 
     all_testcases = [
-        test.test_name
+        test.name
         for testset in context.recipe.testsets.values()
-        for test in testset.tests
+        for test in testset.testcases
     ]
     with open(context.path.testcase_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
@@ -183,9 +237,7 @@ def command_invoke(
         solution_result = solution_step.run_solution(codename)
 
         formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
-        formatter.print(
-            f"{solution_result.cpu_time_sec:6.3f} s / {solution_result.max_memory_kib / 1024:5.4g} MiB  "
-        )
+        formatter.print_exec_details(solution_result, context=context)
 
         with open(
             os.path.join(context.path.logs_invocation, f"{codename}.sol.log"), "w+"
@@ -198,9 +250,50 @@ def command_invoke(
             solution_result = checker_step.run_checker(solution_result, codename)
 
         formatter.print_checker_status(solution_result)
-        formatter.print_checker_verdict(solution_result, print_reason=show_reason)
+        formatter.print_testcase_verdict(
+            solution_result, context=context, print_reason=show_reason
+        )
         formatter.println()
 
         summary.testcase_results[codename] = solution_result
+
+    testset_results: dict[str, TestsetResult] = {}
+
+    def init_result(testset: recipe_parser.Testset | recipe_parser.Subtask):
+        if isinstance(testset, recipe_parser.Subtask):
+            return TestsetResult(testset_name=testset.name, max_score=testset.score)
+        else:
+            return TestsetResult(testset_name=testset.name, max_score=None)
+
+    overall = TestsetResult(testset_name="", max_score=None)
+
+    # Process without dependencies
+    for ts in context.recipe.testsets.values():
+        ts_res = init_result(ts)
+        for testcases in ts.testcases:
+            if testcases.name in summary.testcase_results:
+                ts_res.combine(summary.testcase_results[testcases.name])
+            else:
+                ts_res.expected_testcases += 1
+        testset_results[ts.name] = ts_res
+        overall.combine(ts_res)
+
+    # Include the dependencies
+    for ts in reversed(context.recipe.testsets.values()):
+        ts_res = init_result(ts)
+        for dep_ts in ts.dependency:
+            ts_res.combine(testset_results[dep_ts.name])
+        ts_res.combine(testset_results[ts.name])
+        testset_results[ts.name] = ts_res
+
+    display_testsets = []
+    for ts in context.recipe.testsets.values():
+        if isinstance(ts, recipe_parser.Subtask):
+            display_testsets.append(testset_results[ts.name])
+        elif context.config.judge_convention.display_testsets:
+            display_testsets.append(testset_results[ts.name])
+
+    formatter.println()
+    formatter.print_testset_summary(display_testsets, overall, context)
 
     return summary

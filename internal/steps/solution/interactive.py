@@ -82,16 +82,16 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         return comp_result
 
     @requires_sandbox
-    def run_solution(self, code_name: str) -> EvaluationResult:
+    def run_solution(self, codename: str) -> EvaluationResult:
         """
         This function only returns FileNotFoundError for execution error.
         """
         self.workdir.clean()
 
-        file_in_name = self.context.construct_input_filename(code_name)
-        file_out_name = self.context.construct_output_filename(code_name)
-        file_sol_err_name = f"{code_name}.sol.err"
-        file_interactor_err_name = f"{code_name}.interactor.err"
+        file_in_name = self.context.construct_input_filename(codename)
+        file_out_name = self.context.construct_output_filename(codename)
+        file_sol_err_name = f"{codename}.sol.err"
+        file_interactor_err_name = f"{codename}.interactor.err"
 
         testcase_input = os.path.join(self.context.path.testcases, file_in_name)
         testcase_answer = os.path.join(self.context.path.testcases, file_out_name)
@@ -194,14 +194,14 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         shutil.move(sandbox_solution_err_file, self.context.log_file(file_sol_err_name))
 
         interactor_feedback_logs = self.context.log_file(
-            f"{code_name}.interactor.feedback"
+            f"{codename}.interactor.feedback"
         )
         if os.path.isdir(interactor_feedback_logs):
             shutil.rmtree(interactor_feedback_logs)
         shutil.copytree(sandbox_interactor_feedback_dir.path, interactor_feedback_logs)
 
         result = EvaluationResult(
-            verdict=EvaluationOutcome.RUN_SUCCESS, output_file=None
+            codename=codename, verdict=EvaluationOutcome.RUN_SUCCESS, output_file=None
         )
         result.fill_from_solution_process(solution)
 

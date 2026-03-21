@@ -4,11 +4,36 @@ import re
 import dataclasses
 
 
+@dataclasses.dataclass(frozen=True)
+class JudgeSettings:
+    name: str
+    display_score: bool
+    display_testsets: bool
+
+
 class JudgeConvention(enum.Enum):
-    ICPC = "icpc"
-    CMS = "cms"
-    TIOJ_OLD = "old-tioj"
-    TIOJ_NEW = "new-tioj"
+    ICPC = JudgeSettings(name="icpc", display_score=False, display_testsets=True)
+    CMS = JudgeSettings(name="cms", display_score=True, display_testsets=False)
+    TIOJ_OLD = JudgeSettings(
+        name="old-tioj", display_score=True, display_testsets=False
+    )
+    TIOJ_NEW = JudgeSettings(
+        name="new-tioj", display_score=True, display_testsets=False
+    )
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            for member in cls:
+                if member.value.name == value:
+                    return member
+        return None
+
+    def __getattr__(self, item):
+        # Guard against infinite recursion during pickling/copying
+        if item.startswith("_"):
+            raise AttributeError(item)
+        return getattr(self._value_, item)
 
 
 class ProblemType(enum.Enum):

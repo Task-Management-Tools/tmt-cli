@@ -60,7 +60,7 @@ class BatchSolutionStep(SolutionStep):
 
         if len(sources) != len(self.submission_format):
             return compile_fail(
-                f"Submission file number mismatch (found {len(sources)}, expect {len(sources)})."
+                f"Submission file number mismatch (found {len(sources)}, expect {len(self.submission_format)})."
             )
 
         # Replace the solution file with absolute path, then we try to add grader if the config exists
@@ -119,13 +119,13 @@ class BatchSolutionStep(SolutionStep):
         return comp_result
 
     @requires_sandbox
-    def run_solution(self, code_name: str) -> EvaluationResult:
+    def run_solution(self, codename: str) -> EvaluationResult:
         workdir = self.sandbox.solution_invocation
         workdir.clean()
 
-        file_in_name = self.context.construct_input_filename(code_name)
-        file_out_name = self.context.construct_output_filename(code_name)
-        file_err_name = f"{code_name}.sol.err"
+        file_in_name = self.context.construct_input_filename(codename)
+        file_out_name = self.context.construct_output_filename(codename)
+        file_err_name = f"{codename}.sol.err"
 
         testcase_input = os.path.join(self.context.path.testcases, file_in_name)
         sandbox_input_file = workdir.file(file_in_name)
@@ -162,6 +162,7 @@ class BatchSolutionStep(SolutionStep):
         shutil.move(sandbox_error_file, self.context.log_file(file_err_name))
 
         result = EvaluationResult(
+            codename=codename,
             verdict=EvaluationOutcome.RUN_SUCCESS,
             output_file=sandbox_output_file,
         )
