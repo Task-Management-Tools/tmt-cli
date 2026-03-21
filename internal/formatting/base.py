@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 import sys
 
 from abc import ABC, abstractmethod
 
-from internal import commands
-from internal.context.context import TMTContext
+if TYPE_CHECKING:
+    from internal.context.context import TMTContext
+    from internal import commands
+
 from internal.outcomes import (
     CompilationResult,
     ExecutionOutcome,
