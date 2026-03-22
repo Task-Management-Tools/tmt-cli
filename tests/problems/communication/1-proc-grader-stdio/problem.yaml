@@ -1,4 +1,4 @@
-title: Modulo (1 process, FIFO)
+title: Modulo (1 process, standard IO)
 short_name: modulo
 description: Communication test for 1 process, gradered, with standard IO
 

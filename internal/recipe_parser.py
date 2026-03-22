@@ -150,7 +150,9 @@ class Testset:
         Args:
             testset (Testset): The testset to be included
         """
-        self.dependency.append(testset)
+        for deps in testset.dependency + [testset]:
+            if deps not in self.dependency:
+                self.dependency.append(deps)
 
     def add_test(self, command_sequence: str):
         """
@@ -211,6 +213,12 @@ class Testset:
             test_name = f"{testset_index_padded}_{self.name}_{testcase_index_padded}"
             test.name = test_name
 
+    def get_all_test_names(self):
+        return sum(
+            ([tc.name for tc in ts.testcases] for ts in (self.dependency + [self])),
+            start=[],
+        )
+
 
 class Subtask(Testset):
     """
@@ -242,6 +250,7 @@ class RecipeData:
 
     def __init__(self):
         self.testsets: dict[str, Testset | Subtask] = {}
+        self.subtasks: dict[str, Subtask] = {}
         self.global_validation: List[Executable] = []
 
     def get_all_test_names(self) -> List[str]:
@@ -474,6 +483,7 @@ class SubtaskHandler(CommandHandler):
 
         subtask = Subtask(subtask_name, score)
         self.context.recipe_data.testsets[subtask_name] = subtask
+        self.context.recipe_data.subtasks[subtask_name] = subtask
         self.context.current_context = "subtask"
         self.context.current_object = subtask
 
