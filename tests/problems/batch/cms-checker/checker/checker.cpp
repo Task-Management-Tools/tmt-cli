@@ -54,4 +54,10 @@ int main(int argc, char **argv)
         std::this_thread::sleep_for(10.1s);
     if (output == "fail")
         std::exit(0); // do nothing so I fails
+    if (output == "unicode")
+    {
+        std::cout << "1.0" << std::endl;
+        std::cerr << "correct...?" << std::endl;
+        std::cerr << "蛤"s.substr(0, 2) << std::endl;
+    }
 }

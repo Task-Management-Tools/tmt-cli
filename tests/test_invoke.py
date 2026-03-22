@@ -89,16 +89,17 @@ zero_score = score_eq(0.0)
 
 # fmt: off
 expected_results_batch_cms_checker = {
-    "model-solution.cpp":  { "1_full_1": (CORRECT,   full_score,
-                                          reason("correct reason"), feedback("correct feedback")) },
-    "wrong.cpp":           { "1_full_1": (WRONG,     zero_score,
-                                          reason("wrong reason"), feedback("wrong feedback")) },
-    "partial.cpp":         { "1_full_1": (PARTIAL,   score_eq(0.5),
-                                          reason("partial reason"), feedback("partial feedback")) },
-    "checker-crash.cpp":   { "1_full_1": (CHK_CRASH, zero_score) },
-    "checker-fail.cpp":    { "1_full_1": (CHK_FAIL,  zero_score) },
-    "checker-singal.cpp":  { "1_full_1": (CHK_CRASH, zero_score) },
-    "checker-timeout.cpp": { "1_full_1": (CHK_TLE,   zero_score) },
+    "model-solution.cpp":     { "1_full_1": (CORRECT,   full_score,
+                                             reason("correct reason"), feedback("correct feedback")) },
+    "wrong.cpp":              { "1_full_1": (WRONG,     zero_score,
+                                             reason("wrong reason"), feedback("wrong feedback")) },
+    "partial.cpp":            { "1_full_1": (PARTIAL,   score_eq(0.5),
+                                             reason("partial reason"), feedback("partial feedback")) },
+    "checker-crash.cpp":      { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker-utf8-crash.cpp": { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker-fail.cpp":       { "1_full_1": (CHK_FAIL,  zero_score) },
+    "checker-singal.cpp":     { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker-timeout.cpp":    { "1_full_1": (CHK_TLE,   zero_score) },
 }
 
 expected_results_batch_cms_whitediff = {

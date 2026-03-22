@@ -131,34 +131,47 @@ class CMSCheckerStep(CheckerStep):
         reason: str | None = None
 
         try:
-            with open(manager_out_filename) as f:
-                score = float(f.readline().strip())
-                if math.isnan(score) or math.isinf(score):
-                    raise ValueError("run_solution: manager score is NaN or infinities")
-            if score <= 0:
-                verdict = EvaluationOutcome.WRONG
-            elif score < 1:
-                verdict = EvaluationOutcome.PARTIAL
-            else:
-                verdict = EvaluationOutcome.ACCEPTED
-        except ValueError:
+            try:
+                with open(manager_out_filename, "rb") as f:
+                    score = float(f.readline().strip().decode(encoding="utf-8"))
+                    if math.isnan(score) or math.isinf(score):
+                        raise ValueError(
+                            "run_solution: manager score is NaN or infinities"
+                        )
+                if score <= 0:
+                    verdict = EvaluationOutcome.WRONG
+                elif score < 1:
+                    verdict = EvaluationOutcome.PARTIAL
+                else:
+                    verdict = EvaluationOutcome.ACCEPTED
+            except ValueError:
+                if is_checker:
+                    verdict = EvaluationOutcome.CHECKER_FAILED
+                    reason = "Comparator did not print a valid floating point number to standard output"
+                else:
+                    verdict = EvaluationOutcome.MANAGER_FAILED
+                    reason = "Manager did not print a valid floating point number to standard output"
+
+            with open(manager_err_filename, "rb") as f:
+                display = f.readline().strip().decode(encoding="utf-8") or None
+                reason = f.readline().strip().decode(encoding="utf-8") or None
+
+                if display == "translate:success":
+                    display = EvaluationOutcome.ACCEPTED.value
+                if display == "translate:wrong":
+                    display = EvaluationOutcome.WRONG.value
+                if display == "translate:partial":
+                    display = EvaluationOutcome.PARTIAL.value
+
+        except UnicodeDecodeError:
+            score = 0.0
+            display = None
             if is_checker:
                 verdict = EvaluationOutcome.CHECKER_FAILED
-                reason = "Comparator did not print a valid floating point number to standard output"
+                reason = "Comparator output would cause UnicodeDecodeError; please fix"
             else:
                 verdict = EvaluationOutcome.MANAGER_FAILED
-                reason = "Manager did not print a valid floating point number to standard output"
-
-        with open(manager_err_filename) as f:
-            display = f.readline().strip() or None
-            reason = f.readline().strip() or None
-
-            if display == "translate:success":
-                display = EvaluationOutcome.ACCEPTED.value
-            if display == "translate:wrong":
-                display = EvaluationOutcome.WRONG.value
-            if display == "translate:partial":
-                display = EvaluationOutcome.PARTIAL.value
+                reason = "Manager output would cause UnicodeDecodeError; please fix"
 
         return score, verdict, display, reason
 
