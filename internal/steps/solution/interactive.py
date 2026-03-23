@@ -7,7 +7,7 @@ import signal
 import subprocess
 
 from internal.compilation.makefile import make_clean, make_compile_target
-from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
+from internal.exceptions import TMTMissingFileError
 from internal.process import Process, wait_procs
 from internal.compilation import get_run_single_command
 from internal.outcomes import (
@@ -35,14 +35,10 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             self.workdir.create()
         if not self.context.path.has_interactor_directory():
             raise TMTMissingFileError(filetype="Directory", filename="interactor")
-        if self.context.config.interactor is None:
-            raise TMTInvalidConfigError(
-                "Config section `interactor` is not present in problems.yaml."
-            )
-        if self.context.config.interactor.filename is None:
-            raise TMTInvalidConfigError(
-                "Config option `interactor.filename` is not present in problems.yaml."
-            )
+
+        # Pre-condition ensured by config
+        assert self.context.config.interactor is not None
+
         self.interactor_name = self.context.config.interactor.filename
 
     def clean_up(self):

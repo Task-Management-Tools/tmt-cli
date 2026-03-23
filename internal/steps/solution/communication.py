@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 
 from internal.compilation.makefile import make_clean, make_compile_target
-from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
+from internal.exceptions import TMTMissingFileError
 from internal.process import Process, wait_procs
 from internal.compilation import get_run_single_command
 from internal.outcomes import (
@@ -36,26 +36,10 @@ class CommunicationSolutionStep(BatchSolutionStep):
         if not self.context.path.has_manager_directory():
             raise TMTMissingFileError(filetype="Directory", filename="manager")
 
-        if self.context.config.manager is None:
-            raise TMTInvalidConfigError(
-                "Config section `manager` is not present in problems.yaml."
-            )
-        if self.context.config.manager.filename is None:
-            raise TMTInvalidConfigError(
-                "Config option `manager.filename` is not present in problems.yaml."
-            )
-        if self.context.config.checker is not None:
-            raise TMTInvalidConfigError(
-                "Config section `checker` should not be present in Communication tasks."
-            )
-        if self.context.config.solution.num_procs is None:
-            raise TMTInvalidConfigError(
-                "Config option `solution.num_procs` is not present in problems.yaml."
-            )
-        if self.context.config.solution.use_fifo is None:
-            raise TMTInvalidConfigError(
-                "Config option `solution.use_fifo` is not present in problems.yaml."
-            )
+        # Pre-condition ensured by config
+        assert self.context.config.manager is not None
+        assert self.context.config.checker is None
+        assert self.context.config.solution.num_procs is not None
 
         self.manager_name = self.context.config.manager.filename
         self.num_procs = self.context.config.solution.num_procs

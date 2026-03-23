@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from internal.context import CheckerType, TMTContext, SandboxDirectory
-from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
+from internal.exceptions import TMTMissingFileError
 from internal.formatting.base import Formatter
 from internal.outcomes import EvaluationResult, CompilationResult
 
@@ -25,7 +25,6 @@ class CheckerStep(ABC):
         is_generation: Whether this step is running during generation rather than evaluation.
 
     Raises:
-        TMTInvalidConfigError: if the checker config is invalid.
         TMTMissingFileError: if the checker config indicates a custom checker but the checker directory does not exist.
     """
 
@@ -52,13 +51,8 @@ class CheckerStep(ABC):
             self.checker_name = "(default)"
         else:
             self.use_default_checker = False
+            assert context.config.checker.filename is not None
 
-            if context.config.checker is None:
-                raise TMTInvalidConfigError("Config section `checker` is not present.")
-            if context.config.checker.filename is None:
-                raise TMTInvalidConfigError(
-                    "Config option `checker.filename` is not present."
-                )
             if not context.path.has_checker_directory():
                 raise TMTMissingFileError(filetype="Directory", filename="checker")
 

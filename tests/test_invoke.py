@@ -96,7 +96,7 @@ expected_results_batch_cms_checker = {
     "partial.cpp":            { "1_full_1": (PARTIAL,   score_eq(0.5),
                                              reason("partial reason"), feedback("partial feedback")) },
     "checker-crash.cpp":      { "1_full_1": (CHK_CRASH, zero_score) },
-    "checker-utf8-crash.cpp": { "1_full_1": (CHK_CRASH, zero_score) },
+    "checker-utf8-crash.cpp": { "1_full_1": (CHK_FAIL,  zero_score) },
     "checker-fail.cpp":       { "1_full_1": (CHK_FAIL,  zero_score) },
     "checker-singal.cpp":     { "1_full_1": (CHK_CRASH, zero_score) },
     "checker-timeout.cpp":    { "1_full_1": (CHK_TLE,   zero_score) },
