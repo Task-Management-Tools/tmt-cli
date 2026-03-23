@@ -271,22 +271,22 @@ class Manager:
 
 
 # TODO: document time limit format and memory limit format
-def parse_time_to_second(field_name: str, input_str: str) -> float:
+def parse_time_to_second(input_str: str) -> float:
     match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", input_str)
     if match is None:
-        raise ValueError(f'{field_name} "{input_str}" is invalid.')
+        raise ValueError(f'"{input_str}" is an invalid time string.')
     if match.group(2) == "ms":
         return float(match.group(1)) / 1000.0
     else:
         return float(match.group(1))
 
 
-def parse_bytes_to_mib(field_name: str, input_str: str) -> int:
+def parse_bytes_to_mib(input_str: str) -> int:
     if input_str == "unlimited":
         return resource.RLIM_INFINITY
     match = re.fullmatch(r"(\d+)\s*(G|GiB|M|MiB)", input_str)
     if match is None:
-        raise ValueError(f'{field_name} "{input_str}" is invalid.')
+        raise ValueError(f'"{input_str}" is an invalid memory string.')
     if match.group(2).startswith("G"):
         return int(match.group(1)) * 1024
     else:
@@ -340,7 +340,7 @@ class Solution:
             )
 
         try:
-            time_limit_sec = parse_time_to_second("", time_limit)
+            time_limit_sec = parse_time_to_second(time_limit)
         except (ValueError, TypeError):
             errors.append(
                 TMTConfigError(
@@ -349,7 +349,7 @@ class Solution:
             )
 
         try:
-            memory_limit_mib = parse_bytes_to_mib("", memory_limit)
+            memory_limit_mib = parse_bytes_to_mib(memory_limit)
             if memory_limit_mib == resource.RLIM_INFINITY:
                 errors.append(
                     TMTConfigError("Config solution.memory_limit must not be unlimited")
@@ -362,7 +362,7 @@ class Solution:
             )
 
         try:
-            output_limit_mib = parse_bytes_to_mib("", output_limit)
+            output_limit_mib = parse_bytes_to_mib(output_limit)
         except (ValueError, TypeError):
             errors.append(
                 TMTConfigError(
@@ -604,7 +604,7 @@ class TMTConfig:
         compile_time_limit_sec = None
         if (compile_time_limit := data.pop("compile_time_limit", None)) is not None:
             try:
-                compile_time_limit_sec = parse_time_to_second("", compile_time_limit)
+                compile_time_limit_sec = parse_time_to_second(compile_time_limit)
             except (ValueError, TypeError):
                 errors.append(
                     TMTConfigError(
@@ -615,7 +615,7 @@ class TMTConfig:
         compile_memory_limit_mib = None
         if (compile_memory_limit := data.pop("compile_memory_limit", None)) is not None:
             try:
-                compile_memory_limit_mib = parse_bytes_to_mib("", compile_memory_limit)
+                compile_memory_limit_mib = parse_bytes_to_mib(compile_memory_limit)
             except (ValueError, TypeError):
                 errors.append(
                     TMTConfigError(

@@ -1,4 +1,5 @@
 import re
+import glob
 import shutil
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -131,12 +132,11 @@ class RegexCopyOperation(ConversionOperation):
 
         # Find all matching files recursively
         matching_files = []
-        # TODO: recurse_symlinks is 3.13+ only
-        for file_path in Path(context.path.problem_dir).rglob("*"):
-            if file_path.is_file() and self.pattern.search(
-                str(file_path.relative_to(context.path.problem_dir))
-            ):
-                matching_files.append(file_path)
+        for file_path in glob.iglob(
+            "**", root_dir=context.path.problem_dir, recursive=True
+        ):
+            if Path(file_path).is_file() and self.pattern.search(file_path):
+                matching_files.append(Path(context.path.problem_dir) / file_path)
 
         if not matching_files:
             formatter.println(
