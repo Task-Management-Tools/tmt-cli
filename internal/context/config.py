@@ -310,6 +310,18 @@ class Solution:
     num_procs: int | None
     use_fifo: bool
 
+    @property
+    def memory_limit_bytes(self) -> float:
+        return self.memory_limit_mib * 1024 * 1024
+
+    @property
+    def memory_limit_kib(self) -> int:
+        return self.memory_limit_mib * 1024
+
+    @property
+    def memory_limit_gib(self) -> float:
+        return self.memory_limit_mib / 1024
+
     @classmethod
     def from_raw(cls, data: dict) -> "Solution | list[TMTConfigError]":
         if not isinstance(data, dict):

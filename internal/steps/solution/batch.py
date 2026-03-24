@@ -79,15 +79,16 @@ class BatchSolutionStep(SolutionStep):
         # TODO: what is the specification of graders in ICPC format?
         if self.grader is not None:
             lang = lang_type(self.context)
-            grader_dir = pathlib.Path(self.context.path.grader) / lang.id
+            grader_dir = pathlib.Path(self.context.path.graders)
 
             # We only iterate the immediate files in the directory, because most of the time the judge won't support nested directories in the graders
             for file in grader_dir.iterdir():
                 if not file.is_file():
                     continue
                 base, ext = os.path.splitext(os.path.basename(file))
-                if base == self.grader and ext in lang.source_extensions:
-                    graders.append(str(file.absolute()))
+                if base == self.grader:
+                    if ext in lang.source_extensions:
+                        graders.append(str(file.absolute()))
                 else:
                     headers.append(str(file.absolute()))
             if len(graders) == 0:

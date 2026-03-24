@@ -54,7 +54,7 @@ class ProblemDirectoryHelper:
     checker = _problem_path_property("checker")
     checker_build = _extend_path_property(checker, "build")
 
-    grader = _problem_path_property("grader")
+    graders = _problem_path_property("graders")
 
     interactor = _problem_path_property("interactor")
     interactor_build = _extend_path_property(interactor, "build")
@@ -65,6 +65,8 @@ class ProblemDirectoryHelper:
     testcases = _problem_path_property("testcases")
     testcase_summary = _extend_path_property(testcases, "summary")
     testcases_hashes = _extend_path_property(testcases, "hash.json")
+
+    public = _problem_path_property("public")
 
     sandbox = _problem_path_property("sandbox")
     default_sandbox = _extend_path_property(sandbox, "default")

@@ -307,7 +307,7 @@ class TerminalFormatter(Formatter):
             self.print(" / ")
             self.print(
                 self.ANSI_PURPLE
-                if ts.max_memory_kib > sol_config.memory_limit_mib * 1024
+                if ts.max_memory_kib > sol_config.memory_limit_kib
                 else "",
                 *self.format_memory_usage(
                     ts.max_memory_kib, ts.max_memory_upper_bound_kib

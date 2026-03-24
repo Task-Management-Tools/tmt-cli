@@ -62,9 +62,7 @@ class CMSExporter(FolderFormatExporter):
 
         problem_json["score_precision"] = 2
         problem_json["time_limit"] = context.config.solution.time_limit_sec
-        problem_json["memory_limit"] = (
-            context.config.solution.memory_limit_mib * 1024 * 1024
-        )
+        problem_json["memory_limit"] = context.config.solution.memory_limit_bytes
         problem_json["task_type_params"] = json.dumps(task_type_params)
         return json.dumps(problem_json)
 
@@ -77,14 +75,14 @@ class CMSExporter(FolderFormatExporter):
 
         return rename_func
 
-    def filter_graders(self, lang: languages.Language):
+    def filter_graders(self):
         def rename_func(_f, context: TMTContext, filename: Path, _s):
+
             filebase, fileext = os.path.splitext(os.path.basename(filename))
-            if (
-                filebase == context.config.solution.grader_name
-                and fileext in lang.source_extensions
-            ):
-                return "grader" + lang.source_extensions[0]
+            if filebase == context.config.solution.grader_name:
+                for lang in languages.languages:
+                    if fileext in lang(context).source_extensions:
+                        return "grader" + lang.source_extensions[0]
             return filename
 
         return rename_func
@@ -134,13 +132,16 @@ class CMSExporter(FolderFormatExporter):
             self.add_regex_copy_operation(r"^include/.*", "graders")
 
         if context.config.solution.grader_name:
-            for lang_type in languages.languages:
-                lang = lang_type(context)
-                self.add_regex_copy_operation(
-                    rf"^grader/{re.escape(lang.id)}/.*",
-                    "graders",
-                    rename_func=self.filter_graders(lang),
-                )
+            self.add_regex_copy_operation(
+                r"^graders/.*",
+                "graders",
+                rename_func=self.filter_graders(),
+            )
+
+        self.add_copy_operation(
+            f"public/{context.config.short_name}.zip",
+            f"attachments/{context.config.short_name}.zip",
+        )
 
         subtask_id = 0
         subtask_id_width = len(str(len(context.recipe.subtasks) - 1))

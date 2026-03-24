@@ -60,4 +60,12 @@ def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bo
                 context=context, sandbox=None, is_generation=False
             ).clean_up()
 
+    public_zip_path = os.path.join(
+        context.path.public, context.config.short_name + ".zip"
+    )
+    if os.path.exists(public_zip_path) and confirm("Cleanup generated attachment"):
+        os.remove(public_zip_path)
+
+    # TODO: clean statement?
+
     formatter.println("Cleanup completed.")
