@@ -3,7 +3,7 @@ import os
 import re
 import pathlib
 import string
-from typing import Callable, TextIO, BinaryIO
+from typing import TextIO, BinaryIO, Protocol
 from zipfile import ZipFile
 
 from internal.compilation import languages
@@ -32,6 +32,13 @@ class ZipOperationResult:
     filename: str | None
     error: str | None = None
     warning: str | None = None
+
+
+class ZipOperation(Protocol):
+    # For type hinting
+    def __call__(
+        self, ctx: TMTContext, zf: ZipFile, *args: str
+    ) -> ZipOperationResult: ...
 
 
 def check_duped_file(zipf: ZipFile, filename: str) -> tuple[bool, str | None]:
@@ -306,9 +313,7 @@ def hidden_testcase_public(
     return ZipOperationResult(filename=", ".join(files))
 
 
-COMMAND_TABLE: dict[
-    str, Callable[[TMTContext, ZipFile, *tuple[str, ...]], ZipOperationResult]
-] = {
+COMMAND_TABLE: dict[str, ZipOperation] = {
     "public": raw_public,
     "format": format_public,
     "grader": grader_public,
