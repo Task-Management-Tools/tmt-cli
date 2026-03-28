@@ -4,7 +4,12 @@ import re
 from pathlib import Path
 
 from internal.compilation import languages, recognize_language
-from internal.context.config import CheckerType, JudgeConvention, ProblemType
+from internal.context.config import (
+    CheckerType,
+    JudgeConvention,
+    ProblemType,
+    SolutionType,
+)
 from internal.formatting import Formatter
 from internal.context import TMTContext
 
@@ -41,7 +46,10 @@ class CMSExporter(FolderFormatExporter):
     def construct_problem_json(self, context: TMTContext):
         task_type_params = {}
         if context.config.problem_type == ProblemType.BATCH:
-            task_type_params["task_type_parameters_Batch_compilation"] = "grader"
+            if context.config.solution.type == SolutionType.GRADER:
+                task_type_params["task_type_parameters_Batch_compilation"] = "grader"
+            else:
+                task_type_params["task_type_parameters_Batch_compilation"] = "alone"
         elif context.config.problem_type == ProblemType.COMMUNICATION:
             task_type_params["task_type_parameters_Communication_num_processes"] = (
                 context.config.solution.num_procs
