@@ -6,7 +6,7 @@ input_extension: .in
 output_extension: .out
 
 judge_convention: cms
-problem_type: outputonly
+problem_type: output_only
 
 validator:
   type: default

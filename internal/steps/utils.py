@@ -20,30 +20,13 @@ def requires_sandbox(func):
     return wrapper
 
 
-@dataclass(frozen=True)
-class CompilationSlotInfo:
-    display_name: str
-    internal_name: str
-
-
 class CompilationSlot(Enum):
-    # fmt: off
-    GENERATOR  = CompilationSlotInfo("Generator", "generator")
-    VALIDATOR  = CompilationSlotInfo("Validator", "validator")
-    SOLUTION   = CompilationSlotInfo("Solution", "solution")
-    INTERACTOR = CompilationSlotInfo("Interactor", "interactor")
-    MANAGER    = CompilationSlotInfo("Manager", "manager")
-    CHECKER    = CompilationSlotInfo("Checker", "checker")
-    # fmt: on
-
-    # Convenience accessors
-    @property
-    def display_name(self) -> str:
-        return self.value.display_name
-
-    @property
-    def internal_name(self) -> str:
-        return self.value.internal_name
+    GENERATOR = "generator"
+    VALIDATOR = "validator"
+    SOLUTION = "solution"
+    INTERACTOR = "interactor"
+    MANAGER = "manager"
+    CHECKER = "checker"
 
 
 @dataclass

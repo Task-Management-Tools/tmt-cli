@@ -1,9 +1,14 @@
 import argparse
 import pathlib
 
-from internal.commands.make_public import command_make_public
 from internal.context import TMTContext, find_problem_dir
-from internal.commands import command_gen, command_invoke, command_clean, command_export
+from internal.commands import (
+    command_gen,
+    command_invoke,
+    command_clean,
+    command_export,
+    command_make_public,
+)
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal import __version__
 from internal.formatting import TerminalFormatter

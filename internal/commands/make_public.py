@@ -330,14 +330,6 @@ def command_make_public(*, formatter: Formatter, context: TMTContext) -> bool:
     if context.config.judge_convention != JudgeConvention.CMS:
         raise ValueError("make-public currently only supports CMS tasks")
 
-    archive_name = context.config.short_name + ".zip"
-    public_path = pathlib.Path(context.path.public)
-    public_zip = pathlib.Path(context.path.public) / (
-        context.config.short_name + ".zip"
-    )
-
-    formatter.println("Creating public attachment ", archive_name, "...")
-
     commands = []
     line_no = 0
     bad = False
@@ -354,7 +346,20 @@ def command_make_public(*, formatter: Formatter, context: TMTContext) -> bool:
         )
         bad = True
 
-    with open(public_path / "files", "r") as filelist:
+    if not pathlib.Path(context.path.public_filelist).is_file():
+        formatter.println(
+            formatter.ANSI_RED,
+            "Error: ",
+            formatter.ANSI_RESET,
+            f"Public filelist ({os.path.relpath(context.path.public_filelist)}) is not a file or does not exist.",
+        )
+        return False
+
+    archive_name = context.config.short_name + ".zip"
+    public_zip = pathlib.Path(context.path.public) / archive_name
+    formatter.println("Creating public attachment ", archive_name, "...")
+
+    with open(context.path.public_filelist, "r") as filelist:
         # Filter commands and reject unrecognized ones
         for line in filelist.readlines():
             line_no += 1
@@ -409,6 +414,7 @@ def command_make_public(*, formatter: Formatter, context: TMTContext) -> bool:
         commands.append(("testcases", "", "tests/"))
         max_command_width = max(max_command_width, 11)
 
+    # Build the zipfile
     with ZipFile(public_zip, "w") as z:
         for method, src, dest in commands:
             formatter.print(" " * 4)
@@ -447,5 +453,7 @@ def command_make_public(*, formatter: Formatter, context: TMTContext) -> bool:
                     "]    ",
                     result.filename,
                 )
+    if bad and public_zip.exists():
+        public_zip.unlink()
 
     return not bad

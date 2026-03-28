@@ -100,34 +100,30 @@ def gen_single(
     # If both input is validated and output is available, run checker if the testcase type should apply check
     success_verdicts = [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]
 
-    # Not meaningful to run checker
-    if (
+    # Not meaningful to run / no checker
+    if not checker_step:
+        result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+    # Already failed
+    elif (
         result.output_generation not in success_verdicts
         or result.input_validation not in success_verdicts
     ):
         result.output_validation = ExecutionOutcome.SKIPPED
-    else:
-        # The config explicitly asked so
-        if context.config.checker and (
-            (result.is_output_forced and not context.config.checker.check_forced_output)
-            or (
-                not result.is_output_forced
-                and not context.config.checker.check_generated_output
-            )
-        ):
-            result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
-
-    if (
-        checker_step is not None
-        and result.output_validation is ExecutionOutcome.UNKNOWN
+    # The config explicitly asked so
+    elif (
+        result.is_output_forced and not context.config.checker.check_forced_output
+    ) or (
+        not result.is_output_forced
+        and not context.config.checker.check_generated_output
     ):
+        result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
+    else:
+        assert result.output_validation == ExecutionOutcome.UNKNOWN
         formatter.print("check ")
         checker_result = checker_step.run_checker(solution_result, codename)
         result.output_validation = eval_outcome_to_grade_outcome(checker_result)
         result.reason = checker_result.reason
         formatter.print_exec_result(result.output_validation)
-    else:
-        result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
 
     if show_reason:
         formatter.print_checker_reason(result.reason)
@@ -234,7 +230,7 @@ def command_gen(
             )
 
     for job in compilation_jobs():
-        formatter.print(f"{job.slot.display_name.ljust(10)}  compile ")
+        formatter.print(f"{job.slot.value.ljust(10)}  compile ")
         result = job.compile_fn()
         summary.compilation_result[job.slot] = result
         formatter.print_compile_result(result, name=job.display_file)

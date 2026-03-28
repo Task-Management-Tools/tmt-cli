@@ -191,7 +191,7 @@ def command_invoke(
             )
 
     for job in compilation_jobs():
-        formatter.print(f"{job.slot.display_name.ljust(10)}  compile ")
+        formatter.print(f"{job.slot.value.ljust(10)}  compile ")
         result = job.compile_fn()
         summary.compilation_result[job.slot] = result
         formatter.print_compile_result(result, name=job.display_file)

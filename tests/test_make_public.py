@@ -2,12 +2,10 @@ import pathlib
 from zipfile import ZipFile
 import pytest
 
-from internal.commands.make_public import command_make_public
 from internal.context import TMTContext
 from internal.formatting.terminal import TerminalFormatter
 
-from internal.commands import command_clean
-from internal.commands.gen import command_gen
+from internal.commands import command_clean, command_gen, command_make_public
 
 
 expected_results_communication_2_proc_grader_stdio = {

@@ -4,8 +4,7 @@ import shutil
 import pathlib
 import zipfile
 
-from internal.compilation.single import compile_single
-from internal.compilation.utils import recognize_language
+from internal.compilation import compile_single, recognize_language
 from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
@@ -59,12 +58,13 @@ class OutputOnlySolutionStep(BatchSolutionStep):
         sources = self.submission_files
 
         # Directory mode
-        directory = pathlib.Path(sources[0])
-        if len(sources) == 1 and directory.is_dir():
-            for file in filter(is_output_file, directory.iterdir()):
-                shutil.copy(file, self.sandbox.solution_invocation.path)
-            return found_output_files()
-        del directory
+        if len(sources) == 1:
+            directory = pathlib.Path(sources[0])
+            if directory.is_dir():
+                for file in filter(is_output_file, directory.iterdir()):
+                    shutil.copy(file, self.sandbox.solution_invocation.path)
+                return found_output_files()
+            del directory
 
         # The remaining should be all regular files
         for source in map(pathlib.Path, sources):

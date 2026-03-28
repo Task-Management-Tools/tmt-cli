@@ -51,7 +51,7 @@ class ProblemType(enum.Enum):
     BATCH = "batch"
     INTERACTIVE = "interactive"
     COMMUNICATION = "communication"
-    OUTPUT_ONLY = "outputonly"
+    OUTPUT_ONLY = "output_only"
 
 
 class CheckerType(enum.Enum):

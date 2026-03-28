@@ -246,7 +246,7 @@ def test_gen(
         elif isinstance(submission, tuple):
             submission_files = list(map(form_submission_fullpath, submission))
         else:
-            assert False
+            assert False, "Submission file is neither a string nor a tuple of strings"
 
         invoke_summary = command_invoke(formatter=formatter,
                                         context=context,

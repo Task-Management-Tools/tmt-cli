@@ -32,11 +32,16 @@ def _internal_path_property(*kwargs):
 class ProblemDirectoryHelper:
     """
     Helps everything with files and directories.
+    Constructs absolute paths.
     """
 
     PROBLEM_YAML = "problem.yaml"
 
     def __init__(self, problem_dir: str, script_dir: str):
+        if not os.path.isabs(problem_dir):
+            return ValueError("problem_dir of ProblemDirectoryHelper must be absolute")
+        if not os.path.isabs(script_dir):
+            return ValueError("script_dir of ProblemDirectoryHelper must be absolute")
         self.problem_dir = problem_dir
         self.script_dir = script_dir
 
@@ -67,6 +72,7 @@ class ProblemDirectoryHelper:
     testcases_hashes = _extend_path_property(testcases, "hash.json")
 
     public = _problem_path_property("public")
+    public_filelist = _extend_path_property(public, "files")
 
     sandbox = _problem_path_property("sandbox")
     default_sandbox = _extend_path_property(sandbox, "default")

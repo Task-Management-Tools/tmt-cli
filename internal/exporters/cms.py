@@ -3,8 +3,7 @@ import os
 import re
 from pathlib import Path
 
-from internal.compilation import languages
-from internal.compilation.utils import recognize_language
+from internal.compilation import languages, recognize_language
 from internal.context.config import CheckerType, JudgeConvention, ProblemType
 from internal.formatting import Formatter
 from internal.context import TMTContext

@@ -2,7 +2,7 @@ import os
 import pathlib
 import shutil
 
-from internal.compilation.utils import recognize_language
+from internal.compilation import recognize_language
 from internal.process import Process, wait_procs
 from internal.compilation import compile_single, get_run_single_command
 from internal.outcomes import (
