@@ -21,6 +21,8 @@ class SafeFormatter(string.Formatter):
             return "{" + str(key) + "}"
 
     def get_field(self, field_name, args, kwargs):
+        if field_name.startswith("__"):
+            raise ValueError(f"'{field_name}' contains double underscore")
         try:
             return super().get_field(field_name, args, kwargs)
         except (KeyError, AttributeError, IndexError, TypeError):
