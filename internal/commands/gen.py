@@ -101,7 +101,7 @@ def gen_single(
     success_verdicts = [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]
 
     # Not meaningful to run / no checker
-    if not checker_step:
+    if checker_step is None:
         result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
     # Already failed
     elif (
