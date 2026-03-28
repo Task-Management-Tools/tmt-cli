@@ -135,8 +135,9 @@ class RegexCopyOperation(ConversionOperation):
         for file_path in glob.iglob(
             "**", root_dir=context.path.problem_dir, recursive=True
         ):
-            if Path(file_path).is_file() and self.pattern.search(file_path):
-                matching_files.append(Path(context.path.problem_dir) / file_path)
+            full_path = Path(context.path.problem_dir) / file_path
+            if full_path.is_file() and self.pattern.search(file_path):
+                matching_files.append(full_path)
 
         if not matching_files:
             formatter.println(
