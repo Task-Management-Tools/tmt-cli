@@ -160,7 +160,7 @@ def command_gen(
     *, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool
 ) -> CommandGenSummary:
     """Generate test cases in the given directory."""
-    context.log_directory = context.path.logs_generation
+    context.set_log_directory(context.path.logs_generation)
 
     summary = CommandGenSummary()
 

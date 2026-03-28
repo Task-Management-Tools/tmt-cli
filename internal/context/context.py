@@ -74,14 +74,29 @@ class TMTContext:
     def construct_output_filename(self, code_name: str):
         return self.construct_test_filename(code_name, self.config.output_extension)
 
+    # TODO: find a better solution to maintain the current log_directory
     @property
     def log_directory(self) -> str:
         if self._log_directory is None:
-            raise ValueError("Log file required while context holds none")
+            raise RuntimeError("log_directory required while context holds none")
         return self._log_directory
 
     @log_directory.setter
-    def log_directory(self, value: str | None) -> None:
+    def log_directory(self, value: None) -> None:
+        if value is not None:
+            raise RuntimeError(
+                "log_directory can only be set to None; for initalize and setting log directory, use set_log_directory instead."
+            )
+
+    def set_log_directory(self, value: str):
+        """
+        Sets the log directory to *value* and creates the directory if it doesn't exist.
+
+        Args:
+            value: The new log directory path. The path should be absolute.
+        """
+        if not os.path.isabs(value):
+            raise ValueError(f"set_log_directory: {value} is not an absolute path")
         self._log_directory = value
         if self._log_directory is not None:
             os.makedirs(self._log_directory, exist_ok=True)
@@ -91,6 +106,7 @@ class TMTContext:
 
 
 def find_problem_dir(cwd: pathlib.Path) -> str:
+
     for directory in [cwd] + list(cwd.parents):
         if (directory / ProblemDirectoryHelper.PROBLEM_YAML).exists():
             return str(directory.resolve())
