@@ -112,23 +112,29 @@ class OutputOnlySolutionStep(BatchSolutionStep):
             try:
                 zip_filename = sources[0]
                 with zipfile.ZipFile(zip_filename, "r") as zip_ref:
-                    for file in filter(is_output_file, zipfile.Path(zip_ref).iterdir()):
-                        # Path traversal?
+                    for zip_info in zip_ref.infolist():
+                        if os.path.isabs(
+                            zip_info.filename
+                        ) or ".." in zip_info.filename.split("/"):
+                            continue  # actual path traversal check
                         if (
-                            os.path.commonpath([str(file), zip_filename])
-                            != zip_filename
-                        ):
+                            zip_info.external_attr >> 16
+                        ) & 0xA000 == 0xA000:  # symlink mode bits
                             continue
 
-                        if file.name in filelist:
+                        name = os.path.basename(zip_info.filename)
+                        if not name.endswith(self.context.config.output_extension):
+                            continue
+                        if name in filelist:
                             return compile_fail(
-                                f"Duplicated output file {file.name} in submitted ZIP archive."
+                                f"Duplicated output file {name} in submitted ZIP archive."
                             )
-                        filelist.add(file.name)
-                        out_path = self.sandbox.solution_invocation.file(file.name)
+                        filelist.add(name)
+                        print(name)
+                        out_path = self.sandbox.solution_invocation.file(name)
 
                         with open(out_path, "wb") as f:
-                            f.write(file.read_bytes())
+                            f.write(zip_ref.read(zip_info))
 
                 return found_output_files()
             except zipfile.BadZipFile:
