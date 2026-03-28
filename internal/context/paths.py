@@ -39,9 +39,9 @@ class ProblemDirectoryHelper:
 
     def __init__(self, problem_dir: str, script_dir: str):
         if not os.path.isabs(problem_dir):
-            return ValueError("problem_dir of ProblemDirectoryHelper must be absolute")
+            raise ValueError("problem_dir of ProblemDirectoryHelper must be absolute")
         if not os.path.isabs(script_dir):
-            return ValueError("script_dir of ProblemDirectoryHelper must be absolute")
+            raise ValueError("script_dir of ProblemDirectoryHelper must be absolute")
         self.problem_dir = problem_dir
         self.script_dir = script_dir
 

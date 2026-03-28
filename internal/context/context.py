@@ -26,12 +26,12 @@ class TMTContext:
             raise TMTInvalidConfigError(self.path.problem_yaml) from e
 
         try:
-            self.config = TMTConfig.from_raw(problem_yaml)
-            if not isinstance(self.config, TMTConfig):
-                raise ValueError("\n".join([e.what for e in self.config]))
+            config = TMTConfig.from_raw(problem_yaml)
+            if not isinstance(config, TMTConfig):
+                raise ValueError("\n".join([e.what for e in config]))
+            self.config = config
         except (TypeError, ValueError) as e:
             raise TMTInvalidConfigError(self.path.problem_yaml) from e
-        self.config: TMTConfig
 
         try:
             with open(self.path.compiler_yaml, "r") as file:
