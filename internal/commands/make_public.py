@@ -379,6 +379,8 @@ def command_make_public(*, formatter: Formatter, context: TMTContext) -> bool:
                     report_error(
                         f'Source must not resolve to a path starting with double dots (found "{src}")'
                     )
+                if src.startswith("/"):
+                    report_error(f'Source must not be an absolute path (found "{src}")')
 
             # Sanitize dest
             if dest:

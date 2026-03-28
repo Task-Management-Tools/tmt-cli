@@ -1,7 +1,7 @@
 import os
 
 from internal.compilation.languages.base import MakeInfo, Language
-from internal.context.context import TMTContext
+from internal.context import TMTContext
 
 
 class LanguageDummy(Language):

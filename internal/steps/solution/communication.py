@@ -25,7 +25,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
     """
     Implements Communication solution evaluation step based on CMS (contest management system).
 
-    Requires executable "manager", accepts optional argument in config indicating whether the participant's program interacts via standatd I/O.
+    Requires executable "manager", accepts optional argument in config indicating whether the participant's program interacts via standard I/O.
     """
 
     def __init__(self, **kwargs):

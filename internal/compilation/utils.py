@@ -1,7 +1,7 @@
 import os
 from typing import Type
 
-from internal.context.context import TMTContext
+from internal.context import TMTContext
 
 from .languages.base import Language
 from .languages import languages

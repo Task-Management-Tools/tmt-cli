@@ -50,6 +50,7 @@ class CommandInvokeSummary:
         def predicate(result: EvaluationResult):
             return result.verdict not in [
                 EvaluationOutcome.MANAGER_CRASHED,
+                EvaluationOutcome.MANAGER_FAILED,
                 EvaluationOutcome.MANAGER_TIMEOUT,
                 EvaluationOutcome.CHECKER_CRASHED,
                 EvaluationOutcome.CHECKER_FAILED,

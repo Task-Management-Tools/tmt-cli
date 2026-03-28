@@ -1,7 +1,7 @@
 import os
 
 from internal import commands
-from internal.context.context import TMTContext
+from internal.context import TMTContext
 from internal.outcomes import (
     CompilationOutcome,
     EvaluationOutcome,
@@ -146,6 +146,7 @@ class TerminalFormatter(Formatter):
     ]
     group_judge_error = [
         EvaluationOutcome.MANAGER_CRASHED,
+        EvaluationOutcome.MANAGER_FAILED,
         EvaluationOutcome.MANAGER_TIMEOUT,
         EvaluationOutcome.CHECKER_CRASHED,
         EvaluationOutcome.CHECKER_FAILED,

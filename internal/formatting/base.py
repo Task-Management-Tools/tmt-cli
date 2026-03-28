@@ -5,7 +5,7 @@ import sys
 from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
-    from internal.context.context import TMTContext
+    from internal.context import TMTContext
     from internal import commands
 
 from internal.outcomes import (

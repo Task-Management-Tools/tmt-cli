@@ -307,6 +307,7 @@ def command_gen(
             # Dump hashes first
             with open(context.path.testcases_hashes, "w") as f:
                 json.dump(summary.testcase_hashes, f, sort_keys=True, indent=4)
+                f.write("\n")
 
             # Duplicated test detection
             input_hashes: dict[str, list[str]] = {}

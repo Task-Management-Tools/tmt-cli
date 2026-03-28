@@ -253,6 +253,8 @@ class CMSCheckerStep(CheckerStep):
                 output_limit_mib=self.limits.trusted_step_output_limit_mib,
             )
 
+            wait_procs([checker_process])
+
             shutil.copy(
                 checker_out_file,
                 self.context.log_file(os.path.basename(checker_out_file)),
@@ -261,8 +263,6 @@ class CMSCheckerStep(CheckerStep):
                 checker_err_file,
                 self.context.log_file(os.path.basename(checker_err_file)),
             )
-
-            wait_procs([checker_process])
 
             if checker_process.is_timedout:
                 result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT

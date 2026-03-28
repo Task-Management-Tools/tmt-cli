@@ -247,7 +247,6 @@ def test_gen(
             submission_files = list(map(form_submission_fullpath, submission))
         else:
             assert False
-        print(submission)
 
         invoke_summary = command_invoke(formatter=formatter,
                                         context=context,

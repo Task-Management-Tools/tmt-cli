@@ -1,6 +1,6 @@
 title: Accumulate (2 processes, standard IO)
 short_name: accumulate
-description: Communication test for 2 process, gradered, use standatd IO
+description: Communication test for 2 process, gradered, use standard IO
 
 input_extension: .in
 output_extension: .out

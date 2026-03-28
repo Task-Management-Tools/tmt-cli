@@ -122,7 +122,7 @@ class OutputOnlySolutionStep(BatchSolutionStep):
 
                         if file.name in filelist:
                             return compile_fail(
-                                "Duplicated output file {file.name} in submitted ZIP archive."
+                                f"Duplicated output file {file.name} in submitted ZIP archive."
                             )
                         filelist.add(file.name)
                         out_path = self.sandbox.solution_invocation.file(file.name)
