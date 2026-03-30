@@ -103,6 +103,10 @@ class EvaluationResult:
         self.exit_code = self.exit_code or solution.exit_code
         self.exit_signal = self.exit_signal or solution.exit_signal
 
+    @property
+    def feedback(self) -> str:
+        return self.override_verdict_display or self.verdict.value
+
 
 class CompilationOutcome(Enum):
     # The compilation finished successfully.

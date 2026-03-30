@@ -209,7 +209,7 @@ class TerminalFormatter(Formatter):
     ):
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
-        verdict_display = result.override_verdict_display or result.verdict.value
+        verdict_display = result.feedback
 
         self.print(self.get_verdict_color(result.verdict))
 
