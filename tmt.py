@@ -8,6 +8,7 @@ from internal.commands import (
     command_clean,
     command_export,
     command_make_public,
+    command_verify,
 )
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal import __version__
@@ -54,6 +55,8 @@ def main():
     parser_export.add_argument("output", help="The filename of the exported zip file.")
 
     subparsers.add_parser("make-public", help="Build public attachment archive file")
+
+    subparsers.add_parser("verify", help="Check issues.")
 
     args = parser.parse_args()
 
@@ -106,6 +109,10 @@ def main():
     if args.command == "make-public":
         ret = command_make_public(formatter=formatter, context=context)
         return ret
+
+    if args.command == "verify":
+        command_verify(formatter=formatter, context=context)
+        return True
 
     return False
 
