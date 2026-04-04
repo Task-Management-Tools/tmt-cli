@@ -85,26 +85,23 @@ class CMSExporter(FolderFormatExporter):
         problem_json["task_type_params"] = json.dumps(task_type_params)
         return json.dumps(problem_json)
 
-    def enforce_file_ext(self, ext: str):
+    def basename_with_ext(self, ext: str):
         if not ext.startswith("."):
-            raise ValueError("enforce_file_ext: ext must start with a dot.")
+            raise ValueError("basename_with_ext: ext must start with a dot.")
 
         def rename_func(_f, _c, filename: Path, _s):
-            return os.path.splitext(filename)[0] + ext
+            return os.path.splitext(os.path.basename(filename))[0] + ext
 
         return rename_func
 
-    def filter_graders(self):
-        def rename_func(_f, context: TMTContext, filename: Path, _s):
-
-            filebase, fileext = os.path.splitext(os.path.basename(filename))
-            if filebase == context.config.solution.grader_name:
-                for lang in languages.languages:
-                    if fileext in lang(context).source_extensions:
-                        return "grader" + lang.source_extensions[0]
-            return filename
-
-        return rename_func
+    @classmethod
+    def filter_graders(cls, _f, context: TMTContext, filename: Path, _s):
+        filebase, fileext = os.path.splitext(os.path.basename(filename))
+        if filebase == context.config.solution.grader_name:
+            for lang in languages.languages:
+                if fileext in lang(context).source_extensions:
+                    return "grader" + lang(context).source_extensions[0]
+        return os.path.basename(filename)
 
     def setup_operations(self, formatter: Formatter, context: TMTContext):
         assert context.config.judge_convention == JudgeConvention.CMS
@@ -115,12 +112,12 @@ class CMSExporter(FolderFormatExporter):
         self.add_regex_copy_operation(
             rf"^testcases/.*{re.escape(context.config.input_extension)}$",
             "tests",
-            rename_func=self.enforce_file_ext(".in"),
+            rename_func=self.basename_with_ext(".in"),
         )
         self.add_regex_copy_operation(
             rf"^testcases/.*{re.escape(context.config.output_extension)}$",
             "tests",
-            rename_func=self.enforce_file_ext(".out"),
+            rename_func=self.basename_with_ext(".out"),
         )
         self.add_regex_copy_operation(r"^statement/.*\.pdf$", "statements")
 
@@ -152,10 +149,12 @@ class CMSExporter(FolderFormatExporter):
 
         if context.config.solution.grader_name:
             self.add_regex_copy_operation(
-                r"^graders/.*",
+                r"^graders/[^/]*",
                 "graders",
-                rename_func=self.filter_graders(),
+                rename_func=self.filter_graders,
             )
+            # TODO: report error when graders contain other files called manager.cpp
+            # TODO: report warning/error when graders contain other in nested directory
 
         self.add_copy_operation(
             f"public/{context.config.short_name}.zip",

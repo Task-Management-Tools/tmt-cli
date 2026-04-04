@@ -95,7 +95,6 @@ class ICPCExporter(FolderFormatExporter):
         self.add_regex_copy_operation(
             r"^solutions/.*\..*",
             "submissions",
-            keep_original_name=False,
             rename_func=recognize_verdict,
             supplementary_files=["verdicts.yaml"],
         )
