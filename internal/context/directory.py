@@ -1,6 +1,7 @@
 # Implements temporary sandbox path helpers
 
 import os
+import stat
 import shutil
 
 
@@ -34,6 +35,8 @@ class Directory:
                 os.unlink(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
+            elif stat.S_ISFIFO(os.stat(file_path).st_mode):
+                os.unlink(file_path)
 
 
 class SandboxDirectory(Directory):

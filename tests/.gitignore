@@ -4,6 +4,7 @@ problems/**/validator/build
 problems/**/checker/build
 problems/**/interactor/build
 problems/**/manager/build
+problems/**/public/*.zip
 
 # Testcases
 problems/**/testcases/*

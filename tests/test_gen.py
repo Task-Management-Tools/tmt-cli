@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import os
 import hashlib
 import pathlib
@@ -14,6 +15,7 @@ from internal.outcomes import (
 )
 from internal.commands import command_clean
 from internal.commands.gen import command_gen
+from internal.steps.utils import CompilationSlot
 
 
 def expected_result_helper(*, gen, val, ans, checker=ExecutionOutcome.UNKNOWN):
@@ -25,13 +27,14 @@ def expected_result_helper(*, gen, val, ans, checker=ExecutionOutcome.UNKNOWN):
     return result
 
 
+@dataclass(kw_only=True)
 class ExpectedCompilation:
-    def __init__(self, *, gen=False, val=False, sol=False, check=False, interact=False):
-        self.gen = gen
-        self.val = val
-        self.sol = sol
-        self.check = check
-        self.interact = interact
+    gen: bool = False
+    val: bool = False
+    sol: bool = False
+    check: bool = False
+    interact: bool = False
+    manager: bool = False
 
 
 OK = ExecutionOutcome.SUCCESS
@@ -42,74 +45,120 @@ SKIP_OK = ExecutionOutcome.SKIPPED_SUCCESS
 TLE = ExecutionOutcome.TIMEDOUT
 
 # fmt: off
-expected_results_aplusb = (
-    ExpectedCompilation(gen=True, val=True, sol=True),
-    {
-        "1_handmade_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_4":       expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "1_handmade_5":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_6":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "2_with-proof_1":     expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "3_bad-generators_1": expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad-generators_2": expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad-generators_3": expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
-        "3_bad-generators_4": expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
-    }
+expected_results_batch_no_testdata = (
+    ExpectedCompilation(gen=True, val=True, sol=True), {}
 )
 
-expected_results_floatcmp = (
+expected_results_batch_cms_checker = (
+    ExpectedCompilation(gen=True, val=True, sol=True, check=True),
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK,   checker=OK), }
+)
+
+expected_results_batch_cms_whitediff = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+)
+
+expected_results_batch_cms_grader = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+)
+
+expected_results_batch_icpc_checker = (
     ExpectedCompilation(gen=True, val=True, sol=True, check=True),
     {
-        "1_handmade_1":       expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_input_1":        expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
+        "2_override_1":     expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
+        "3_bad_override_1": expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
     }
 )
 
-expected_results_guess = (
+expected_results_batch_icpc_floatcmp = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    {
+        "1_full_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
+    }
+)
+
+expected_results_batch_icpc_generator = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    {
+        "1_good_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_2":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_3":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_4":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_good_6":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2_proof_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "3_bad_1":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3_bad_2":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3_bad_3":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3_bad_4":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3_bad_5":   expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
+        "3_bad_6":   expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
+        "3_bad_7":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+    }
+)
+
+expected_results_batch_icpc_validator = (
+    ExpectedCompilation(gen=True, val=True, sol=True),
+    {
+        "1_normal_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1_normal_2":  expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "1_normal_3":  expected_result_helper(gen=OK,   val=RTE,  ans=SKIP),
+        "1_normal_4":  expected_result_helper(gen=OK,   val=TLE,  ans=SKIP),
+        "1_normal_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2_proof_1":   expected_result_helper(gen=OK,   val=OK,   ans=OK),
+    }
+)
+
+expected_results_interactive_guess = (
     ExpectedCompilation(gen=True, val=True, sol=True, interact=True),
     {
-        "1_testset_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_testset_2":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_testset_3":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_testset_4":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_full_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_full_2":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_full_3":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1_full_4":        expected_result_helper(gen=OK, val=OK, ans=OK),
     }
 )
 
-expected_results_parity = (
+expected_results_communication_general = (
+    ExpectedCompilation(gen=True, val=True, manager=True, sol=True),
+    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+)
+
+expected_results_outputonly_basic = (
     ExpectedCompilation(gen=True, val=True, sol=True, check=True),
     {
-        "1_handmade_1":               expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
-        "1_handmade_2":               expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
-        "2_override_1":               expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
-        "3_override-wrong-answer_1":  expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
+        "0": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "3": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "4": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "5": expected_result_helper(gen=OK,   val=OK,   ans=OK),
     }
 )
-
-expected_results_aplusb_py = (
-    ExpectedCompilation(gen=True, val=True, sol=True),
-    {
-        "1_handmade_1":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_2":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_3":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_4":       expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "1_handmade_5":       expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_handmade_6":       expected_result_helper(gen=OK,   val=OK,   ans=OK)
-    }
-)
-# fmt: on
-
 
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
-        ("problems/aplusb", expected_results_aplusb),
-        ("problems/aplusb-py", expected_results_aplusb_py),
-        ("problems/floatcmp", expected_results_floatcmp),
-        ("problems/guess", expected_results_guess),
-        ("problems/parity", expected_results_parity),
+        ("problems/batch/no-testdata", expected_results_batch_no_testdata),
+        ("problems/batch/cms-checker", expected_results_batch_cms_checker),
+        ("problems/batch/cms-grader", expected_results_batch_cms_grader),
+        ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),
+        ("problems/batch/icpc-checker", expected_results_batch_icpc_checker),
+        ("problems/batch/icpc-default-floatcmp", expected_results_batch_icpc_floatcmp),
+        ("problems/batch/icpc-generator", expected_results_batch_icpc_generator),
+        ("problems/batch/icpc-validator", expected_results_batch_icpc_validator),
+        ("problems/interactive/guess", expected_results_interactive_guess),
+        ("problems/communication/1-proc-grader-fifo", expected_results_communication_general),
+        ("problems/communication/1-proc-grader-stdio", expected_results_communication_general),
+        ("problems/communication/2-proc-grader-fifo", expected_results_communication_general),
+        ("problems/communication/2-proc-grader-stdio", expected_results_communication_general),
+        ("problems/outputonly/basic", expected_results_outputonly_basic),
     ],
 )
+# fmt: on
 def test_gen(
     problem_path: str,
     expected_results: tuple[ExpectedCompilation, dict[str, GenerationResult]],
@@ -118,6 +167,10 @@ def test_gen(
     problem_dir = pathlib.Path(__file__).parent.resolve() / problem_path
     formatter = TerminalFormatter()
     context = TMTContext(str(problem_dir), str(script_dir))
+
+    # Force shorter trusted step time to speed up unit test
+    # TODO document this
+    context.config.trusted_step_time_limit_sec = 1.0
 
     command_clean(formatter=formatter, context=context, skip_confirm=True)
     command_result = command_gen(
@@ -134,17 +187,30 @@ def test_gen(
         else:
             assert found is None
 
-    check_compilation(expected_compilation.gen, command_result.generation_compilation)
-    check_compilation(expected_compilation.val, command_result.validation_compilation)
-    check_compilation(expected_compilation.sol, command_result.solution_compilation)
-    check_compilation(expected_compilation.check, command_result.checker_compilation)
+    compilation_result = command_result.compilation_result
     check_compilation(
-        expected_compilation.interact, command_result.interactor_compilation
+        expected_compilation.gen, compilation_result.get(CompilationSlot.GENERATOR)
+    )
+    check_compilation(
+        expected_compilation.val, compilation_result.get(CompilationSlot.VALIDATOR)
+    )
+    check_compilation(
+        expected_compilation.sol, compilation_result.get(CompilationSlot.SOLUTION)
+    )
+    check_compilation(
+        expected_compilation.check, compilation_result.get(CompilationSlot.CHECKER)
+    )
+    check_compilation(
+        expected_compilation.interact,
+        compilation_result.get(CompilationSlot.INTERACTOR),
+    )
+    check_compilation(
+        expected_compilation.manager, compilation_result.get(CompilationSlot.MANAGER)
     )
 
     for testset in context.recipe.testsets.values():
-        for test in testset.tests:
-            codename = test.test_name
+        for test in testset.testcases:
+            codename = test.name
             assert codename is not None
             assert codename in command_result.testcase_results
 

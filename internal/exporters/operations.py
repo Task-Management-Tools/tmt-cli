@@ -1,4 +1,5 @@
 import re
+import glob
 import shutil
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -104,7 +105,6 @@ class RegexCopyOperation(ConversionOperation):
         self,
         pattern: str,
         target_path: str,
-        keep_original_name: bool = True,
         rename_func: Optional[
             Callable[[Formatter, TMTContext, Path, List[Path]], str]
         ] = None,
@@ -115,7 +115,6 @@ class RegexCopyOperation(ConversionOperation):
     ):
         self.pattern = re.compile(pattern)
         self.target_path = target_path
-        self.keep_original_name = keep_original_name
         self.rename_func = rename_func
         self.custom_func = custom_func
         self.supplementary_files = supplementary_files or []
@@ -131,13 +130,12 @@ class RegexCopyOperation(ConversionOperation):
 
         # Find all matching files recursively
         matching_files = []
-        for file_path in Path(context.path.problem_dir).rglob(
-            "*", recurse_symlinks=True
+        for file_path in glob.iglob(
+            "**", root_dir=context.path.problem_dir, recursive=True
         ):
-            if file_path.is_file() and self.pattern.search(
-                str(file_path.relative_to(context.path.problem_dir))
-            ):
-                matching_files.append(file_path)
+            full_path = Path(context.path.problem_dir) / file_path
+            if full_path.is_file() and self.pattern.search(file_path):
+                matching_files.append(full_path.relative_to(context.path.problem_dir))
 
         if not matching_files:
             formatter.println(
@@ -168,15 +166,12 @@ class RegexCopyOperation(ConversionOperation):
                 return
 
         for file_path in matching_files:
-            if self.keep_original_name:
-                target_name = file_path.name
+            if self.rename_func:
+                target_name = self.rename_func(
+                    formatter, context, file_path, supplementary_files
+                )
             else:
-                if self.rename_func:
-                    target_name = self.rename_func(
-                        formatter, context, file_path, supplementary_files
-                    )
-                else:
-                    target_name = file_path.name
+                target_name = file_path.name
 
             target_file = target_dir / Path(target_name)
             target_file.parent.mkdir(parents=True, exist_ok=True)

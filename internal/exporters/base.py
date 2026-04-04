@@ -41,7 +41,6 @@ class FolderFormatExporter:
         self,
         pattern: str,
         target_folder: str,
-        keep_original_name: bool = True,
         rename_func: Optional[
             Callable[[Formatter, TMTContext, Path, List[Path]], str]
         ] = None,
@@ -56,7 +55,6 @@ class FolderFormatExporter:
         Args:
             pattern: Regex pattern to match files
             target_folder: Target folder name
-            keep_original_name: Whether to keep original filenames (ignored if rename_func provided)
             rename_func: Function that takes (formatter, context, matched_file, supplementary_files) and returns target filename
             custom_func: Function that takes (formatter, context, matched_file, supplementary_files, output_file)
             supplementary_files: List of supplementary file paths from problem director to include
@@ -64,7 +62,6 @@ class FolderFormatExporter:
         operation = RegexCopyOperation(
             pattern,
             target_folder,
-            keep_original_name,
             rename_func,
             custom_func,
             supplementary_files,

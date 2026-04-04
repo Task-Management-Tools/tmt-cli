@@ -1,4 +1,9 @@
+from dataclasses import dataclass
+from enum import Enum
 import functools
+from typing import Callable
+
+from internal.outcomes import CompilationResult
 
 
 def requires_sandbox(func):
@@ -13,3 +18,19 @@ def requires_sandbox(func):
         return func(self, *args, **kwargs)
 
     return wrapper
+
+
+class CompilationSlot(Enum):
+    GENERATOR = "generator"
+    VALIDATOR = "validator"
+    SOLUTION = "solution"
+    INTERACTOR = "interactor"
+    MANAGER = "manager"
+    CHECKER = "checker"
+
+
+@dataclass
+class CompilationJob:
+    slot: CompilationSlot
+    compile_fn: Callable[[], CompilationResult]
+    display_file: str

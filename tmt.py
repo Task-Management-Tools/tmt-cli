@@ -2,7 +2,13 @@ import argparse
 import pathlib
 
 from internal.context import TMTContext, find_problem_dir
-from internal.commands import command_gen, command_invoke, command_clean, command_export
+from internal.commands import (
+    command_gen,
+    command_invoke,
+    command_clean,
+    command_export,
+    command_make_public,
+)
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal import __version__
 from internal.formatting import TerminalFormatter
@@ -46,6 +52,8 @@ def main():
 
     parser_export = subparsers.add_parser("export", help="Export packages")
     parser_export.add_argument("output", help="The filename of the exported zip file.")
+
+    subparsers.add_parser("make-public", help="Build public attachment archive file")
 
     args = parser.parse_args()
 
@@ -95,6 +103,10 @@ def main():
         command_export(formatter=formatter, context=context, output_path=args.output)
         return True  # Does not fail without exception
 
+    if args.command == "make-public":
+        ret = command_make_public(formatter=formatter, context=context)
+        return ret
+
     return False
 
 
@@ -105,7 +117,9 @@ if __name__ == "__main__":
     except TMTMissingFileError as e:
         print()
         print(e)
+        exit(1)
     except TMTInvalidConfigError as e:
         print()
         print(f'Invalid config, at: "{e}"')
         print(e.__cause__)
+        exit(1)

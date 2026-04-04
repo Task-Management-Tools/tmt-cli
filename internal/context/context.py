@@ -1,3 +1,4 @@
+import os
 import pathlib
 import yaml
 
@@ -6,13 +7,14 @@ from internal.recipe_parser import parse_recipe_data
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 
 from .paths import ProblemDirectoryHelper
-from .config import TMTConfig
+from .config import ProblemType, TMTConfig
 
 
 class TMTContext:
     def __init__(self, problem_dir: str, script_root: str):
         # context.path constructs absolute paths.
         self.path = ProblemDirectoryHelper(problem_dir, script_root)
+        self._log_directory: str | None = None
 
         try:
             with open(self.path.problem_yaml, "r") as file:
@@ -24,7 +26,10 @@ class TMTContext:
             raise TMTInvalidConfigError(self.path.problem_yaml) from e
 
         try:
-            self.config = TMTConfig(**problem_yaml)
+            config = TMTConfig.from_raw(problem_yaml)
+            if not isinstance(config, TMTConfig):
+                raise ValueError("\n".join([e.what for e in config]))
+            self.config = config
         except (TypeError, ValueError) as e:
             raise TMTInvalidConfigError(self.path.problem_yaml) from e
 
@@ -38,7 +43,11 @@ class TMTContext:
 
         try:
             with open(self.path.tmt_recipe) as file:
-                self.recipe = parse_recipe_data(file.readlines())
+                # TODO: the last one feels hacky, but unless this is deferred there is no way to do this
+                self.recipe = parse_recipe_data(
+                    file.readlines(),
+                    self.config.problem_type == ProblemType.OUTPUT_ONLY,
+                )
         except OSError as e:
             raise TMTMissingFileError("config", self.path.tmt_recipe) from e
         except ValueError as e:
@@ -65,8 +74,40 @@ class TMTContext:
     def construct_output_filename(self, code_name: str):
         return self.construct_test_filename(code_name, self.config.output_extension)
 
+    # TODO: find a better solution to maintain the current log_directory
+    @property
+    def log_directory(self) -> str:
+        if self._log_directory is None:
+            raise RuntimeError("log_directory required while context holds none")
+        return self._log_directory
+
+    @log_directory.setter
+    def log_directory(self, value: None) -> None:
+        if value is not None:
+            raise RuntimeError(
+                "log_directory can only be set to None; for initalize and setting log directory, use set_log_directory instead."
+            )
+        self._log_directory = None
+
+    def set_log_directory(self, value: str):
+        """
+        Sets the log directory to *value* and creates the directory if it doesn't exist.
+
+        Args:
+            value: The new log directory path. The path should be absolute.
+        """
+        if not os.path.isabs(value):
+            raise ValueError(f"set_log_directory: {value} is not an absolute path")
+        self._log_directory = value
+        if self._log_directory is not None:
+            os.makedirs(self._log_directory, exist_ok=True)
+
+    def log_file(self, filename: str):
+        return os.path.join(self.log_directory, filename)
+
 
 def find_problem_dir(cwd: pathlib.Path) -> str:
+
     for directory in [cwd] + list(cwd.parents):
         if (directory / ProblemDirectoryHelper.PROBLEM_YAML).exists():
             return str(directory.resolve())
