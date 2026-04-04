@@ -86,6 +86,8 @@ class ProblemDirectoryHelper:
     compiler_yaml = _problem_path_property("compiler.yaml")
     tmt_recipe = _problem_path_property("recipe")
 
+    verdicts_yaml = _problem_path_property("verdicts.yaml")
+
     default_checker_icpc = _internal_path_property(
         "internal", "steps", "checker", "default_checkers", "icpc_default_validator.cc"
     )
