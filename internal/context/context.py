@@ -87,6 +87,7 @@ class TMTContext:
             raise RuntimeError(
                 "log_directory can only be set to None; for initalize and setting log directory, use set_log_directory instead."
             )
+        self._log_directory = None
 
     def set_log_directory(self, value: str):
         """

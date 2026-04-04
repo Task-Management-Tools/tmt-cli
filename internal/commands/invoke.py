@@ -64,10 +64,6 @@ class CommandInvokeSummary:
         self.directory_error = True
         return self
 
-    def compilation_fail(self):
-        self.compilation_error = True
-        return self
-
 
 @dataclass
 class TestsetResult:
@@ -226,7 +222,7 @@ def command_invoke(
             formatter.ANSI_RESET,
         )
 
-    codename_length = max(6, max(map(len, available_testcases))) + 2
+    codename_length = max(6, max(map(len, available_testcases), default=0)) + 2
 
     os.makedirs(context.path.logs_invocation, exist_ok=True)
 
@@ -279,7 +275,7 @@ def command_invoke(
         testset_results[ts.name] = ts_res
         overall.combine(ts_res)
 
-    # Include the dependencies
+    # Include the dependencies, after overall is computed
     for ts in reversed(context.recipe.testsets.values()):
         ts_res = init_result(ts)
         for dep_ts in ts.dependency:
@@ -287,12 +283,25 @@ def command_invoke(
         ts_res.combine(testset_results[ts.name])
         testset_results[ts.name] = ts_res
 
-    display_testsets = []
+    display_testsets: list[TestsetResult] = []
     for ts in context.recipe.testsets.values():
         if isinstance(ts, recipe_parser.Subtask):
             display_testsets.append(testset_results[ts.name])
         elif context.config.judge_convention.display_testsets:
             display_testsets.append(testset_results[ts.name])
+
+    # Actually compute overall score according to summary rule
+    # TODO: in TIOJ, this should apply the custom summary
+    overall.score = overall.max_score = 0
+
+    for r in display_testsets:
+        if not r.num_testcases:
+            r.score = 0.0
+        if r.max_score is not None:
+            # TODO: support CMS "Sum" Scoring type?
+            r.score *= r.max_score
+            overall.max_score += r.max_score
+            overall.score += r.score
 
     formatter.println()
     formatter.print_testset_summary(display_testsets, overall, context)

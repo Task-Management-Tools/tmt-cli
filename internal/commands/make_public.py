@@ -410,6 +410,8 @@ def command_make_public(*, formatter: Formatter, context: TMTContext) -> bool:
             commands.append((method, src, dest))
             del cmd
     if bad:
+        if public_zip.exists():
+            public_zip.unlink()
         return False
 
     if context.config.problem_type is ProblemType.OUTPUT_ONLY:

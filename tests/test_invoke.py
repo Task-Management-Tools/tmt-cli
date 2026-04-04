@@ -75,6 +75,10 @@ REASON = _AttributePredicateFactory("reason")
 
 
 # fmt: off
+expected_results_batch_no_testdata = {
+    ("model-solution.cpp",):     {},
+}
+
 expected_results_batch_cms_checker = {
     ("model-solution.cpp",):     { "1_full_1": (CORRECT,   SCORE == 1,   REASON == "correct reason", FEEDBACK == "correct feedback") },
     ("wrong.cpp",):              { "1_full_1": (WRONG,     SCORE == 0,   REASON == "wrong reason",   FEEDBACK == "wrong feedback") },
@@ -192,6 +196,7 @@ expected_results_outputonly_basic = {
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
+        ("problems/batch/no-testdata",   expected_results_batch_no_testdata),
         ("problems/batch/cms-checker",   expected_results_batch_cms_checker),
         ("problems/batch/cms-grader",    expected_results_batch_cms_grader),
         ("problems/batch/cms-verdict",   expected_results_batch_cms_verdict),
@@ -204,7 +209,7 @@ expected_results_outputonly_basic = {
     ],
 )
 # fmt: on
-def test_gen(
+def test_invoke(
     problem_path: str,
     expected_results: dict[tuple[str], dict[str, tuple[Callable[[EvaluationResult], None]]]],
 ):

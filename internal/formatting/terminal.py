@@ -267,25 +267,19 @@ class TerminalFormatter(Formatter):
             self.println("Subtask summary")
 
         name_width = score_width = full_score_width = 0
-        score = max_score = 0
 
         for r in results:
             name_width = max(name_width, len(r.testset_name))
-            if not r.num_testcases:
-                r.score = 0.0
             if r.max_score is not None:
-                r.score *= r.max_score
-                max_score += r.max_score
-                score += r.score
-
                 score_width = max(score_width, len(self.format_points(r.score)))
                 full_score_width = max(
                     full_score_width, len(self.format_points(r.max_score))
                 )
 
-        overall.score, overall.max_score = score, max_score
-        score_width = max(score_width, len(self.format_points(score)))
-        full_score_width = max(full_score_width, len(self.format_points(max_score)))
+        score_width = max(score_width, len(self.format_points(overall.score)))
+        full_score_width = max(
+            full_score_width, len(self.format_points(overall.max_score))
+        )
 
         sol_config = context.config.solution
 

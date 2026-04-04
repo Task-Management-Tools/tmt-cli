@@ -122,6 +122,11 @@ class OutputOnlySolutionStep(BatchSolutionStep):
                         ) & 0xA000 == 0xA000:  # symlink mode bits
                             continue
 
+                        if (
+                            "/" in zip_info.filename
+                        ):  # either it is a dir or it is not the first layer file
+                            continue
+
                         name = os.path.basename(zip_info.filename)
                         if not name.endswith(self.context.config.output_extension):
                             continue
@@ -130,7 +135,6 @@ class OutputOnlySolutionStep(BatchSolutionStep):
                                 f"Duplicated output file {name} in submitted ZIP archive."
                             )
                         filelist.add(name)
-                        print(name)
                         out_path = self.sandbox.solution_invocation.file(name)
 
                         with open(out_path, "wb") as f:

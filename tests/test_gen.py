@@ -45,6 +45,10 @@ SKIP_OK = ExecutionOutcome.SKIPPED_SUCCESS
 TLE = ExecutionOutcome.TIMEDOUT
 
 # fmt: off
+expected_results_batch_no_testdata = (
+    ExpectedCompilation(gen=True, val=True, sol=True), {}
+)
+
 expected_results_batch_cms_checker = (
     ExpectedCompilation(gen=True, val=True, sol=True, check=True),
     { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK,   checker=OK), }
@@ -138,6 +142,7 @@ expected_results_outputonly_basic = (
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
+        ("problems/batch/no-testdata", expected_results_batch_no_testdata),
         ("problems/batch/cms-checker", expected_results_batch_cms_checker),
         ("problems/batch/cms-grader", expected_results_batch_cms_grader),
         ("problems/batch/cms-whitediff", expected_results_batch_cms_whitediff),

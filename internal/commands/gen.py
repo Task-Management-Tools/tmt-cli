@@ -244,7 +244,7 @@ def command_gen(
     pathlib.Path(context.path.testcase_summary).touch()
 
     codename_display_width: int = (
-        max(6, max(map(len, context.recipe.get_all_test_names()))) + 2
+        max(6, max(map(len, context.recipe.get_all_test_names()), default=0)) + 2
     )
 
     # Execute steps

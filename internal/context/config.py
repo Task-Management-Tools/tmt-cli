@@ -473,7 +473,7 @@ class AnswerGeneration:
 
         errors: list[TMTConfigError] = []
         pop = functools.partial(
-            pop_from_raw, data, errors=errors, config_root="solution"
+            pop_from_raw, data, errors=errors, config_root="answer_generation"
         )
 
         type = pop("type", AnswerGenerationType)

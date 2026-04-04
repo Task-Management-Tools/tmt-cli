@@ -45,15 +45,27 @@ class CMSExporter(FolderFormatExporter):
 
     def construct_problem_json(self, context: TMTContext):
         task_type_params = {}
-        if context.config.problem_type == ProblemType.BATCH:
-            if context.config.solution.type == SolutionType.GRADER:
-                task_type_params["task_type_parameters_Batch_compilation"] = "grader"
-            else:
-                task_type_params["task_type_parameters_Batch_compilation"] = "alone"
-        elif context.config.problem_type == ProblemType.COMMUNICATION:
-            task_type_params["task_type_parameters_Communication_num_processes"] = (
-                context.config.solution.num_procs
-            )
+        match context.config.problem_type:
+            case ProblemType.BATCH:
+                if context.config.solution.type == SolutionType.GRADER:
+                    task_type_params["task_type_parameters_Batch_compilation"] = (
+                        "grader"
+                    )
+                else:
+                    task_type_params["task_type_parameters_Batch_compilation"] = "alone"
+
+            case ProblemType.COMMUNICATION:
+                task_type_params["task_type_parameters_Communication_num_processes"] = (
+                    context.config.solution.num_procs
+                )
+
+            case ProblemType.OUTPUT_ONLY:
+                pass
+
+            case _:
+                assert False, (
+                    "construct_problem_json: Unknown problem type in CMS exporter"
+                )
 
         problem_json = {}
         problem_json["code"] = context.config.short_name

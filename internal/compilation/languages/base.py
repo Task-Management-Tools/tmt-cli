@@ -42,6 +42,9 @@ class Language(ABC):
         """
         Returns a list of supported extensions.
         Each extension must start with a dot.
+
+        The first entry in the list will always be used as the default/preferred extension for this language.
+        This should match the same of that in CMS if the judge supports it.
         """
         return []
 
