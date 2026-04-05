@@ -2,7 +2,7 @@ from collections import Counter
 from itertools import count
 import os
 
-from internal.context.verdicts import Verdict, VerdictRule, parse_verdicts
+from internal.verdicts import Verdict, VerdictRule, parse_verdicts
 from internal.formatting import Formatter, EmptyFormatter
 from internal.context import TMTContext
 from internal.commands import command_invoke

@@ -8,12 +8,6 @@ from .config import (
     AnswerGenerationType,
 )
 from .directory import SandboxDirectory, Directory
-from .verdicts import (
-    VerdictRule,
-    SubtaskVerdict,
-    SolutionVerdict,
-    parse_verdicts,
-)
 
 __all__ = [
     "TMTContext",
@@ -26,8 +20,4 @@ __all__ = [
     "AnswerGenerationType",
     "SandboxDirectory",
     "Directory",
-    "VerdictRule",
-    "SubtaskVerdict",
-    "SolutionVerdict",
-    "parse_verdicts",
 ]

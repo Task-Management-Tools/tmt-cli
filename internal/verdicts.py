@@ -1,14 +1,12 @@
 import dataclasses
 import enum
 import os
-from typing import Any
 import yaml
-from pathlib import Path
 
 from internal.context.context import TMTContext
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.outcomes import EvaluationOutcome
-from .paths import ProblemDirectoryHelper
+from .context.paths import ProblemDirectoryHelper
 
 class Verdict(enum.Enum):
     ACCEPTED = "accepted"
