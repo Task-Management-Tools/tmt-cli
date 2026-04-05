@@ -5,96 +5,74 @@ import yaml
 
 from internal.context.context import TMTContext
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
-from internal.outcomes import EvaluationOutcome
+from internal.outcomes import EvaluationOutcome, EvaluationOutcomeGroup
 from .context.paths import ProblemDirectoryHelper
 
-class Verdict(enum.Enum):
-    ACCEPTED = "accepted"
-    WRONG_ANSWER = "wrong_answer"
-    TIME_LIMIT_EXCEEDED = "time_limit_exceeded"
-    RUNTIME_ERROR = "runtime_error"
-    PARTIAL = "partial" # TODO: partial score range
+class ExpectedVerdict(enum.Enum):
+    ACCEPTED = ("Accepted", "AC", ["accepted", "AC", "correct"], EvaluationOutcomeGroup.ACCEPTED.outcome_list)
+    WRONG_ANSWER = ("Wrong Answer", "WA", ["wrong_answer", "WA", "incorrect"], EvaluationOutcomeGroup.WRONG_ANSWER.outcome_list)
+    TIME_LIMIT_EXCEEDED = ("Time Limit Exceeded", "TLE", ["time_limit_exceeded", "time_limit", "timeout", "TLE"], 
+                           [item for item in EvaluationOutcomeGroup.TIMEOUT.outcome_list if item != EvaluationOutcome.TIMEOUT_WALL])
+    RUNTIME_ERROR = ("Runtime Error", "RTE", ["runtime_error", "RE", "RTE"], EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list)
+    PARTIAL = ("Partially Correct", "PC", ["partial", "PC"], EvaluationOutcomeGroup.PARTIAL.outcome_list)
+    # TODO: partial score range
 
     # These verdicts should not be used in verdicts.yaml
-    TIME_LIMIT_EXCEEDED_WALL = "internal_time_limit_exceeded_wall"
-    JUDGE_ERROR = "internal_judge_error"
-    UNKNOWN = "internal_unknown"
+    TIME_LIMIT_EXCEEDED_WALL = ("Time Limit Exceeded (wall)", "TLE(wall)", [], [EvaluationOutcome.TIMEOUT_WALL])
+    JUDGE_ERROR = ("Judge Error", "JE", [], EvaluationOutcomeGroup.JUDGE_ERROR.outcome_list)
+    UNKNOWN = ("UNKNOWN", "??", [], [])
+
+    def __init__(self, displayed_name: str, short_name: str, alias: list[str], outcome_list: list[EvaluationOutcome]) -> None:
+        self.displayed_name = displayed_name
+        self.short_name = short_name
+        self.alias = alias
+        self.outcome_list = outcome_list
+
+    def __contains__(self, value: object) -> bool:
+        return value in self.outcome_list
+
+    def __str__(self) -> str:
+        return self.displayed_name
 
     @classmethod
-    def from_str(cls, value: str) -> "Verdict":
-        match value:
-            case "accepted" | "AC":
-                return Verdict.ACCEPTED
-            case "wrong_answer" | "WA":
-                return Verdict.WRONG_ANSWER
-            case "time_limit_exceeded" | "time_limit" | "TLE":
-                return Verdict.TIME_LIMIT_EXCEEDED
-            case "runtime_error" | "RTE" | "RE":
-                return Verdict.RUNTIME_ERROR
-            case "partial" | "PA" | "PC":
-                return Verdict.PARTIAL
+    def from_str(cls, value: str) -> "ExpectedVerdict":
+        for verdict in list(ExpectedVerdict):
+            if value in verdict.alias:
+                return verdict
         raise ValueError(f"Unknown verdict {value}")
 
     @classmethod
-    def from_evaluation_outcome(cls, outcome: EvaluationOutcome) -> "Verdict":
-        # TODO: copied from TerminalFormatter, may refactor
-        group_accepted = [EvaluationOutcome.ACCEPTED]
-        group_partial = [EvaluationOutcome.PARTIAL]
-        group_wrong_answer = [
-            EvaluationOutcome.WRONG,
-            EvaluationOutcome.NO_FILE,
-            EvaluationOutcome.NO_OUTPUT,
-        ]
-        group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-        group_runtime_error = [
-            EvaluationOutcome.RUNERROR_OUTPUT,
-            EvaluationOutcome.RUNERROR_SIGNAL,
-            EvaluationOutcome.RUNERROR_EXITCODE,
-            EvaluationOutcome.RUNERROR_MEMORY,
-        ]
-        group_judge_error = [
-            EvaluationOutcome.MANAGER_CRASHED,
-            EvaluationOutcome.MANAGER_TIMEOUT,
-            EvaluationOutcome.CHECKER_CRASHED,
-            EvaluationOutcome.CHECKER_FAILED,
-            EvaluationOutcome.CHECKER_TIMEDOUT,
-            EvaluationOutcome.INTERNAL_ERROR,
-        ]
-
-        if outcome in group_accepted:
-            return Verdict.ACCEPTED
-        elif outcome in group_partial:
-            return Verdict.PARTIAL
-        elif outcome in group_wrong_answer:
-            return Verdict.WRONG_ANSWER
-        elif outcome in group_timeout:
-            if outcome == EvaluationOutcome.TIMEOUT_WALL:
-                return Verdict.TIME_LIMIT_EXCEEDED_WALL
-            return Verdict.TIME_LIMIT_EXCEEDED
-        elif outcome in group_runtime_error:
-            return Verdict.RUNTIME_ERROR
-        elif outcome in group_judge_error:
-            return Verdict.JUDGE_ERROR
-        else:
-            return Verdict.UNKNOWN
+    def from_evaluation_outcome(cls, outcome: EvaluationOutcome) -> "ExpectedVerdict":
+        for verdict in list(ExpectedVerdict):
+            if outcome in verdict.outcome_list:
+                return verdict
+        return ExpectedVerdict.UNKNOWN
 
     @classmethod
-    def _missing_(cls, value: object) -> "Verdict":
+    def _missing_(cls, value: object) -> "ExpectedVerdict":
         if not isinstance(value, str):
             raise ValueError(f"Cannot convert {type(value)} to Verdict")
         return cls.from_str(value)
 
 @dataclasses.dataclass
 class VerdictRule:
-    must: list[Verdict] = dataclasses.field(default_factory=list)
-    never: list[Verdict] = dataclasses.field(default_factory=list)
+    must: list[ExpectedVerdict] = dataclasses.field(default_factory=list)
+    never: list[ExpectedVerdict] = dataclasses.field(default_factory=list)
 
-    def check_rule(self, verdicts: list[Verdict] | set[Verdict]) -> bool:
+    def __str__(self) -> str:
+        result = []
+        if self.must:
+            result.append("must=[" + ", ".join([str(item) for item in self.must]) + "]")
+        if self.never:
+            result.append("never=[" + ", ".join([str(item) for item in self.never]) + "]")
+        return "{" + ', '.join(result) + "}"
+
+    def check_rule(self, verdicts: list[ExpectedVerdict] | set[ExpectedVerdict]) -> bool:
         must_ok = not self.must
         for verdict in verdicts:
             if verdict in self.never or \
-                    (Verdict.ACCEPTED in self.must and verdict != Verdict.ACCEPTED) or \
-                    (Verdict.PARTIAL in self.must and verdict not in [Verdict.ACCEPTED, Verdict.PARTIAL]):
+                    (ExpectedVerdict.ACCEPTED in self.must and verdict != ExpectedVerdict.ACCEPTED) or \
+                    (ExpectedVerdict.PARTIAL in self.must and verdict not in [ExpectedVerdict.ACCEPTED, ExpectedVerdict.PARTIAL]):
                 return False
             if verdict in self.must:
                 must_ok = True
@@ -117,8 +95,8 @@ class VerdictRule:
         # TODO: If `must` contains ACCEPTED or PARTIAL, it should be the only item in `must` and `never` should be empty.
 
         # verdict: "accepted"
-        if isinstance(data, (Verdict, str)):
-            return [cls(must=[Verdict(data)])]
+        if isinstance(data, (ExpectedVerdict, str)):
+            return [cls(must=[ExpectedVerdict(data)])]
         if isinstance(data, list):
             if not data:
                 raise ValueError("Verdict rule list should contain at least one \"must\" rule")
@@ -126,22 +104,22 @@ class VerdictRule:
             first = data[0]
 
             # verdict: ["accepted"]
-            if isinstance(first, (Verdict, str)):
-                return [cls(must=[Verdict(item) for item in data])]
+            if isinstance(first, (ExpectedVerdict, str)):
+                return [cls(must=[ExpectedVerdict(item) for item in data])]
 
             if isinstance(first, dict):
                 found_must = False
                 rule_list: list[VerdictRule] = []
                 for rule in data:
                     rule = cls(**rule)
-                    if isinstance(rule.must, (Verdict, str)):
-                        rule.must = [Verdict(rule.must)]
+                    if isinstance(rule.must, (ExpectedVerdict, str)):
+                        rule.must = [ExpectedVerdict(rule.must)]
                     else:
-                        rule.must = list(map(Verdict, rule.must))
-                    if isinstance(rule.never, (Verdict, str)):
-                        rule.never = [Verdict(rule.never)]
+                        rule.must = list(map(ExpectedVerdict, rule.must))
+                    if isinstance(rule.never, (ExpectedVerdict, str)):
+                        rule.never = [ExpectedVerdict(rule.never)]
                     else:
-                        rule.never = list(map(Verdict, rule.never))
+                        rule.never = list(map(ExpectedVerdict, rule.never))
                     if rule.must:
                         found_must = True
                     rule_list.append(rule)
@@ -192,7 +170,7 @@ class SubtaskVerdict:
 class SolutionVerdict:
     filename: str
     verdict: list[VerdictRule]
-    judge_verdict: Verdict | None = None
+    judge_verdict: ExpectedVerdict | None = None
     subtask: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
 
     @classmethod
@@ -205,7 +183,7 @@ class SolutionVerdict:
             raise FileNotFoundError(f"Solution file {solution} not found.")
 
         if solution.judge_verdict:
-            solution.judge_verdict = Verdict(solution.judge_verdict)
+            solution.judge_verdict = ExpectedVerdict(solution.judge_verdict)
 
         solution.verdict = VerdictRule.from_raw_list(solution.verdict)
         subtasks: list[SubtaskVerdict] = []

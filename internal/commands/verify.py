@@ -2,7 +2,7 @@ from collections import Counter
 from itertools import count
 import os
 
-from internal.verdicts import Verdict, VerdictRule, parse_verdicts
+from internal.verdicts import ExpectedVerdict, VerdictRule, parse_verdicts
 from internal.formatting import Formatter, EmptyFormatter
 from internal.context import TMTContext
 from internal.commands import command_invoke
@@ -29,30 +29,30 @@ def verify_solutions(
     def get_tests_outcome(
             results: dict[str, EvaluationResult | None],
             tests: list[str] | set[str],
-    ) -> tuple[float, str, Counter[Verdict]]:
-        counter = Counter[Verdict]()
+    ) -> tuple[float, str, Counter[ExpectedVerdict]]:
+        counter = Counter[ExpectedVerdict]()
         score = 1.0
         for testcase in tests:
             result = results[testcase]
             if not result:
-                counter[Verdict.UNKNOWN] += 1
+                counter[ExpectedVerdict.UNKNOWN] += 1
                 score = min(score, 0.0)
             else:
-                counter[Verdict.from_evaluation_outcome(result.verdict)] += 1
+                counter[ExpectedVerdict.from_evaluation_outcome(result.verdict)] += 1
                 score = min(score, result.score)
         incorrect = False
         partial = False
         for verdict in counter:
-            if verdict == Verdict.PARTIAL:
+            if verdict == ExpectedVerdict.PARTIAL:
                 partial = True
-            if verdict not in [Verdict.PARTIAL, Verdict.ACCEPTED]:
+            if verdict not in [ExpectedVerdict.PARTIAL, ExpectedVerdict.ACCEPTED]:
                 incorrect = True
         result_str = "Incorrect" if incorrect else "Partial" if partial else "Correct"
         return score, result_str, counter
                 
     def check_verdict_rule(
             name: str,
-            verdicts: set[Verdict],
+            verdicts: set[ExpectedVerdict],
             rules: list[VerdictRule],
     ) -> list[str]:
         err_msg = []
@@ -62,9 +62,9 @@ def verify_solutions(
         return err_msg
 
     default_rules: list[VerdictRule] = [
-        VerdictRule(never=[Verdict.JUDGE_ERROR,
-                           Verdict.TIME_LIMIT_EXCEEDED_WALL,
-                           Verdict.UNKNOWN]),
+        VerdictRule(never=[ExpectedVerdict.JUDGE_ERROR,
+                           ExpectedVerdict.TIME_LIMIT_EXCEEDED_WALL,
+                           ExpectedVerdict.UNKNOWN]),
     ]
 
     for solution in solutions:
@@ -94,7 +94,7 @@ def verify_solutions(
         formatter.print_fixed_width("Score", width=score_len)
         formatter.println("Verdicts")
         formatter.println("-" * (max_subtask_len + result_len + score_len + 20))
-        def print_row(subtask_name, result_str, score_num, score_percent, verdict_count: Counter[Verdict]):
+        def print_row(subtask_name, result_str, score_num, score_percent, verdict_count: Counter[ExpectedVerdict]):
             formatter.print_fixed_width(subtask_name, width=max_subtask_len)
             formatter.print_fixed_width(result_str, width=result_len)
             formatter.print_fixed_width(f"{round(score_num, 2)}", width=score_num_len)
