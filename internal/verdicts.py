@@ -92,7 +92,6 @@ class VerdictRule:
         - If the raw data is a str `s`, it is treated as `[s]`.
         - If the raw data is a list[str] `l`, it is treated as `[{ must: l }]`.
         """
-        # TODO: If `must` contains ACCEPTED or PARTIAL, it should be the only item in `must` and `never` should be empty.
 
         # verdict: "accepted"
         if isinstance(data, (ExpectedVerdict, str)):
@@ -102,14 +101,12 @@ class VerdictRule:
                 raise ValueError("Verdict rule list should contain at least one \"must\" rule")
             
             first = data[0]
+            rule_list: list[VerdictRule] = []
 
             # verdict: ["accepted"]
             if isinstance(first, (ExpectedVerdict, str)):
-                return [cls(must=[ExpectedVerdict(item) for item in data])]
-
-            if isinstance(first, dict):
-                found_must = False
-                rule_list: list[VerdictRule] = []
+                rule_list =  [cls(must=[ExpectedVerdict(item) for item in data])]
+            elif isinstance(first, dict):
                 for rule in data:
                     rule = cls(**rule)
                     if isinstance(rule.must, (ExpectedVerdict, str)):
@@ -120,14 +117,36 @@ class VerdictRule:
                         rule.never = [ExpectedVerdict(rule.never)]
                     else:
                         rule.never = list(map(ExpectedVerdict, rule.never))
-                    if rule.must:
-                        found_must = True
                     rule_list.append(rule)
-                
-                if not found_must:
-                    raise ValueError("Verdict rule list should contain at least one \"must\" rule")
+            else:
+                raise ValueError(f"Invalid verdict rule format: {data}")
 
-                return rule_list
+            found_must = False
+            found_accepted = False
+            found_partial = False
+            found_others = False
+            for rule in rule_list:
+                if rule.must:
+                    found_must = True
+                for verdict in rule.must:
+                    if verdict == ExpectedVerdict.ACCEPTED:
+                        found_accepted = True
+                    elif verdict == ExpectedVerdict.PARTIAL:
+                        found_partial = True
+                    else:
+                        found_others = True
+                if rule.never:
+                    found_others = True
+                
+            if not found_must:
+                raise ValueError("Verdict rule list should contain at least one \"must\" rule")
+
+            if found_accepted and (found_partial or found_others):
+                raise ValueError("\"accepted\" in \"must\" rule but the rule list contains other verdicts (Hint: \"must: accepted\" also bans all other verdicts.)")
+            if found_partial and found_others:
+                raise ValueError("\"partial\" in \"must\" rule but the rule list contains other verdicts (Hint: \"must: partial\" also bans all incorrect verdicts.)")
+
+            return rule_list
 
         raise ValueError(f"Invalid verdict rule format: {data}")
 
