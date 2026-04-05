@@ -49,7 +49,6 @@ class Process(subprocess.Popen):
         self._preexec_fn = kwargs.get("preexec_fn", None)
         kwargs["preexec_fn"] = self.prepare
 
-        super().__init__(*args, **kwargs)
         self.popen_time: float = time.monotonic()
         self.poll_time: float
 
@@ -57,9 +56,15 @@ class Process(subprocess.Popen):
         if platform.system() == "Darwin":
             wall_time_limit_sec = time_limit_sec + 2.0
         else:
-            wall_time_limit_sec = time_limit_sec + 1.0
+            wall_time_limit_sec = time_limit_sec + 0.25
+
         self.timer = Timer(wall_time_limit_sec, self.timer_kill)
+        self.timer_triggered = False
         self.timer.start()
+
+        self._prefork_rusage = resource.getrusage(resource.RUSAGE_SELF)
+
+        super().__init__(*args, **kwargs)
 
         self.status: int
         self.rusage: resource.struct_rusage
@@ -118,6 +123,7 @@ class Process(subprocess.Popen):
 
     def timer_kill(self):
         if self.returncode is None:
+            self.timer_triggered = True
             self.kill()
 
     def safe_kill(self):
@@ -162,9 +168,26 @@ class Process(subprocess.Popen):
     # This is RSS (which is what we acutally want)
     @property
     def max_rss_kib(self) -> int:
+        """
+        Returns the maximum RSS in KiB.
+        Note that if we cannot know the exact RSS used (when the max RSS is smaller than the Python process), it will return -1.
+        That is, if this property is -1, then it means the exact RSS is unknown and likely negligible.
+        See :prop:`rss_detectable_lb_kib` to get the upper bound of the RSS.
+        """
+        if self.rusage.ru_maxrss <= self._prefork_rusage.ru_maxrss:
+            return -1
         if platform.system() == "Darwin":
             return (self.rusage.ru_maxrss + 1023) // 1024
         return self.rusage.ru_maxrss
+
+    @property
+    def rss_detectable_lb_kib(self) -> int:
+        """
+        Returns the lower bound of the detectable RSS usage in KiB.
+        """
+        if platform.system() == "Darwin":
+            return (self._prefork_rusage.ru_maxrss + 1023) // 1024
+        return self._prefork_rusage.ru_maxrss
 
     # We cannot know with this type of execution, so return -1 instead
     @property

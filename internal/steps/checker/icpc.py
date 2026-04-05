@@ -2,14 +2,12 @@ import os
 import shutil
 
 
-from internal.context import CheckerType, TMTContext, SandboxDirectory
-from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.compilation import (
-    make_compile_targets,
+    make_compile_target,
+    compile_single,
     make_clean,
     get_run_single_command,
 )
-from internal.formatting import Formatter
 from internal.process import Process, wait_procs
 from internal.steps.utils import requires_sandbox
 from internal.outcomes import (
@@ -17,47 +15,23 @@ from internal.outcomes import (
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
-    ExecutionOutcome,
-    GenerationResult,
-    eval_outcome_to_grade_outcome,
 )
 
 from .base import CheckerStep
 
 
 class ICPCCheckerStep(CheckerStep):
-    def __init__(self, *, context: TMTContext, sandbox: SandboxDirectory | None):
-        self.use_default_checker = (
-            context.config.checker is None
-            or context.config.checker.type == CheckerType.DEFAULT
-        )
-        if not self.use_default_checker:
-            if context.config.checker is None:
-                raise TMTInvalidConfigError("Config section `checker` is not present.")
-            if context.config.checker.filename is None:
-                raise TMTInvalidConfigError(
-                    "Config option `checker.filename` is not present."
-                )
-            if not context.path.has_checker_directory():
-                raise TMTMissingFileError(filetype="Directory", filename="checker")
+    """
+    CheckerStep class implementing ICPC checker behavior.
 
-            checker_name = context.config.checker.filename
-        else:
-            checker_name = "(default)"
+    See :class:`CheckerStep`.
+    """
 
-        super().__init__(context, sandbox, checker_name)
-        self.limits = context.config  # shorthand
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.limits = self.context.config  # shorthand
         self.compiled_checker_path: str | None = None
-
-    def check_unused_checker(self, formatter: Formatter) -> bool:
-        if self.context.path.has_checker_directory() and self.use_default_checker:
-            formatter.println(
-                formatter.ANSI_YELLOW,
-                "Warning: Directory 'checker' exists but it is not used by this problem. Check problem.yaml or remove the directory.",
-                formatter.ANSI_RESET,
-            )
-            return True
-        return False
 
     @requires_sandbox
     def compile(self) -> CompilationResult:
@@ -67,18 +41,15 @@ class ICPCCheckerStep(CheckerStep):
         if self.use_default_checker:
             # In this case we have no checker directory, therefore, we will build the default checker
             # in sandbox/checker instead
-            checker_name = self.context.path.default_checker_icpc
-            shutil.copy(checker_name, workdir.path)
-
-            compile_result = make_compile_targets(
+            compile_result = compile_single(
                 context=self.context,
                 directory=workdir.path,
-                sources=[os.path.basename(checker_name)],
-                target="checker",
+                sources=[self.context.path.default_checker_icpc],
+                executable_filename_base="checker",
                 executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
             )
         else:
-            compile_result = make_compile_targets(
+            compile_result = make_compile_target(
                 context=self.context,
                 directory=self.context.path.checker,
                 sources=[self.context.config.checker.filename],
@@ -98,89 +69,29 @@ class ICPCCheckerStep(CheckerStep):
         make_clean(directory=self.context.path.checker)
 
     @requires_sandbox
-    def run_checker_during_gen(
+    def run_checker(
         self,
-        result: GenerationResult,
-        sol_result: EvaluationResult | None,
+        result: EvaluationResult,
         codename: str,
-    ):
-        if result.output_generation not in [
-            ExecutionOutcome.SUCCESS,
-            ExecutionOutcome.SKIPPED_SUCCESS,
-        ] or result.input_validation not in [
-            ExecutionOutcome.SUCCESS,
-            ExecutionOutcome.SKIPPED_SUCCESS,
-        ]:
-            result.output_validation = ExecutionOutcome.SKIPPED
-            return
+    ) -> EvaluationResult:
 
-        if result.is_output_forced:
-            if not self.context.config.checker.check_forced_output:
-                result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
-                return
-        else:  # generated output
-            if not self.context.config.checker.check_generated_output:
-                result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
-                return
-        testcase_input = os.path.join(
-            self.context.path.testcases,
-            self.context.construct_input_filename(codename),
+        input_file = os.path.join(
+            self.context.path.testcases, self.context.construct_input_filename(codename)
         )
-        testcase_answer = os.path.join(
+        answer_file = os.path.join(
             self.context.path.testcases,
             self.context.construct_output_filename(codename),
         )
 
-        workdir = self.sandbox.checker
-        workdir.clean()
-
-        copied_testcase_output = workdir.file(os.path.basename(testcase_answer))
-        shutil.copy(testcase_answer, copied_testcase_output)
-
-        checker_result = self._run_without_clean(
-            self.context.config.checker.arguments,
-            EvaluationResult(
-                output_file=testcase_answer
-                if sol_result is None
-                else sol_result.output_file
-            ),
-            testcase_input,
-            testcase_answer,
-        )
-        result.output_validation = eval_outcome_to_grade_outcome(checker_result)
-        result.reason = checker_result.checker_reason
-        return checker_result
-
-    def run_checker(
-        self,
-        arguments: list[str] | None,
-        evaluation_record: EvaluationResult,
-        input_file: str,
-        answer_file: str,
-    ) -> EvaluationResult:
-        self.sandbox.checker.clean()
-        return self._run_without_clean(
-            arguments, evaluation_record, input_file, answer_file
-        )
-
-    def _run_without_clean(
-        self,
-        arguments: list[str] | None,
-        evaluation_record: EvaluationResult,
-        input_file: str,
-        answer_file: str,
-    ) -> EvaluationResult:
         # In ICPC mode we do not need to check anything
-        if evaluation_record.verdict is not EvaluationOutcome.RUN_SUCCESS:
-            evaluation_record.checker_run = False
-            return evaluation_record
+        if result.verdict is not EvaluationOutcome.RUN_SUCCESS:
+            result.checker_run = False
+            return result
 
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
-        workdir = self.sandbox.checker
-        workdir.clean()
-
-        feedback_dir = workdir.subdir("feedback_dir")
+        self.sandbox.checker.clean()
+        feedback_dir = self.sandbox.checker.subdir("feedback_dir")
         feedback_dir.create()
 
         assert self.compiled_checker_path is not None
@@ -195,21 +106,33 @@ class ICPCCheckerStep(CheckerStep):
         # $ <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < output_file [ > team_input ]
         # we will ignore the [ > team_input ] part, since this only happens for interactive mode.
 
-        if arguments is None:
-            arguments = []
+        checker_out_file = os.path.join(
+            self.sandbox.checker.path, f"{codename}.check.out"
+        )
+        checker_err_file = os.path.join(
+            self.sandbox.checker.path, f"{codename}.check.err"
+        )
+
         checker_process = Process(
             checker_exec_command
             + [input_file, answer_file, feedback_dir.path + os.sep]
-            + arguments,
-            preexec_fn=lambda: os.chdir(workdir.path),
-            stdin_redirect=evaluation_record.output_file,
-            stdout=None,
-            stderr=None,
+            + self.arguments,
+            preexec_fn=lambda: os.chdir(self.sandbox.checker.path),
+            stdin_redirect=result.output_file,
+            stdout_redirect=checker_out_file,
+            stderr_redirect=checker_err_file,
             time_limit_sec=self.limits.trusted_step_time_limit_sec,
             memory_limit_mib=self.limits.trusted_step_memory_limit_mib,
             output_limit_mib=self.limits.trusted_step_output_limit_mib,
         )
         wait_procs([checker_process])
+
+        shutil.copy(
+            checker_out_file, self.context.log_file(os.path.basename(checker_out_file))
+        )
+        shutil.copy(
+            checker_err_file, self.context.log_file(os.path.basename(checker_err_file))
+        )
 
         # the interesting files in the directory are:
         #  - nextpass.in: the input for the next pass, the checker must succeed to run the next pass
@@ -221,20 +144,22 @@ class ICPCCheckerStep(CheckerStep):
         checker_feedback_file = feedback_dir.file("judgemessage.txt")
         if os.path.isfile(checker_feedback_file):
             with open(checker_feedback_file, "r") as f:
-                evaluation_record.checker_reason = f.readline().strip()
+                result.reason = f.readline().strip()
+            shutil.copy(
+                checker_feedback_file,
+                self.context.log_file(f"{codename}.check.feedback"),
+            )
 
         if checker_process.is_timedout:
-            evaluation_record.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
+            result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
         elif checker_process.is_signaled_exit:
-            evaluation_record.verdict = EvaluationOutcome.CHECKER_CRASHED
+            result.verdict = EvaluationOutcome.CHECKER_CRASHED
         elif checker_process.exit_code == 42:
-            evaluation_record.verdict = EvaluationOutcome.ACCEPTED
+            result.verdict = EvaluationOutcome.ACCEPTED
+            result.score = 1.0
         else:
-            evaluation_record.verdict = EvaluationOutcome.WRONG
-            if (
-                evaluation_record.output_file is None
-                or os.path.getsize(evaluation_record.output_file) == 0
-            ):
-                evaluation_record.verdict = EvaluationOutcome.NO_OUTPUT
+            result.verdict = EvaluationOutcome.WRONG
+            if result.output_file is None or os.path.getsize(result.output_file) == 0:
+                result.verdict = EvaluationOutcome.NO_OUTPUT
 
-        return evaluation_record
+        return result

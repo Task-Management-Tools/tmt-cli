@@ -1,0 +1,22 @@
+@global_validation validator
+
+@testset good
+print 100 200
+print 100 200 | swap
+print 600 700 | swap | swap | swap | swap | swap
+print-py 600 700
+manual input.in
+manual input.in | swap
+
+@testset proof
+@extra_file PROOF .proof
+print-with-proof 12 23 ${PROOF}
+
+@testset bad
+print 100 abc
+print 100 200 300
+non-zero-exit
+signaled-exit
+time-limit-wall
+remove-stdout
+syntax-error-py

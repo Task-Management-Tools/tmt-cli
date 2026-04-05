@@ -22,11 +22,19 @@ class Language(ABC):
 
     @property
     @abstractmethod
-    def name(self) -> str:
+    def id(self) -> str:
         """
-        Returns the name of this langauge. It will be used in configuration files.
+        Returns the internal id of this langauge. It will be used in configuration files.
         """
         return "unknown"
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """
+        Returns the display name of this langauge.
+        """
+        return "Unknown"
 
     @property
     @abstractmethod
@@ -34,6 +42,9 @@ class Language(ABC):
         """
         Returns a list of supported extensions.
         Each extension must start with a dot.
+
+        The first entry in the list will always be used as the default/preferred extension for this language.
+        This should match the same of that in CMS if the judge supports it.
         """
         return []
 

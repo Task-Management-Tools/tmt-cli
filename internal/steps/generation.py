@@ -30,7 +30,7 @@ class GenerationStep:
             context=self.context,
             executable_stack_size_mib=self.limits.trusted_step_memory_limit_mib,
         )
-        comp_result.dump_to_logs(self.context.path.logs_generation, "generator")
+        comp_result.dump_to_logs(self.context.log_directory, "generator")
         return comp_result
 
     def clean_up(self):

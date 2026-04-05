@@ -1,0 +1,8 @@
+# C++ compilation scripts
+format compile.sh       cpp/
+format run.sh           cpp/
+
+# C++ grader/samples
+grader cpp              cpp/
+header accumulate.h     cpp/
+public accumulate.cpp   cpp/

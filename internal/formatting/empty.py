@@ -23,7 +23,15 @@ class EmptyFormatter(Formatter):
     def print_checker_status(self, result) -> None:
         pass
 
-    def print_checker_verdict(self, result, print_reason: bool = False) -> None:
+    def print_exec_details(self, result, context) -> None:
+        pass
+
+    def print_testcase_verdict(
+        self, result, context, print_reason: bool = False
+    ) -> None:
+        pass
+
+    def print_testset_summary(self, results, overall, context) -> None:
         pass
 
     def print_hash_diff(self, official_testcase_hashes, testcase_hashes) -> None:

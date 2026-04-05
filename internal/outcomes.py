@@ -1,74 +1,111 @@
 import os
 
-from enum import Enum
+from enum import Enum, unique
 from dataclasses import dataclass
 
 from internal.process import Process
 
 
+@unique
 class EvaluationOutcome(Enum):
     # The submission has run successfully.
     RUN_SUCCESS = "Solution ran successfully"
+
     # The submission has run successfully and is correct.
     ACCEPTED = "Correct"
+
     # The submission has run successfully and is partially correct.
     PARTIAL = "Partially Correct"
+
     # The submission has run successfully but is not correct (typical sense of WA).
     WRONG = "Wrong Answer"
+
     # CMS no-output: not producing the required file
     NO_FILE = "No Output File Found"
+
     # DOMJudge no-output (incorrect and not producing output)
     NO_OUTPUT = "No Output"
+
     # classic TLE
     TIMEOUT = "Time Limit Exceeded"
+
     # This is wall-clock exceeded TLE; DOMJudge, CMS, and Codeforces all supports this result.
-    TIMEOUT_WALL = "Time Limit Exceeded (wall clock)"
+    TIMEOUT_WALL = "Wall Clock Limit Exceeded"
+
     # Output limit exceeded. Since DOMJudge actually detects output limit by truncating the stream
     # instead of TIOJ-style signal detection, we will need separate verdicts.
     OUTPUT_LIMIT = "Output Limit Exceeded"
+
     # Runtime error caused by signal SIGXFSZ. TIOJ treat this as OLE.
-    RUNERROR_OUTPUT = "Runtime Error (output limit exceeded)"
+    RUNERROR_OUTPUT = "Runtime Error (output)"
+
     # Runtime error caused by signal (FPE, SEGV, etc.) except SIGXFSZ.
     RUNERROR_SIGNAL = "Runtime Error (signaled)"
-    # Runtime error caused by non-zero exitcode.
-    RUNERROR_MEMORY = "Runtime Error (memory limit exceeded)"
+
     # Runtime error caused by memory limit exceeded; this verdict only exists since we support MLE detection without cgroup.
-    RUNERROR_EXITCODE = "Runtime Error (non-zero exit code)"
+    RUNERROR_MEMORY = "Runtime Error (memory)"
+
+    # Runtime error caused by non-zero exitcode.
+    RUNERROR_EXITCODE = "Runtime Error (exitcode)"
+
     # Manager/Interactor crashed.
     MANAGER_CRASHED = "Judge Error: Manager Crashed"
+
+    # Manager/Interactor failed (did not meet the requirement of a manager/interactor).
+    MANAGER_FAILED = "Judge Error: Manager Failed"
+
     # Manager/Interactor timed out.
     MANAGER_TIMEOUT = "Judge Error: Manager Timed-out"
-    # Checker crashed (this is checker exited by signaled).
+
+    # Checker crashed.
     CHECKER_CRASHED = "Judge Error: Checker Crashed"
-    # Checker failed (this is checker exit with non-zero return code).
+
+    # Checker failed (checker did not meet the requirement of a checker).
     CHECKER_FAILED = "Judge Error: Checker Failed"
+
     # Checker timed-out.
     CHECKER_TIMEDOUT = "Judge Error: Checker Timed-out"
+
     # Internal error.
     INTERNAL_ERROR = "Internal Error"
 
 
 @dataclass
 class EvaluationResult:
+    codename: str
+    score: float = 0.0
     verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+    override_verdict_display: str | None = None
+    reason: str = ""
 
-    solution_cpu_time_sec: float = 0.0
-    solution_wall_clock_time_sec: float = 0.0
-    solution_max_memory_kib: int = 0
-    solution_exit_code: int = 0
-    solution_exit_signal: int = 0
+    cpu_time_sec: float = 0.0
+    wall_clock_time_sec: float = 0.0
+    timer_triggered: bool = False
+    max_memory_kib: int = -1
+    max_memory_upper_bound_kib: int = 0
+    exit_code: int = 0
+    exit_signal: int = 0
 
     output_file: str | None = None
 
     checker_run: bool = False
-    checker_reason: str = ""
 
     def fill_from_solution_process(self, solution: Process):
-        self.solution_cpu_time_sec = solution.cpu_time_sec
-        self.solution_wall_clock_time_sec = solution.wall_clock_time_sec
-        self.solution_max_memory_kib = solution.max_rss_kib
-        self.solution_exit_code = solution.exit_code
-        self.solution_exit_signal = solution.exit_signal
+        self.cpu_time_sec += solution.cpu_time_sec
+        self.wall_clock_time_sec = max(
+            self.wall_clock_time_sec, solution.wall_clock_time_sec
+        )
+        self.timer_triggered = self.timer_triggered or solution.timer_triggered
+        self.max_memory_upper_bound_kib = max(
+            self.max_memory_upper_bound_kib, solution.rss_detectable_lb_kib
+        )
+        self.max_memory_kib = max(self.max_memory_kib, solution.max_rss_kib)
+        self.exit_code = self.exit_code or solution.exit_code
+        self.exit_signal = self.exit_signal or solution.exit_signal
+
+    @property
+    def feedback(self) -> str:
+        return self.override_verdict_display or self.verdict.value
 
 
 class CompilationOutcome(Enum):
@@ -96,7 +133,6 @@ class CompilationResult:
         ]
 
     def dump_to_logs(self, log_directory: str, job_name: str):
-        os.makedirs(log_directory, exist_ok=True)
         with open(os.path.join(log_directory, job_name + ".compile.out"), "w+") as f:
             f.write(self.standard_output)
         with open(os.path.join(log_directory, job_name + ".compile.err"), "w+") as f:
@@ -174,6 +210,7 @@ def eval_outcome_to_run_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
     ]
     group_judge_error = [
         EvaluationOutcome.MANAGER_CRASHED,
+        EvaluationOutcome.MANAGER_FAILED,
         EvaluationOutcome.MANAGER_TIMEOUT,
         EvaluationOutcome.CHECKER_CRASHED,
         EvaluationOutcome.CHECKER_FAILED,

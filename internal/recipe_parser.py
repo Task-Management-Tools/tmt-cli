@@ -6,8 +6,20 @@ This module parses a custom format file to generate recipe data structure object
 The parsed data includes testsets, subtasks, and validation rules for programming contests.
 """
 
+from dataclasses import dataclass
+import copy
 import re
-from typing import Dict, List, Set, Optional
+from typing import List, Set, Optional
+
+
+@dataclass
+class ParseError:
+    message: str
+    line: int
+
+    def __str__(self):
+        # TODO!
+        raise NotImplementedError
 
 
 class Executable:
@@ -19,19 +31,21 @@ class Executable:
     """
 
     def __init__(self, command_sequence: str):
-        self.commands: List[List[str]] = []
-
         """
         Parse and add a command sequence separated by pipes.
-        
+
         Args:
-            command_sequence (str): Commands separated by '|' character
-            
+            command_sequence (str): Commands separated by the pipe "|" character.
+
         Raises:
             ValueError: If command sequence is empty or malformed
         """
+
+        # TODO: support '' and ""
+        self.commands: List[List[str]] = []
+
         if not command_sequence.strip():
-            raise ValueError("Command sequence cannot be empty")
+            raise ValueError("Command sequence is empty")
 
         # Split by pipe and process each command
         commands = command_sequence.split("|")
@@ -40,14 +54,15 @@ class Executable:
             if not cmd:
                 raise ValueError("Empty command found in sequence")
 
-            # Split command into executable and arguments
-            parts = cmd.split()
-            if not parts:
-                raise ValueError("Invalid command format")
+            self.commands.append(cmd.split())
 
-            executable_name = parts[0]
-            command_list = [executable_name] + parts[1:]
-            self.commands.append(command_list)
+    def __eq__(self, other):
+        if not isinstance(other, Executable):
+            return NotImplementedError
+        return self.commands == other.commands
+
+
+TESTCASE_NAME_PLACE_HOLDER = "_tmt_internal_testcase_name"
 
 
 class Testcase:
@@ -58,27 +73,31 @@ class Testcase:
     """
 
     def __init__(self, command_sequence: str):
-        self.execute: Executable = Executable(command_sequence)
+        self._raw_execute: Executable = Executable(command_sequence)
+        self.execute: Optional[Executable] = None
         self.validation: List[Executable] = []
-        self.test_name: Optional[str] = None  # Added for naming functionality
+        self._name: Optional[str] = None
 
-    def set_test_name(self, test_name: str):
+    @property
+    def name(self):
         """
-        Set the standardized test name for this executable.
-        Also replaces '_tmt_internal_testcase_name' in all commands with the actual test name.
-
-        Args:
-            test_name (str): Standardized test name
+        The name of a testcase. It *can* be set multiple times.
         """
-        self.test_name = test_name
+        return self._name
 
-        # Replace '_tmt_internal_testcase_name' with actual test name in all commands
+    @name.setter
+    def name(self, value: str):
+        """
+        Setter for test name of this command.
+        Also replaces TESTCASE_NAME_PLACE_HOLDER in all commands with the actual test name.
+        """
+        self._name = value
+
+        # Replace TESTCASE_NAME_PLACE_HOLDER with actual test name in all commands
+        self.execute = copy.deepcopy(self._raw_execute)
         for command_list in self.execute.commands:
             for i, arg in enumerate(command_list):
-                if "_tmt_internal_testcase_name" in arg:
-                    command_list[i] = arg.replace(
-                        "_tmt_internal_testcase_name", test_name
-                    )
+                command_list[i] = arg.replace(TESTCASE_NAME_PLACE_HOLDER, value)
 
     def add_validation(self, validation: Executable):
         """
@@ -87,7 +106,8 @@ class Testcase:
         Args:
             validation (Executable): An Executable object representing a validation
         """
-        self.validation.append(validation)
+        if validation not in self.validation:
+            self.validation.append(validation)
 
 
 class Testset:
@@ -97,30 +117,42 @@ class Testset:
     Contains metadata about the testset and a list of test generation commands.
     """
 
-    def __init__(self, testset_name: str, testset_index: int):
-        self.testset_name: str = testset_name
-        self.testset_index: int = testset_index
+    def __init__(self, name: str):
+        self.name: str = name
+        self.index: Optional[int] = None
         self.description: Optional[str] = None
         self.validation: List[Executable] = []
-        self.tests: List[Testcase] = []
+        self.testcases: List[Testcase] = []
+        self.dependency: List[Testset] = []
         self.extra_file: Set[str] = set()
 
-    def add_validation(self, command: str, *args):
+    def assign_index(self, index: int) -> int:
+        """
+        Indexes the testset and returns the next available index.
+        """
+        self.index = index
+        return index + 1
+
+    def add_validation(self, executable: Executable):
         """
         Add a validation command for this testset.
 
         Args:
-            command (str): Validation executable name
-            *args: Arguments for the validation command
+            executable (Executable): Validation executable
         """
-        try:
-            command_sequence = f"{command} {' '.join(args)}"
-            executable = Executable(command_sequence)
+        if executable not in self.validation:
             self.validation.append(executable)
-        except ValueError as e:
-            raise ValueError(
-                f"Error adding validation to testset '{self.testset_name}': {e}"
-            )
+
+    def include_testset(self, testset: "Testset"):
+        """
+        Include a testset in this testset.
+
+        Args:
+            testset (Testset): The testset to be included
+        """
+        for deps in testset.dependency + [testset]:
+            if deps not in self.dependency:
+                self.dependency.append(deps)
 
     def add_test(self, command_sequence: str):
         """
@@ -130,9 +162,9 @@ class Testset:
             command_sequence (str): Command sequence to generate test data
         """
         try:
-            self.tests.append(Testcase(command_sequence))
+            self.testcases.append(Testcase(command_sequence))
         except ValueError as e:
-            raise ValueError(f"Error adding test to testset '{self.testset_name}': {e}")
+            raise ValueError(f"Error adding test to testset '{self.name}': {e}")
 
     def set_description(self, description: str):
         """
@@ -145,9 +177,7 @@ class Testset:
             ValueError: If description is already set
         """
         if self.description is not None:
-            raise ValueError(
-                f"Description already set for testset '{self.testset_name}'"
-            )
+            raise ValueError(f"Description already set for testset '{self.name}'")
         self.description = description
 
     def add_extrafile(self, extension: str):
@@ -164,7 +194,7 @@ class Testset:
             raise ValueError(f"Extra file {extension} should start with a dot (.)")
         if extension in self.extra_file:
             raise ValueError(
-                f"Extra file {extension} already added for testset '{self.testset_name}'"
+                f"Extra file {extension} already added for testset '{self.name}'"
             )
         self.extra_file.add(extension)
 
@@ -175,122 +205,40 @@ class Testset:
         Args:
             testset_index_width (int): Width for zero-padding testset index
         """
-        testcase_index_width = len(str(len(self.tests)))
-        testset_index_padded = str(self.testset_index).zfill(testset_index_width)
+        testcase_index_width = len(str(len(self.testcases)))
+        testset_index_padded = str(self.index).zfill(testset_index_width)
 
-        for i, test in enumerate(self.tests, 1):
+        for i, test in enumerate(self.testcases, 1):
             testcase_index_padded = str(i).zfill(testcase_index_width)
-            test_name = (
-                f"{testset_index_padded}_{self.testset_name}_{testcase_index_padded}"
-            )
-            test.set_test_name(test_name)
+            test_name = f"{testset_index_padded}_{self.name}_{testcase_index_padded}"
+            test.name = test_name
+
+    def get_all_test_names(self):
+        return sum(
+            ([tc.name for tc in ts.testcases] for ts in (self.dependency + [self])),
+            start=[],
+        )
 
 
-class Subtask:
+class Subtask(Testset):
     """
     Represents a subtask in a problem.
 
     Contains scoring information, validation rules, and associated testsets.
     """
 
-    def __init__(self, subtask_name: str, subtask_index: int, score: int):
-        self.subtask_name: str = subtask_name
-        self.subtask_index: int = subtask_index
+    def __init__(self, name: str, score: int):
+        super().__init__(name)
         self.score: int = score
-        self.description: str | None = None
-        self.validation: List[Executable] = []
-        self.tests: Set[str] = set()
-        self.independent_testset: Testset | None = None
 
-    def add_validation(self, command: str, *args):
+    def assign_index(self, index: int) -> int:
         """
-        Add a validation command for this subtask.
-
-        Args:
-            command (str): Validation executable name
-            *args: Arguments for the validation command
+        Indexes the subtask and returns the next available index.
         """
-        try:
-            command_sequence = f"{command} {' '.join(args)}"
-            executable = Executable(command_sequence)
-            self.validation.append(executable)
-        except ValueError as e:
-            raise ValueError(
-                f"Error adding validation to subtask '{self.subtask_name}': {e}"
-            )
-
-    def include_testset(self, testset_name: str):
-        """
-        Include a testset in this subtask.
-
-        Args:
-            testset_name (str): Name of the testset to include
-        """
-        self.tests.add(testset_name)
-
-    def set_description(self, description: str):
-        """
-        Set the description for this subtask.
-
-        Args:
-            description (str): Description text
-
-        Raises:
-            ValueError: If description is already set
-        """
-        if self.description is not None:
-            raise ValueError(
-                f"Description already set for subtask '{self.subtask_name}'"
-            )
-        self.description = description
-
-    def set_independent_testset(self, context: "ParserContext"):
-        """
-        Set an independent testset for this subtask.
-
-        Args:
-            context (ParserContext): Current parser context
-
-        Raises:
-            ValueError: If the independent testset is already set
-        """
-        if self.independent_testset is not None:
-            raise ValueError(
-                f"Independent testset already set for subtask '{self.subtask_name}'"
-            )
-        self.independent_testset = Testset(self.subtask_name, context.testset_counter)
-        context.recipe_data.testsets[self.subtask_name] = self.independent_testset
-        self.tests.add(self.subtask_name)
-        context.testset_counter += 1
-
-    def add_test(self, command_sequence: str):
-        """
-        Add a test case into self.independent_testset by parsing the command sequence.
-
-        Args:
-            command_sequence (str): Command sequence to generate test data
-
-        Raises:
-            ValueError: If the independent testset is not set
-        """
-        if self.independent_testset is None:
-            raise ValueError(
-                f"Independent testset is not set for subtask '{self.subtask_name}'"
-            )
-        self.independent_testset.add_test(command_sequence)
-
-    def add_extrafile(self, extension: str):
-        """
-        Add an extra file for self.independent_testset.
-
-        Args:
-            extension (str): Extra file extension, should start with a dot (.)
-        """
-        if self.independent_testset is None:
-            raise ValueError(
-                f"Independent testset is not set for subtask '{self.subtask_name}'"
-            )
-        self.independent_testset.extra_file.add(extension)
+        if len(self.testcases):
+            self.index = index
+            return index + 1
+        return index
 
 
 class RecipeData:
@@ -301,8 +249,8 @@ class RecipeData:
     """
 
     def __init__(self):
-        self.testsets: Dict[str, Testset] = {}
-        self.subtasks: Dict[str, Subtask] = {}
+        self.testsets: dict[str, Testset | Subtask] = {}
+        self.subtasks: dict[str, Subtask] = {}
         self.global_validation: List[Executable] = []
 
     def get_all_test_names(self) -> List[str]:
@@ -314,15 +262,11 @@ class RecipeData:
         """
         all_names = []
 
-        # Sort testsets by index
-        sorted_testsets = sorted(
-            self.testsets.values(), key=lambda ts: ts.testset_index
-        )
-
-        for testset in sorted_testsets:
-            for test in testset.tests:
-                if test.test_name:
-                    all_names.append(test.test_name)
+        # From Python 3.7+ dict is order-preserving
+        for testset in self.testsets.values():
+            for test in testset.testcases:
+                if test.name:
+                    all_names.append(test.name)
 
         return all_names
 
@@ -334,33 +278,57 @@ class RecipeData:
         if not self.testsets:
             return
 
-        # Calculate the width needed for testset index padding
+        # From Python 3.7+ dict is order-preserving, so no sorting
+
+        i = 1
+        for testset in self.testsets.values():
+            i = testset.assign_index(i)
+
         max_testset_index = max(
-            testset.testset_index for testset in self.testsets.values()
+            filter(None, (testset.index for testset in self.testsets.values()))
         )
         testset_index_width = len(str(max_testset_index))
 
-        # Generate names for each testset
         for testset in self.testsets.values():
             testset.generate_test_names(testset_index_width)
+
+    def generate_testsetless_test_names(self):
+        """
+        Generate testsetless names for all test cases across all testsets.
+        This is specially designed for OutputOnly tasks.
+        This should be called after parsing is complete.
+        """
+        if not self.testsets:
+            return
+
+        testcase_cnt = 0
+        for testset in self.testsets.values():
+            testcase_cnt += len(testset.testcases)
+
+        # Calculate the width needed for testset index padding
+        testcase_index_width = len(str(testcase_cnt))
+
+        i = 0
+        for testset in self.testsets.values():
+            for test in testset.testcases:
+                test.name = str(i).zfill(testcase_index_width)
+                i += 1
 
     def push_validation_to_testcases(self):
         """
         Let all test cases own their validations Executable
         This should be called after parsing is complete.
         """
-        for testset in self.testsets.values():
-            for test in testset.tests:
+        for testset in reversed(self.testsets.values()):
+            for validation in self.global_validation:
+                testset.add_validation(validation)
+            for depend in testset.dependency:
                 for validation in testset.validation:
-                    test.add_validation(validation)
-        for subtask in self.subtasks.values():
-            for testset in subtask.tests:
-                for test in self.testsets[testset].tests:
-                    for validation in subtask.validation:
-                        test.add_validation(validation)
+                    depend.add_validation(validation)
+
         for testset in self.testsets.values():
-            for test in testset.tests:
-                for validation in self.global_validation:
+            for test in testset.testcases:
+                for validation in testset.validation:
                     test.add_validation(validation)
 
 
@@ -377,8 +345,6 @@ class ParserContext:
         self.recipe_data = RecipeData()
         self.current_context = None
         self.current_object = None
-        self.testset_counter = 1  # 1-based counter
-        self.subtask_counter = 1  # 1-based counter
         self.used_names = set()
 
         # Shared data storage for inter-handler communication
@@ -457,28 +423,6 @@ class ParserContext:
         for i, s in enumerate(list_of_text):
             list_of_text[i] = self.expand_constants(s)
 
-    def next_testset_index(self) -> int:
-        """
-        Get the next testset index and increment counter.
-
-        Returns:
-            int: Current testset index (1-based)
-        """
-        current = self.testset_counter
-        self.testset_counter += 1
-        return current
-
-    def next_subtask_index(self) -> int:
-        """
-        Get the next subtask index and increment counter.
-
-        Returns:
-            int: Current subtask index (1-based)
-        """
-        current = self.subtask_counter
-        self.subtask_counter += 1
-        return current
-
 
 class CommandHandler:
     """
@@ -513,15 +457,13 @@ class TestsetHandler(CommandHandler):
         self.validate_args(parts, 1, 1)
 
         testset_name = parts[1]
-        if testset_name in self.context.used_names:
+        if testset_name in self.context.recipe_data.testsets.keys():
             raise ValueError(f"Name '{testset_name}' already used")
 
-        self.context.used_names.add(testset_name)
-        testset = Testset(testset_name, self.context.testset_counter)
+        testset = Testset(testset_name)
         self.context.recipe_data.testsets[testset_name] = testset
         self.context.current_context = "testset"
         self.context.current_object = testset
-        self.context.testset_counter += 1
 
 
 class SubtaskHandler(CommandHandler):
@@ -531,7 +473,7 @@ class SubtaskHandler(CommandHandler):
         self.validate_args(parts, 2, 2)
 
         subtask_name = parts[1]
-        if subtask_name in self.context.used_names:
+        if subtask_name in self.context.recipe_data.testsets.keys():
             raise ValueError(f"Name '{subtask_name}' already used")
 
         try:
@@ -539,12 +481,11 @@ class SubtaskHandler(CommandHandler):
         except ValueError:
             raise ValueError(f"Invalid score '{parts[2]}' for subtask")
 
-        self.context.used_names.add(subtask_name)
-        subtask = Subtask(subtask_name, self.context.subtask_counter, score)
+        subtask = Subtask(subtask_name, score)
+        self.context.recipe_data.testsets[subtask_name] = subtask
         self.context.recipe_data.subtasks[subtask_name] = subtask
         self.context.current_context = "subtask"
         self.context.current_object = subtask
-        self.context.subtask_counter += 1
 
 
 class GlobalValidationHandler(CommandHandler):
@@ -583,19 +524,17 @@ class IncludeHandler(CommandHandler):
     def handle(self, parts: List[str]):
         self.validate_args(parts, 1, 1)
 
-        if self.context.current_context != "subtask":
-            raise ValueError("@include can only be used within subtask context")
+        if self.context.current_context is None:
+            raise ValueError(
+                "@include can only be used within testset or subtask context"
+            )
 
         include_name = parts[1]
 
         # Check if it's a testset or subtask
-        if include_name in self.context.recipe_data.testsets:
-            self.context.current_object.include_testset(include_name)
-        elif include_name in self.context.recipe_data.subtasks:
-            # Include all testsets from the referenced subtask
-            referenced_subtask = self.context.recipe_data.subtasks[include_name]
-            for testset_name in referenced_subtask.tests:
-                self.context.current_object.include_testset(testset_name)
+        testsets = self.context.recipe_data.testsets
+        if include_name in testsets.keys():
+            self.context.current_object.include_testset(testsets[include_name])
         else:
             raise ValueError(f"Unknown testset or subtask name: '{include_name}'")
 
@@ -612,7 +551,7 @@ class ValidationHandler(CommandHandler):
             )
 
         self.context.list_expand_constants(parts)
-        self.context.current_object.add_validation(parts[1], *parts[2:])
+        self.context.current_object.add_validation(Executable(" ".join(parts[1:])))
 
 
 class ConstantHandler(CommandHandler):
@@ -635,14 +574,8 @@ class ExtrafileHandler(CommandHandler):
                 "@extra_file can only be used within testset or subtask context"
             )
 
-        if (
-            self.context.current_context == "subtask"
-            and self.context.current_object.independent_testset is None
-        ):
-            self.context.current_object.set_independent_testset(self.context)
-
         self.context.current_object.add_extrafile(parts[2])
-        self.context.set_constant(parts[1], "_tmt_internal_testcase_name" + parts[2])
+        self.context.set_constant(parts[1], TESTCASE_NAME_PLACE_HOLDER + parts[2])
 
 
 class CommandRegistry:
@@ -690,12 +623,17 @@ class CommandRegistry:
         self.handlers[command] = handler
 
 
-def parse_recipe_data(recipe_lines: List[str]) -> RecipeData:
+def parse_recipe_data(
+    recipe_lines: List[str], is_outputonly: bool = False
+) -> RecipeData:
     """
     Parse recipe and return the structured data.
 
     Args:
         recipe_lines (list of str): List of lines in a recipe file
+        is_outputonly (bool):
+            Whether the recipe is for OutputOnly tasks.
+            In this case, the name of each testcase will not contain testset information.
 
     Returns:
         RecipeData: Parsed recipe data structure
@@ -726,15 +664,6 @@ def parse_recipe_data(recipe_lines: List[str]) -> RecipeData:
                 handler.handle(parts)
 
             else:
-                # Handle test generation commands
-                if (
-                    parser_context.current_context == "subtask"
-                    and parser_context.current_object.independent_testset is None
-                ):
-                    parser_context.current_object.set_independent_testset(
-                        parser_context
-                    )
-
                 # Expand constants in test generation commands
                 expanded_line = parser_context.expand_constants(line)
                 parser_context.current_object.add_test(expanded_line)
@@ -743,7 +672,10 @@ def parse_recipe_data(recipe_lines: List[str]) -> RecipeData:
             raise ValueError(f"Error on line {line_num}: {e}")
 
     # Generate test names after parsing is complete
-    parser_context.recipe_data.generate_all_test_names()
+    if is_outputonly:
+        parser_context.recipe_data.generate_testsetless_test_names()
+    else:
+        parser_context.recipe_data.generate_all_test_names()
 
     # Push validations to all test cases after parsing is complete
     parser_context.recipe_data.push_validation_to_testcases()
@@ -754,50 +686,51 @@ def parse_recipe_data(recipe_lines: List[str]) -> RecipeData:
 if __name__ == "__main__":
     # Test the parser with sample data
     sample_data = """
-@constant MAX_N 200000
-@constant SMALL_N 100
+@global_validation validator
 
-@testset t1
-gen --N=${SMALL_N} seed=1
-gen --N=${SMALL_N} seed=2
+@testset samples
+manual s1.in
+manual s2.in
 
-@testset t2
-gen --N=2000 seed=1
-gen --N=2000 seed=2
+@testset handmade
+print 30 11 | swap
+print 30 22 | swap
+print 47 24
+print 2147483647 1
+print 2147483647 2147483647
+manual 1.in
 
-@testset t3
-gen --N=20000 seed=1
-gen --N=20000 seed=2
+@subtask A 1
+print 1 1
 
-@testset edge_case
-@extra_file NOTE .note
-@description generate some edge cases for N <= ${SMALL_N}
-special --N=1 --note=${NOTE} seed=1
-special --N=2 --note=${NOTE} seed=1
-gen --N=${SMALL_N} seed=1 | make_extreme
+@subtask B 2
+@include A
+@include A
 
-@global_validation validator --N=${MAX_N}
-@global_validation validator2
-# validator2 is written by a tester
+@subtask C 3
+@include B
+@include B
 
-@subtask s1 20
-@extra_file NOTE .note
-extra --N=5 --note=${NOTE} seed=1
-@description $N \\leq ${SMALL_N}$
-@include t1
-@include edge_case
-@validation validator --N=${SMALL_N}
+@subtask D 4
+@include C
+@include C
 
-@subtask s2 30
-@description $N \\leq 2000$
-@include s1
-@include t2 
-@validation validator --N=2000
+@subtask E 5
+@include D
+@include D
 
-@subtask s3 50
-@description No additional constraints
-@include t3
-@include s2
+@subtask F 6
+@include E
+@include E
+
+@subtask G 7
+@include F
+@include F
+
+@subtask H 8
+@validation validator
+@include G
+@include G
 """
 
     try:
@@ -807,15 +740,15 @@ extra --N=5 --note=${NOTE} seed=1
         # Print parsed results
         print("=== TESTSETS ===")
         for name, testset in recipe_data.testsets.items():
-            print(f"Testset '{name}' (index: {testset.testset_index})")
+            print(f"Testset '{name}' (index: {testset.index})")
             if len(testset.extra_file) != 0:
                 print(f"  Extra files: {list(testset.extra_file)}")
             if testset.description:
                 print(f"  Description: {testset.description}")
-            print(f"  Tests: {len(testset.tests)}")
-            for i, test in enumerate(testset.tests):
+            print(f"  Tests: {len(testset.testcases)}")
+            for i, test in enumerate(testset.testcases):
                 print(
-                    f"    Test {i + 1} (Name: {test.test_name}): {len(test.execute.commands)} commands"
+                    f"    Test {i + 1} (Name: {test.name}): {len(test.execute.commands)} commands"
                 )
                 for j, cmd in enumerate(test.execute.commands):
                     print(f"      Command {j + 1}: {cmd}")
@@ -844,5 +777,7 @@ extra --N=5 --note=${NOTE} seed=1
 
         print("\nParsing completed successfully!")
 
-    except Exception as e:
-        print(f"Error: {e}")
+    finally:
+        pass
+    # except Exception as e:
+    #     print(f"Error: {e}")

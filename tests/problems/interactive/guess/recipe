@@ -1,0 +1,6 @@
+@subtask full 100
+@validation validator
+print fixed 1
+print fixed 10
+print fixed 1024
+print adaptive

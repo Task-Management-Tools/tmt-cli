@@ -1,6 +1,12 @@
+from typing import TYPE_CHECKING
+
 import sys
 
 from abc import ABC, abstractmethod
+
+if TYPE_CHECKING:
+    from internal.context import TMTContext
+    from internal import commands
 
 from internal.outcomes import (
     CompilationResult,
@@ -29,6 +35,7 @@ class Formatter(ABC):
         self.ANSI_PURPLE = ""
         self.ANSI_RED_BG = ""
         self.ANSI_GREY = ""
+        self.ANSI_ORANGE = ""
 
     @abstractmethod
     def print(self, *args, endl=False) -> None:
@@ -76,11 +83,33 @@ class Formatter(ABC):
         """
 
     @abstractmethod
-    def print_checker_verdict(
-        self, result: EvaluationResult, print_reason: bool = False
+    def print_testcase_verdict(
+        self,
+        result: EvaluationResult,
+        context: "TMTContext",
+        print_reason: bool = False,
     ) -> None:
         """
         Formats the execution verdict and reason.
+        """
+
+    @abstractmethod
+    def print_exec_details(
+        self, result: ExecutionOutcome, context: "TMTContext"
+    ) -> None:
+        """
+        Formats the detail statistics of the execution output.
+        """
+
+    @abstractmethod
+    def print_testset_summary(
+        self,
+        results: "list[commands.invoke.TestsetResult]",
+        overall: "commands.invoke.TestsetResult",
+        context: "TMTContext",
+    ):
+        """
+        Formats the execution verdict and reason of a testset.
         """
 
     @abstractmethod

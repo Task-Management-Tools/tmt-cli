@@ -1,7 +1,7 @@
 import os
 
 from internal.compilation.languages.base import MakeInfo, Language
-from internal.context.context import TMTContext
+from internal.context import TMTContext
 
 
 class LanguageDummy(Language):
@@ -13,8 +13,12 @@ class LanguageDummy(Language):
         )
 
     @property
-    def name(self):
+    def id(self):
         return "dummy"
+
+    @property
+    def name(self):
+        return "Dummy (Always Compliation Error)"
 
     @property
     def source_extensions(self):

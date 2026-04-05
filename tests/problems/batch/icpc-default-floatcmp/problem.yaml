@@ -1,0 +1,28 @@
+title: ICPC Floating Point Comparison Test
+short_name: floatcmp
+description: Test if the ICPC default checker works
+
+input_extension: .in
+output_extension: .out
+
+judge_convention: icpc
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 G
+  output_limit: unlimited
+
+answer_generation:
+  type: solution
+  filename: model-solution.cpp
+
+checker:
+  type: default
+  arguments: float_tolerance 1e-6
+
+tmt_version: latest

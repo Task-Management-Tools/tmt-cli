@@ -1,0 +1,30 @@
+title: Modulo (1 process, FIFO)
+short_name: modulo
+description: Communication test for 1 process, gradered, use FIFO
+
+input_extension: .in
+output_extension: .out
+
+judge_convention: cms
+problem_type: communication
+
+validator:
+  type: default
+
+solution:
+  type: grader
+  time_limit: 1000 ms
+  memory_limit: 1 G
+  output_limit: unlimited
+  grader_name: grader
+  num_procs: 1
+  use_fifo: true
+
+answer_generation:
+  type: solution
+  filename: model-solution.cpp
+
+manager:
+  filename: manager.cpp
+
+tmt_version: latest

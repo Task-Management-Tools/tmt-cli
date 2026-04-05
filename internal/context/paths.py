@@ -32,11 +32,16 @@ def _internal_path_property(*kwargs):
 class ProblemDirectoryHelper:
     """
     Helps everything with files and directories.
+    Constructs absolute paths.
     """
 
     PROBLEM_YAML = "problem.yaml"
 
     def __init__(self, problem_dir: str, script_dir: str):
+        if not os.path.isabs(problem_dir):
+            raise ValueError("problem_dir of ProblemDirectoryHelper must be absolute")
+        if not os.path.isabs(script_dir):
+            raise ValueError("script_dir of ProblemDirectoryHelper must be absolute")
         self.problem_dir = problem_dir
         self.script_dir = script_dir
 
@@ -54,12 +59,20 @@ class ProblemDirectoryHelper:
     checker = _problem_path_property("checker")
     checker_build = _extend_path_property(checker, "build")
 
+    graders = _problem_path_property("graders")
+
     interactor = _problem_path_property("interactor")
     interactor_build = _extend_path_property(interactor, "build")
+
+    manager = _problem_path_property("manager")
+    manager_build = _extend_path_property(manager, "build")
 
     testcases = _problem_path_property("testcases")
     testcase_summary = _extend_path_property(testcases, "summary")
     testcases_hashes = _extend_path_property(testcases, "hash.json")
+
+    public = _problem_path_property("public")
+    public_filelist = _extend_path_property(public, "files")
 
     sandbox = _problem_path_property("sandbox")
     default_sandbox = _extend_path_property(sandbox, "default")
@@ -134,16 +147,8 @@ class ProblemDirectoryHelper:
     def has_interactor_directory(self):
         return self._is_directory(self.interactor)
 
-    def replace_with_solution(self, full_filename: str):
-        test_files = [
-            os.path.join(self.solutions, full_filename),
-        ]
-        for test_file in test_files:
-            if self._is_regular_file(test_file):
-                return test_file
-        raise TMTMissingFileError("solution", full_filename)
-
-    # def replace_with_grader(self, file: str):
+    def has_manager_directory(self):
+        return self._is_directory(self.manager)
 
     def replace_with_manual(self, full_filename: str):
         if self._is_regular_file(os.path.join(self.generator_manuals, full_filename)):

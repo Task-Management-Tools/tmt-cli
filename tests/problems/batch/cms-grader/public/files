@@ -1,0 +1,11 @@
+# C++ compilation scripts
+format compile.sh       cpp/
+format run.sh           cpp/
+
+# C++ grader/samples
+grader cpp              cpp/
+header gradertest.h     cpp/
+public gradertest.cpp   cpp/
+
+# Testcases
+sample 1_full_1         samples/sample-01

@@ -1,0 +1,27 @@
+@subtask sample 0
+print sample 0
+
+@subtask subtask1 5
+print subtask1 0
+print subtask1 1
+
+@subtask subtask2 10
+@include sample
+print subtask2 0
+print subtask2 1
+print subtask2 2
+
+@subtask subtask3 15
+print subtask3 0
+print subtask3 1
+
+@subtask subtask4 20
+print subtask4 0
+print subtask4 1
+
+@subtask full 50
+@include subtask1
+@include subtask2
+@include subtask4
+print full 0
+print full 1

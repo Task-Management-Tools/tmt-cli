@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import pathlib
 import os
 import subprocess
@@ -5,13 +6,15 @@ import subprocess
 from internal.formatting import Formatter
 from internal.context import TMTContext, SandboxDirectory
 from internal.outcomes import (
+    CompilationResult,
     EvaluationOutcome,
     EvaluationResult,
     eval_outcome_to_run_outcome,
 )
-from internal.steps.solution import SolutionStep, make_solution_step
-from internal.steps.checker.icpc import ICPCCheckerStep
-from internal.steps.interactor import ICPCInteractorStep
+import internal.recipe_parser as recipe_parser
+from internal.steps.checker import get_checker_step_type
+from internal.steps.solution import get_solution_step_type
+from internal.steps.utils import CompilationJob, CompilationSlot
 
 
 def is_apport_active():
@@ -31,16 +34,23 @@ class CommandInvokeSummary:
     def __init__(self):
         self.testcase_results: dict[str, EvaluationResult | None] = {}
         self.directory_error: bool = False
-        self.compilation_error: bool = False
+        self.compilation_result: dict[CompilationSlot, CompilationResult] = {}
 
     def __bool__(self):
-        if self.directory_error or self.compilation_error:
+        if self.directory_error:
+            return False
+
+        def is_compilation_error(cresult: CompilationResult | None):
+            return cresult is not None and not cresult
+
+        if any(map(is_compilation_error, self.compilation_result.values())):
             return False
 
         # TODO this should check for expected verdicts; right now only failures are checked against
         def predicate(result: EvaluationResult):
             return result.verdict not in [
                 EvaluationOutcome.MANAGER_CRASHED,
+                EvaluationOutcome.MANAGER_FAILED,
                 EvaluationOutcome.MANAGER_TIMEOUT,
                 EvaluationOutcome.CHECKER_CRASHED,
                 EvaluationOutcome.CHECKER_FAILED,
@@ -54,9 +64,57 @@ class CommandInvokeSummary:
         self.directory_error = True
         return self
 
-    def compilation_fail(self):
-        self.compilation_error = True
-        return self
+
+@dataclass
+class TestsetResult:
+    testset_name: str
+
+    max_score: float | None
+    score: float = float("inf")
+    verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+
+    worst_testcase: str = None
+    num_testcases: int = 0
+    expected_testcases: int = 0
+
+    max_cpu_time_sec: float = 0.0
+    is_timer_triggered: bool = False
+
+    max_memory_kib: int = -1
+    max_memory_upper_bound_kib: int = 0
+
+    def combine(self, other: "EvaluationResult | TestsetResult"):
+        if isinstance(other, EvaluationResult):
+            self.max_cpu_time_sec, self.is_timer_triggered = max(
+                (self.max_cpu_time_sec, self.is_timer_triggered),
+                (other.cpu_time_sec, other.timer_triggered),
+            )
+            if other.score < self.score:
+                self.worst_testcase = other.codename
+                self.score = other.score
+                self.verdict = other.verdict
+            self.num_testcases += 1
+            self.expected_testcases += 1
+            self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+            self.max_memory_upper_bound_kib = max(
+                self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+            )
+
+        elif isinstance(other, TestsetResult):
+            self.max_cpu_time_sec, self.is_timer_triggered = max(
+                (self.max_cpu_time_sec, self.is_timer_triggered),
+                (other.max_cpu_time_sec, other.is_timer_triggered),
+            )
+            if other.score < self.score:
+                self.worst_testcase = other.worst_testcase
+                self.score = other.score
+                self.verdict = other.verdict
+            self.num_testcases += other.num_testcases
+            self.expected_testcases += other.expected_testcases
+            self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+            self.max_memory_upper_bound_kib = max(
+                self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+            )
 
 
 def command_invoke(
@@ -66,6 +124,7 @@ def command_invoke(
     show_reason: bool,
     submission_files: list[str],
 ) -> CommandInvokeSummary:
+    context.set_log_directory(context.path.logs_invocation)
 
     sandbox = SandboxDirectory(context.path.default_sandbox)
     sandbox.create()
@@ -96,55 +155,49 @@ def command_invoke(
     assert pathlib.Path(context.path.testcase_summary).exists()
 
     # Make every steps first
-
-    solution_step: SolutionStep = make_solution_step(
-        solution_type=context.config.solution.type,
+    solution_step_type = get_solution_step_type(
+        problem_type=context.config.problem_type,
+        judge_convention=context.config.judge_convention,
+    )
+    solution_step = solution_step_type(
         context=context,
         sandbox=sandbox,
         is_generation=False,
         submission_files=actual_files,
     )
 
-    interactor_step = None
-    if context.config.interactor is not None:
-        interactor_step = ICPCInteractorStep(context=context, sandbox=sandbox)
-
-    # TODO manager
+    checker_step_type = get_checker_step_type(
+        problem_type=context.config.problem_type,
+        judge_convention=context.config.judge_convention,
+    )
+    if checker_step_type is None:
+        checker_step = None
+    else:
+        checker_step = checker_step_type(
+            context=context, sandbox=sandbox, is_generation=False
+        )
+        checker_step.check_unused_checker(formatter)
 
     # TODO option to skip_checker:
-    checker_step = ICPCCheckerStep(context=context, sandbox=sandbox)
-    checker_step.check_unused_checker(formatter)
+    def compilation_jobs():
+        yield from solution_step.compilation_jobs()
+        if checker_step is not None:
+            yield CompilationJob(
+                CompilationSlot.CHECKER, checker_step.compile, checker_step.checker_name
+            )
 
-    formatter.print("Solution    compile ")
-    solution_compilation_result = solution_step.compile_solution()
-    formatter.print_compile_result(solution_compilation_result)
-    if not solution_compilation_result:
-        return summary.compilation_fail()
-
-    if interactor_step is not None:
-        formatter.print("Interactor  compile ")
-        interactor_compilation_result = interactor_step.compile()
-        formatter.print_compile_result(
-            interactor_compilation_result, name=interactor_step.interactor_name
-        )
-        if not interactor_compilation_result:
-            return summary.compilation_fail()
-
-    # TODO manager
-
-    if checker_step is not None:
-        formatter.print("Checker     compile ")
-        checker_compilation_result = checker_step.compile()
-        formatter.print_compile_result(
-            checker_compilation_result, name=checker_step.checker_name
-        )
-        if not checker_compilation_result:
-            return summary.compilation_fail()
+    for job in compilation_jobs():
+        formatter.print(f"{job.slot.value.ljust(10)}  compile ")
+        result = job.compile_fn()
+        summary.compilation_result[job.slot] = result
+        formatter.print_compile_result(result, name=job.display_file)
+        if not result:
+            return summary
 
     all_testcases = [
-        test.test_name
+        test.name
         for testset in context.recipe.testsets.values()
-        for test in testset.tests
+        for test in testset.testcases
     ]
     with open(context.path.testcase_summary, "rt") as testcases_summary:
         available_testcases = [line.strip() for line in testcases_summary.readlines()]
@@ -169,55 +222,88 @@ def command_invoke(
             formatter.ANSI_RESET,
         )
 
-    codename_length = max(map(len, available_testcases)) + 2
+    codename_length = max(6, max(map(len, available_testcases), default=0)) + 2
+
+    os.makedirs(context.path.logs_invocation, exist_ok=True)
 
     for codename in available_testcases:
         formatter.print(" " * 4)
         formatter.print_fixed_width(codename, width=codename_length)
 
         formatter.print("sol ")
-        if interactor_step is None:
-            solution_result = solution_step.run_solution(codename)
-        else:
-            solution_result = interactor_step.run_solution(
-                solution_step,
-                codename,
-            )
+        solution_result = solution_step.run_solution(codename)
+
         formatter.print_exec_result(eval_outcome_to_run_outcome(solution_result))
-        formatter.print(
-            f"{solution_result.solution_cpu_time_sec:6.3f} s / {solution_result.solution_max_memory_kib / 1024:5.4g} MiB  "
-        )
+        formatter.print_exec_details(solution_result, context=context)
 
         with open(
             os.path.join(context.path.logs_invocation, f"{codename}.sol.log"), "w+"
         ) as f:
-            f.write(solution_result.checker_reason)
+            f.write(solution_result.reason)
 
         # TODO option to skip_checker
         if checker_step is not None:
             formatter.print("check ")
-            testcase_input = os.path.join(
-                context.path.testcases, context.construct_input_filename(codename)
-            )
-            testcase_answer = os.path.join(
-                context.path.testcases, context.construct_output_filename(codename)
-            )
-            checker_arguments = (
-                context.config.checker.arguments
-                if context.config.checker is not None
-                else []
-            )
-            solution_result = checker_step.run_checker(
-                checker_arguments,
-                solution_result,
-                testcase_input,
-                testcase_answer,
-            )
+            solution_result = checker_step.run_checker(solution_result, codename)
 
         formatter.print_checker_status(solution_result)
-        formatter.print_checker_verdict(solution_result, print_reason=show_reason)
+        formatter.print_testcase_verdict(
+            solution_result, context=context, print_reason=show_reason
+        )
         formatter.println()
 
         summary.testcase_results[codename] = solution_result
+
+    testset_results: dict[str, TestsetResult] = {}
+
+    def init_result(testset: recipe_parser.Testset | recipe_parser.Subtask):
+        if isinstance(testset, recipe_parser.Subtask):
+            return TestsetResult(testset_name=testset.name, max_score=testset.score)
+        else:
+            return TestsetResult(testset_name=testset.name, max_score=None)
+
+    overall = TestsetResult(testset_name="", max_score=None)
+
+    # Process without dependencies
+    for ts in context.recipe.testsets.values():
+        ts_res = init_result(ts)
+        for testcases in ts.testcases:
+            if testcases.name in summary.testcase_results:
+                ts_res.combine(summary.testcase_results[testcases.name])
+            else:
+                ts_res.expected_testcases += 1
+        testset_results[ts.name] = ts_res
+        overall.combine(ts_res)
+
+    # Include the dependencies, after overall is computed
+    for ts in reversed(context.recipe.testsets.values()):
+        ts_res = init_result(ts)
+        for dep_ts in ts.dependency:
+            ts_res.combine(testset_results[dep_ts.name])
+        ts_res.combine(testset_results[ts.name])
+        testset_results[ts.name] = ts_res
+
+    display_testsets: list[TestsetResult] = []
+    for ts in context.recipe.testsets.values():
+        if isinstance(ts, recipe_parser.Subtask):
+            display_testsets.append(testset_results[ts.name])
+        elif context.config.judge_convention.display_testsets:
+            display_testsets.append(testset_results[ts.name])
+
+    # Actually compute overall score according to summary rule
+    # TODO: in TIOJ, this should apply the custom summary
+    overall.score = overall.max_score = 0
+
+    for r in display_testsets:
+        if not r.num_testcases:
+            r.score = 0.0
+        if r.max_score is not None:
+            # TODO: support CMS "Sum" Scoring type?
+            r.score *= r.max_score
+            overall.max_score += r.max_score
+            overall.score += r.score
+
+    formatter.println()
+    formatter.print_testset_summary(display_testsets, overall, context)
 
     return summary
