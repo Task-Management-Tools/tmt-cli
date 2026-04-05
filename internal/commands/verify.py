@@ -48,6 +48,7 @@ def verify_solutions(
             if verdict not in [ExpectedVerdict.PARTIAL, ExpectedVerdict.ACCEPTED]:
                 incorrect = True
         result_str = "Incorrect" if incorrect else "Partial" if partial else "Correct"
+        # TODO: compute score based on judge convention
         return score, result_str, counter
                 
     def check_verdict_rule(
@@ -133,11 +134,15 @@ def verify_solutions(
         )
         print_row("Overall", result_str, score * max_score, score, verdict_count)
 
-        verify_fail_msg += check_verdict_rule(
-            "Overall result",
-            set(verdict_count.keys()), 
-            solution.verdict + default_rules,
-        )
+        if not subtask_list:
+            verify_fail_msg += check_verdict_rule(
+                "Overall result",
+                set(verdict_count.keys()), 
+                default_subtask_rule.verdict
+            )
+            if not default_subtask_rule.score.check_score(score):
+                verify_fail_msg += [f"Overall score {score} violates the score range {default_subtask_rule.score}"]
+
         if verify_fail_msg:
             for msg in verify_fail_msg:
                 formatter.println(msg)
