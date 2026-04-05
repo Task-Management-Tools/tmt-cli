@@ -2,7 +2,7 @@ from collections import Counter
 from itertools import count
 import os
 
-from internal.verdicts import ExpectedVerdict, VerdictRule, parse_verdicts
+from internal.verdicts import ExpectedVerdict, ScoreRange, SubtaskVerdict, VerdictRule, parse_verdicts
 from internal.formatting import Formatter, EmptyFormatter
 from internal.context import TMTContext
 from internal.commands import command_invoke
@@ -101,10 +101,12 @@ def verify_solutions(
             formatter.print_fixed_width(f"({round(score_percent * 100)}%)", width=score_percent_len)
             formatter.println(', '.join([f"{verdict}*{count}" for verdict, count in verdict_count.items()]))
 
-        subtask_rules: dict[str, list[VerdictRule]] = dict()
+        subtask_rules: dict[str, SubtaskVerdict] = dict()
         for subtask_verdict in solution.subtask:
             for subtask in subtask_verdict.subtask:
-                subtask_rules[subtask] = subtask_verdict.verdict
+                subtask_rules[subtask] = subtask_verdict
+        
+        default_subtask_rule = SubtaskVerdict([], solution.verdict + default_rules, solution.score)
 
         max_score = 0
         verify_fail_msg: list[str] = []
@@ -114,11 +116,15 @@ def verify_solutions(
             score_num = score * subtask.score
             score_percent = score
             print_row(subtask_name, result_str, score_num, score_percent, verdict_count)
+            subtask_rule = subtask_rules[subtask_name] if subtask_name in subtask_rules else default_subtask_rule
             verify_fail_msg += check_verdict_rule(
                 f"Subtask {subtask_name}",
                 set(verdict_count.keys()),
-                subtask_rules[subtask_name] if subtask_name in subtask_rules else solution.verdict + default_rules
+                subtask_rule.verdict
             )
+            if not subtask_rule.score.check_score(score):
+                verify_fail_msg += [f"Subtask {subtask_name} score {score} violates the score range {subtask_rule.score}"]
+            
         formatter.println("-" * (max_subtask_len + result_len + score_len + 20))
 
         score, result_str, verdict_count = get_tests_outcome(

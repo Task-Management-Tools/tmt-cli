@@ -15,7 +15,6 @@ class ExpectedVerdict(enum.Enum):
                            [item for item in EvaluationOutcomeGroup.TIMEOUT.outcome_list if item != EvaluationOutcome.TIMEOUT_WALL])
     RUNTIME_ERROR = ("Runtime Error", "RTE", ["runtime_error", "RE", "RTE"], EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list)
     PARTIAL = ("Partially Correct", "PC", ["partial", "PC"], EvaluationOutcomeGroup.PARTIAL.outcome_list)
-    # TODO: partial score range
 
     # These verdicts should not be used in verdicts.yaml
     TIME_LIMIT_EXCEEDED_WALL = ("Time Limit Exceeded (wall)", "TLE(wall)", [], [EvaluationOutcome.TIMEOUT_WALL])
@@ -151,9 +150,53 @@ class VerdictRule:
         raise ValueError(f"Invalid verdict rule format: {data}")
 
 @dataclasses.dataclass
+class ScoreRange:
+    min: float | None = None
+    max: float | None = None
+    exact: float | None = None
+
+    def check_score(self, score: float):
+        result = True
+        EPS = 1e-9
+        if self.exact is not None:
+            result = result and abs(score - self.exact) <= EPS
+        if self.min is not None:
+            result = result and score >= self.min - EPS
+        if self.max is not None:
+            result = result and score <= self.max + EPS
+        return result
+
+    def __str__(self) -> str:
+        if self.exact is not None:
+            return f"exact {self.exact}"
+        min_str = str(self.min) if self.min is not None else ""
+        max_str = str(self.max) if self.max is not None else ""
+        return f"[{min_str},{max_str}]"
+
+    @classmethod
+    def from_raw(cls, data) -> "ScoreRange":
+        if isinstance(data, ScoreRange):
+            return data
+        if data is None:
+            return cls()
+        if isinstance(data, (str, float)):
+            return cls(None, None, float(data))
+        obj = cls(**data)
+        if obj.min is not None:
+            obj.min = float(obj.min)
+        if obj.max is not None:
+            obj.max = float(obj.max)
+        if obj.exact is not None:
+            obj.exact = float(obj.exact)
+        if obj.exact is not None and (obj.min is not None or obj.max is not None):
+            raise ValueError("The exact score is set in a score range but min or max score is also set")
+        return obj
+
+@dataclasses.dataclass
 class SubtaskVerdict:
     subtask: list[str]
     verdict: list[VerdictRule]
+    score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
 
     @classmethod
     def from_raw(cls, data, subtask_list: list[str]) -> "SubtaskVerdict":
@@ -164,6 +207,11 @@ class SubtaskVerdict:
         ```
         subtask: str | list[str]
         verdict: Raw VerdictRule list
+        score:
+          - min: 0.0
+          - max: 1.0
+          - exact: 0.5 # all are optional, exact and min/max should not appear at the same time
+        # score: 0.5 # this is treated as exact: 0.5
         ```
         If only a single str is provided in `subtask`,
         it is treated as a list containing the subtask only.
@@ -181,6 +229,7 @@ class SubtaskVerdict:
                 raise ValueError(f"Subtask {item} does not exist")
 
         subtask.verdict = VerdictRule.from_raw_list(subtask.verdict)
+        subtask.score = ScoreRange.from_raw(subtask.score)
         
         return subtask
         
@@ -191,6 +240,7 @@ class SolutionVerdict:
     verdict: list[VerdictRule]
     judge_verdict: ExpectedVerdict | None = None
     subtask: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
+    score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
 
     @classmethod
     def from_raw(cls, data, subtask_list: list[str], helper: ProblemDirectoryHelper) -> "SolutionVerdict":
@@ -212,6 +262,8 @@ class SolutionVerdict:
             subtasks.append(subtask)
             overwrite_subtasks += [item for item in subtask.subtask]
         solution.subtask = subtasks
+
+        solution.score = ScoreRange.from_raw(solution.score)
 
         # check duplicates
         seen = set()
