@@ -1,11 +1,13 @@
 import dataclasses
 import enum
+import os
 from typing import Any
 import yaml
 from pathlib import Path
 
 from internal.context.context import TMTContext
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
+from internal.outcomes import EvaluationOutcome
 from .paths import ProblemDirectoryHelper
 
 class Verdict(enum.Enum):
@@ -14,6 +16,11 @@ class Verdict(enum.Enum):
     TIME_LIMIT_EXCEEDED = "time_limit_exceeded"
     RUNTIME_ERROR = "runtime_error"
     PARTIAL = "partial" # TODO: partial score range
+
+    # These verdicts should not be used in verdicts.yaml
+    TIME_LIMIT_EXCEEDED_WALL = "internal_time_limit_exceeded_wall"
+    JUDGE_ERROR = "internal_judge_error"
+    UNKNOWN = "internal_unknown"
 
     @classmethod
     def from_str(cls, value: str) -> "Verdict":
@@ -24,11 +31,54 @@ class Verdict(enum.Enum):
                 return Verdict.WRONG_ANSWER
             case "time_limit_exceeded" | "time_limit" | "TLE":
                 return Verdict.TIME_LIMIT_EXCEEDED
-            case "runtime_error" | "RE":
+            case "runtime_error" | "RTE" | "RE":
                 return Verdict.RUNTIME_ERROR
-            case "partial":
+            case "partial" | "PA" | "PC":
                 return Verdict.PARTIAL
         raise ValueError(f"Unknown verdict {value}")
+
+    @classmethod
+    def from_evaluation_outcome(cls, outcome: EvaluationOutcome) -> "Verdict":
+        # TODO: copied from TerminalFormatter, may refactor
+        group_accepted = [EvaluationOutcome.ACCEPTED]
+        group_partial = [EvaluationOutcome.PARTIAL]
+        group_wrong_answer = [
+            EvaluationOutcome.WRONG,
+            EvaluationOutcome.NO_FILE,
+            EvaluationOutcome.NO_OUTPUT,
+        ]
+        group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
+        group_runtime_error = [
+            EvaluationOutcome.RUNERROR_OUTPUT,
+            EvaluationOutcome.RUNERROR_SIGNAL,
+            EvaluationOutcome.RUNERROR_EXITCODE,
+            EvaluationOutcome.RUNERROR_MEMORY,
+        ]
+        group_judge_error = [
+            EvaluationOutcome.MANAGER_CRASHED,
+            EvaluationOutcome.MANAGER_TIMEOUT,
+            EvaluationOutcome.CHECKER_CRASHED,
+            EvaluationOutcome.CHECKER_FAILED,
+            EvaluationOutcome.CHECKER_TIMEDOUT,
+            EvaluationOutcome.INTERNAL_ERROR,
+        ]
+
+        if outcome in group_accepted:
+            return Verdict.ACCEPTED
+        elif outcome in group_partial:
+            return Verdict.PARTIAL
+        elif outcome in group_wrong_answer:
+            return Verdict.WRONG_ANSWER
+        elif outcome in group_timeout:
+            if outcome == EvaluationOutcome.TIMEOUT_WALL:
+                return Verdict.TIME_LIMIT_EXCEEDED_WALL
+            return Verdict.TIME_LIMIT_EXCEEDED
+        elif outcome in group_runtime_error:
+            return Verdict.RUNTIME_ERROR
+        elif outcome in group_judge_error:
+            return Verdict.JUDGE_ERROR
+        else:
+            return Verdict.UNKNOWN
 
     @classmethod
     def _missing_(cls, value: object) -> "Verdict":
@@ -40,6 +90,19 @@ class Verdict(enum.Enum):
 class VerdictRule:
     must: list[Verdict] = dataclasses.field(default_factory=list)
     never: list[Verdict] = dataclasses.field(default_factory=list)
+
+    def check_rule(self, verdicts: list[Verdict] | set[Verdict]) -> bool:
+        must_ok = not self.must
+        for verdict in verdicts:
+            if verdict in self.never or \
+                    (Verdict.ACCEPTED in self.must and verdict != Verdict.ACCEPTED) or \
+                    (Verdict.PARTIAL in self.must and verdict not in [Verdict.ACCEPTED, Verdict.PARTIAL]):
+                return False
+            if verdict in self.must:
+                must_ok = True
+        if not must_ok:
+            return False
+        return True
 
     @classmethod
     def from_raw_list(cls, data) -> list["VerdictRule"]:
@@ -53,6 +116,7 @@ class VerdictRule:
         - If the raw data is a str `s`, it is treated as `[s]`.
         - If the raw data is a list[str] `l`, it is treated as `[{ must: l }]`.
         """
+        # TODO: If `must` contains ACCEPTED or PARTIAL, it should be the only item in `must` and `never` should be empty.
 
         # verdict: "accepted"
         if isinstance(data, (Verdict, str)):
@@ -72,8 +136,14 @@ class VerdictRule:
                 rule_list: list[VerdictRule] = []
                 for rule in data:
                     rule = cls(**rule)
-                    rule.must = list(map(Verdict, rule.must))
-                    rule.never = list(map(Verdict, rule.never))
+                    if isinstance(rule.must, (Verdict, str)):
+                        rule.must = [Verdict(rule.must)]
+                    else:
+                        rule.must = list(map(Verdict, rule.must))
+                    if isinstance(rule.never, (Verdict, str)):
+                        rule.never = [Verdict(rule.never)]
+                    else:
+                        rule.never = list(map(Verdict, rule.never))
                     if rule.must:
                         found_must = True
                     rule_list.append(rule)
@@ -132,7 +202,9 @@ class SolutionVerdict:
         solution = cls(**data)
 
         # check solution file existence
-        helper.replace_with_solution(solution.filename)
+        solution_file = os.path.join(helper.solutions, solution.filename)
+        if not os.path.isfile(solution_file):
+            raise FileNotFoundError(f"Solution file {solution} not found.")
 
         if solution.judge_verdict:
             solution.judge_verdict = Verdict(solution.judge_verdict)
