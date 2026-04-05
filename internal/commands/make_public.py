@@ -153,12 +153,12 @@ def filter_secret(zf: BinaryIO, f: TextIO):
     hide = False
     improper = False
     for line in f.readlines():
-        if re.match(r"BEGIN\s+SECRET", line):
+        if re.search(r"BEGIN\s+SECRET", line):
             improper = improper or hide
             hide = True
         if not hide:
             zf.write(line.encode())
-        if re.match(r"END\s+SECRET", line):
+        if re.search(r"END\s+SECRET", line):
             improper = improper or not hide
             hide = False
     return improper or hide

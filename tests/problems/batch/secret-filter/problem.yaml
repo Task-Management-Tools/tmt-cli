@@ -1,0 +1,28 @@
+title: Grader Export Test
+short_name: secrettest
+description: Unit test problem for grader secret filtering
+
+input_extension: .in
+output_extension: .out
+
+judge_convention: cms
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: grader
+  grader_name: grader
+  time_limit: 1000 ms
+  memory_limit: 1 G
+  output_limit: unlimited
+
+answer_generation:
+  type: solution
+  filename: model-solution.py
+
+compile_time_limit: 60 s
+compile_memory_limit: unlimited
+
+tmt_version: latest
