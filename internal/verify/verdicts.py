@@ -1,11 +1,9 @@
 from collections import Counter
 import os
 
-from internal.context.context import TMTContext
 from internal.formatting.base import Formatter
 from internal.verdicts import ExpectedVerdict, SolutionVerdict, SubtaskVerdict, VerdictRule, parse_verdicts
 from internal.formatting import Formatter, EmptyFormatter
-from internal.context import TMTContext
 from internal.commands import command_invoke
 from internal.outcomes import EvaluationResult
 from . import TMTVerifyIssueType, Verifier
@@ -14,6 +12,8 @@ class VerdictsVerifier(Verifier):
     name = "verdicts"
     registered_issue_code = {
         "invalid_config": TMTVerifyIssueType.ERROR,
+        "testcases_not_generated": TMTVerifyIssueType.ERROR,
+        "compile_error": TMTVerifyIssueType.ERROR,
         "verdict_rule": TMTVerifyIssueType.ERROR,
         "score_range": TMTVerifyIssueType.ERROR,
     }
@@ -79,6 +79,11 @@ class VerdictsVerifier(Verifier):
             submission_files=[submission_file],
             show_reason=False
         )
+
+        if result.is_compilation_error():
+            self.add_issue("compile_error", submission_file, "Solution compilation error")
+            self.flush_issue_message(formatter)
+            return
 
         # Compute column width
         max_subtask_len = len("Subtask")
@@ -165,6 +170,15 @@ class VerdictsVerifier(Verifier):
             solutions = parse_verdicts(context)
         except ValueError as e:
             self.add_issue("invalid_config", context.path.verdicts_yaml, str(e))
+            self.flush_issue_message(formatter)
+            return
+
+        if not (
+            os.path.exists(context.path.testcase_summary)
+            and os.path.isfile(context.path.testcase_summary)
+        ):
+            self.add_issue("testcases_not_generated", context.path.testcase_summary, 
+                           "Testcases not generated, run tmt gen first")
             self.flush_issue_message(formatter)
             return
 
