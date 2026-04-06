@@ -13,6 +13,7 @@ from internal.commands import (
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal import __version__
 from internal.formatting import TerminalFormatter
+from internal.verify.verifier import TMTVerifyIssueType
 
 
 def main():
@@ -111,8 +112,8 @@ def main():
         return ret
 
     if args.command == "verify":
-        command_verify(formatter=formatter, context=context)
-        return True
+        ret = command_verify(formatter=formatter, context=context)
+        return not any(issue.type == TMTVerifyIssueType.ERROR for issue in ret)
 
     return False
 

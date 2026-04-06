@@ -10,6 +10,7 @@ from internal.formatting.base import Formatter
 class TMTVerifyIssue:
     verifier_name: str
     code: str
+    type: TMTVerifyIssueType
     related_file: str
     message: str
 
@@ -30,13 +31,14 @@ class Verifier(ABC):
     def add_issue(self, code: str, related_file: str, message: str) -> None:
         if code not in self.registered_issue_code:
             raise KeyError(f"Issue code {self.name}.{code} is not registered.")
-        self.issues.append(TMTVerifyIssue(self.name, code, related_file, message))
+        type = self.registered_issue_code[code]
+        self.issues.append(TMTVerifyIssue(self.name, code, type, related_file, message))
 
     def flush_issue_message(self, formatter: Formatter):
         while self.issue_print_pointer < len(self.issues):
             issue = self.issues[self.issue_print_pointer]
             self.issue_print_pointer += 1
-            issue_type = self.registered_issue_code[issue.code]
+            issue_type = issue.type
             relative_path = os.path.relpath(issue.related_file, self.context.path.problem_dir)
             print_message = f"{relative_path}: {issue.message}"
             match issue_type:
