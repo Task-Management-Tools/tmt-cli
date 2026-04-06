@@ -85,21 +85,25 @@ def verify_solutions(
         for subtask in subtask_list:
             max_subtask_len = max(max_subtask_len, len(subtask))
         max_subtask_len += 1
+        print_subtask = bool(subtask_list)
         result_len = len("Incorrect") + 1
         score_num_len = len("100.00") + 1
         score_percent_len = len("(100%)") + 1
         score_len = score_num_len + score_percent_len
 
-        formatter.print_fixed_width("Subtask", width=max_subtask_len)
+        if print_subtask:
+            formatter.print_fixed_width("Subtask", width=max_subtask_len)
         formatter.print_fixed_width("Result", width=result_len)
-        formatter.print_fixed_width("Score", width=score_len)
+        if print_subtask:
+            formatter.print_fixed_width("Score", width=score_len)
         formatter.println("Verdicts")
-        formatter.println("-" * (max_subtask_len + result_len + score_len + 20))
         def print_row(subtask_name, result_str, score_num, score_percent, verdict_count: Counter[ExpectedVerdict]):
-            formatter.print_fixed_width(subtask_name, width=max_subtask_len)
+            if print_subtask:
+                formatter.print_fixed_width(subtask_name, width=max_subtask_len)
             formatter.print_fixed_width(result_str, width=result_len)
-            formatter.print_fixed_width(f"{round(score_num, 2)}", width=score_num_len)
-            formatter.print_fixed_width(f"({round(score_percent * 100)}%)", width=score_percent_len)
+            if print_subtask:
+                formatter.print_fixed_width(f"{round(score_num, 2)}", width=score_num_len)
+                formatter.print_fixed_width(f"({round(score_percent * 100)}%)", width=score_percent_len)
             formatter.println(', '.join([f"{verdict}*{count}" for verdict, count in verdict_count.items()]))
 
         subtask_rules: dict[str, SubtaskVerdict] = dict()
@@ -111,22 +115,23 @@ def verify_solutions(
 
         max_score = 0
         verify_fail_msg: list[str] = []
-        for subtask_name, subtask in subtask_list.items():
-            max_score += subtask.score
-            score, result_str, verdict_count = get_tests_outcome(result.testcase_results, subtask.get_all_test_names())
-            score_num = score * subtask.score
-            score_percent = score
-            print_row(subtask_name, result_str, score_num, score_percent, verdict_count)
-            subtask_rule = subtask_rules[subtask_name] if subtask_name in subtask_rules else default_subtask_rule
-            verify_fail_msg += check_verdict_rule(
-                f"Subtask {subtask_name}",
-                set(verdict_count.keys()),
-                subtask_rule.verdict
-            )
-            if not subtask_rule.score.check_score(score):
-                verify_fail_msg += [f"Subtask {subtask_name} score {score} violates the score range {subtask_rule.score}"]
-            
-        formatter.println("-" * (max_subtask_len + result_len + score_len + 20))
+        if print_subtask:
+            for subtask_name, subtask in subtask_list.items():
+                max_score += subtask.score
+                score, result_str, verdict_count = get_tests_outcome(result.testcase_results, subtask.get_all_test_names())
+                score_num = score * subtask.score
+                score_percent = score
+                print_row(subtask_name, result_str, score_num, score_percent, verdict_count)
+                subtask_rule = subtask_rules[subtask_name] if subtask_name in subtask_rules else default_subtask_rule
+                verify_fail_msg += check_verdict_rule(
+                    f"Subtask {subtask_name}",
+                    set(verdict_count.keys()),
+                    subtask_rule.verdict
+                )
+                if not subtask_rule.score.check_score(score):
+                    verify_fail_msg += [f"Subtask {subtask_name} score {score} violates the score range {subtask_rule.score}"]
+                
+            formatter.println("-" * (max_subtask_len + result_len + score_len + 20))
 
         score, result_str, verdict_count = get_tests_outcome(
             result.testcase_results, 
