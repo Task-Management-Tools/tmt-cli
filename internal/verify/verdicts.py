@@ -1,6 +1,9 @@
 from collections import Counter
 import os
+from pathlib import Path
 
+from internal.compilation import languages
+from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
 from internal.formatting.base import Formatter
 from internal.verdicts import ExpectedVerdict, SolutionVerdict, SubtaskVerdict, VerdictRule, parse_verdicts
 from internal.formatting import Formatter, EmptyFormatter
@@ -11,7 +14,9 @@ from . import TMTVerifyIssueType, Verifier
 class VerdictsVerifier(Verifier):
     name = "verdicts"
     registered_issue_code = {
+        "missing_config": TMTVerifyIssueType.WARNING,
         "invalid_config": TMTVerifyIssueType.ERROR,
+        "missing_solution": TMTVerifyIssueType.WARNING,
         "testcases_not_generated": TMTVerifyIssueType.ERROR,
         "compile_error": TMTVerifyIssueType.ERROR,
         "verdict_rule": TMTVerifyIssueType.ERROR,
@@ -166,13 +171,20 @@ class VerdictsVerifier(Verifier):
         formatter: Formatter, 
     ):
         context = self.context
+
+        # Parse verdicts.yaml
         try:
             solutions = parse_verdicts(context)
-        except ValueError as e:
+        except (ValueError, TMTInvalidConfigError) as e:
             self.add_issue("invalid_config", context.path.verdicts_yaml, str(e))
             self.flush_issue_message(formatter)
             return
+        except TMTMissingFileError as e:
+            self.add_issue("missing_config", context.path.verdicts_yaml, str(e))
+            self.flush_issue_message(formatter)
+            return
 
+        # Check testcase generated
         if not (
             os.path.exists(context.path.testcase_summary)
             and os.path.isfile(context.path.testcase_summary)
@@ -182,6 +194,20 @@ class VerdictsVerifier(Verifier):
             self.flush_issue_message(formatter)
             return
 
+        all_filename = set(solution.filename for solution in solutions)
+
+        # Check missing solutions
+        for language_type in languages.languages:
+            language = language_type(context)
+            for ext in language.source_extensions:
+                for file in Path(context.path.solutions).rglob(f"*{ext}"):
+                    filename = os.path.relpath(file, context.path.solutions)
+                    if filename not in all_filename:
+                        self.add_issue("missing_solution", context.path.verdicts_yaml,
+                                       f"Solution {filename} is missing in verdicts.yaml")
+        self.flush_issue_message(formatter)
+
+        # Verify verdicts
         for solution in solutions:
             self.verify_single_solution(
                 formatter=formatter,
