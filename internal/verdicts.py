@@ -15,6 +15,7 @@ class ExpectedVerdict(enum.Enum):
                            [item for item in EvaluationOutcomeGroup.TIMEOUT.outcome_list if item != EvaluationOutcome.TIMEOUT_WALL])
     RUNTIME_ERROR = ("Runtime Error", "RTE", ["runtime_error", "RE", "RTE"], EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list)
     PARTIAL = ("Partially Correct", "PC", ["partial", "PC"], EvaluationOutcomeGroup.PARTIAL.outcome_list)
+    OUTPUT_LIMIT = ("Output Limit Exceeded", "OLE", ["output_limit_exceeded", "output_limit", "OLE"], EvaluationOutcomeGroup.OUTPUT_LIMIT.outcome_list)
 
     # These verdicts should not be used in verdicts.yaml
     TIME_LIMIT_EXCEEDED_WALL = ("Time Limit Exceeded (wall)", "TLE(wall)", [], [EvaluationOutcome.TIMEOUT_WALL])
