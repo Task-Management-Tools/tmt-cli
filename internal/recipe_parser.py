@@ -132,6 +132,8 @@ class Testset:
         """
         Include a testset in this testset.
         """
+        if testset is self:
+            return
         for deps in testset.dependency + [testset]:
             if deps not in self.dependency:
                 self.dependency.append(deps)
@@ -256,14 +258,13 @@ class RecipeData:
             return
 
         # From Python 3.7+ dict is order-preserving, so no sorting
-
         i = 1
         for testset in self.testsets.values():
             i = testset.assign_index(i)
 
-        # TODO: handle case when all testsets have no testcases (crashes with max() on empty)
         max_testset_index = max(
-            filter(None, (testset.index for testset in self.testsets.values()))
+            filter(None, (testset.index for testset in self.testsets.values())),
+            default=0,  # This won't matter anyway, just to prevent ValueError
         )
         testset_index_width = len(str(max_testset_index))
 
@@ -296,9 +297,8 @@ class RecipeData:
         """
         Let all test cases own their validations Executable
         This should be called after parsing is complete.
-        # TODO: validation propagation order is reversed; verify if this matches intended semantics
         """
-        for testset in reversed(self.testsets.values()):
+        for testset in self.testsets.values():
             for validation in self.global_validation:
                 testset.add_validation(validation)
             for depend in testset.dependency:
@@ -506,7 +506,6 @@ class RecipeParser:
         testsets = self.ctx.recipe_data.testsets
         if depend in testsets.keys():
             self.ctx.scope.include_testset(testsets[depend])
-        # TODO: detect and prevent circular @include dependencies (currently allows self-reference)
         else:
             raise ValueError(f"Unknown testset or subtask name: '{depend}'")
 
