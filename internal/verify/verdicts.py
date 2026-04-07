@@ -2,6 +2,7 @@ from collections import Counter
 import os
 from pathlib import Path
 
+from internal.commands.invoke import CommandInvokeSummary
 from internal.compilation import languages
 from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
 from internal.formatting.base import Formatter
@@ -21,6 +22,7 @@ class VerdictsVerifier(Verifier):
         "compile_error": TMTVerifyIssueType.ERROR,
         "verdict_rule": TMTVerifyIssueType.ERROR,
         "score_range": TMTVerifyIssueType.ERROR,
+        "default_rule": TMTVerifyIssueType.ERROR,
     }
 
     def _get_tests_outcome(
@@ -54,31 +56,38 @@ class VerdictsVerifier(Verifier):
         filename: str,
         subtask_name: str,
         verdicts: set[ExpectedVerdict],
-        rules: list[VerdictRule],
+        rule: VerdictRule,
     ) -> None:
-        for rule in rules:
-            if not rule.check_rule(verdicts):
-                self.add_issue("verdict_rule", filename, f"{subtask_name} violates verdict rule {rule}")
+        if not rule.check_rule(verdicts):
+            self.add_issue("verdict_rule", filename, f"{subtask_name} violates verdict rule {rule}")
+
+    def _check_default_rule(
+        self,
+        filename: str,
+        subtask_name: str,
+        verdicts: set[ExpectedVerdict],
+    ) -> None:
+        rule = VerdictRule(never=[ExpectedVerdict.JUDGE_ERROR,
+                            ExpectedVerdict.TIME_LIMIT_EXCEEDED_WALL,
+                            ExpectedVerdict.UNKNOWN])
+        if not rule.check_rule(verdicts):
+            self.add_issue("default_rule", filename, f"{subtask_name} violates default verdict rule {rule}")
 
     def verify_single_solution(
         self,
         *,
         formatter: Formatter,
-        solution: SolutionVerdict
+        solution: SolutionVerdict,
+        invoke_summary: CommandInvokeSummary | None = None,
     ):
         context = self.context
         path_helper = context.path
         subtask_list = context.recipe.subtasks
-        DEFAULT_RULES: list[VerdictRule] = [
-            VerdictRule(never=[ExpectedVerdict.JUDGE_ERROR,
-                            ExpectedVerdict.TIME_LIMIT_EXCEEDED_WALL,
-                            ExpectedVerdict.UNKNOWN]),
-        ]
 
         submission_file = os.path.join(path_helper.solutions, solution.filename)
         formatter.println()
         formatter.println(f"Solution {solution.filename}:")
-        result = command_invoke(
+        result = invoke_summary if invoke_summary else command_invoke(
             formatter=EmptyFormatter(),
             context=context,
             submission_files=[submission_file],
@@ -122,13 +131,13 @@ class VerdictsVerifier(Verifier):
         for subtask_verdict in solution.subtask:
             for subtask in subtask_verdict.subtask:
                 subtask_rules[subtask] = subtask_verdict
-        default_subtask_rule = SubtaskVerdict([], solution.verdict + DEFAULT_RULES, solution.score)
+        default_subtask_rule = SubtaskVerdict([], solution.verdict, solution.score)
 
         max_score = 0 # sum of subtask score
         if print_subtask:
             for subtask_name, subtask in subtask_list.items():
                 max_score += subtask.score
-                score, result_str, verdict_count = self._get_tests_outcome(result.testcase_results, subtask.get_all_test_names())
+                score, result_str, verdict_count = self._get_tests_outcome(result.testcase_results, subtask.get_all_test_names()) # type: ignore
                 score_num = score * subtask.score
                 score_percent = score
                 print_row(subtask_name, result_str, score_num, score_percent, verdict_count)
@@ -175,7 +184,7 @@ class VerdictsVerifier(Verifier):
         # Parse verdicts.yaml
         try:
             solutions = parse_verdicts(context)
-        except (ValueError, TMTInvalidConfigError) as e:
+        except (ValueError, TypeError, TMTInvalidConfigError) as e:
             self.add_issue("invalid_config", context.path.verdicts_yaml, str(e))
             self.flush_issue_message(formatter)
             return

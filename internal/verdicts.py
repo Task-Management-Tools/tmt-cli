@@ -81,74 +81,46 @@ class VerdictRule:
         return True
 
     @classmethod
-    def from_raw_list(cls, data) -> list["VerdictRule"]:
+    def from_raw(cls, data) -> "VerdictRule":
         """
         Covert a raw VerdictRule list.
 
         Raw data format:
         ```
-        str | list[str] | list[VerdictRule]
+        str | list[str] | VerdictRule
         ```
         - If the raw data is a str `s`, it is treated as `[s]`.
-        - If the raw data is a list[str] `l`, it is treated as `[{ must: l }]`.
+        - If the raw data is a list[str] `l`, it is treated as `{ must: l }`.
         """
 
         # verdict: "accepted"
         if isinstance(data, (ExpectedVerdict, str)):
-            return [cls(must=[ExpectedVerdict(data)])]
-        if isinstance(data, list):
-            if not data:
-                raise ValueError("Verdict rule list should contain at least one \"must\" rule")
-            
-            first = data[0]
-            rule_list: list[VerdictRule] = []
-
+            ret: VerdictRule = cls(must=[ExpectedVerdict(data)])
+        elif isinstance(data, list):
             # verdict: ["accepted"]
-            if isinstance(first, (ExpectedVerdict, str)):
-                rule_list =  [cls(must=[ExpectedVerdict(item) for item in data])]
-            elif isinstance(first, dict):
-                for rule in data:
-                    rule = cls(**rule)
-                    if isinstance(rule.must, (ExpectedVerdict, str)):
-                        rule.must = [ExpectedVerdict(rule.must)]
-                    else:
-                        rule.must = list(map(ExpectedVerdict, rule.must))
-                    if isinstance(rule.never, (ExpectedVerdict, str)):
-                        rule.never = [ExpectedVerdict(rule.never)]
-                    else:
-                        rule.never = list(map(ExpectedVerdict, rule.never))
-                    rule_list.append(rule)
-            else:
-                raise ValueError(f"Invalid verdict rule format: {data}")
+            ret = cls(must=[ExpectedVerdict(item) for item in data])
+        else:
+            ret = cls(**data)
+            ret.must = [ExpectedVerdict(ret.must)] if isinstance(ret.must, (ExpectedVerdict, str)) \
+                        else list(map(ExpectedVerdict, ret.must)) if ret.must \
+                        else []
+            ret.never = [ExpectedVerdict(ret.never)] if isinstance(ret.never, (ExpectedVerdict, str)) \
+                        else list(map(ExpectedVerdict, ret.never)) if ret.never \
+                        else []
 
-            found_must = False
-            found_accepted = False
-            found_partial = False
-            found_others = False
-            for rule in rule_list:
-                if rule.must:
-                    found_must = True
-                for verdict in rule.must:
-                    if verdict == ExpectedVerdict.ACCEPTED:
-                        found_accepted = True
-                    elif verdict == ExpectedVerdict.PARTIAL:
-                        found_partial = True
-                    else:
-                        found_others = True
-                if rule.never:
-                    found_others = True
-                
-            if not found_must:
-                raise ValueError("Verdict rule list should contain at least one \"must\" rule")
+        found_must = bool(ret.must)
+        found_accepted = any(verdict == ExpectedVerdict.ACCEPTED for verdict in ret.must)
+        found_partial = any(verdict == ExpectedVerdict.PARTIAL for verdict in ret.must)
+        found_others = any(verdict not in [ExpectedVerdict.ACCEPTED, ExpectedVerdict.PARTIAL]
+                           for verdict in ret.must + ret.never)
+        if not found_must:
+            raise ValueError("Verdict rule should contain at least one \"must\" rule")
+        if found_accepted and (found_partial or found_others):
+            raise ValueError("\"accepted\" in \"must\" rule but the rule contains other verdicts (Hint: \"must: accepted\" also bans all other verdicts.)")
+        if found_partial and found_others:
+            raise ValueError("\"partial\" in \"must\" rule but the rule contains other verdicts (Hint: \"must: partial\" also bans all incorrect verdicts.)")
 
-            if found_accepted and (found_partial or found_others):
-                raise ValueError("\"accepted\" in \"must\" rule but the rule list contains other verdicts (Hint: \"must: accepted\" also bans all other verdicts.)")
-            if found_partial and found_others:
-                raise ValueError("\"partial\" in \"must\" rule but the rule list contains other verdicts (Hint: \"must: partial\" also bans all incorrect verdicts.)")
-
-            return rule_list
-
-        raise ValueError(f"Invalid verdict rule format: {data}")
+        return ret
 
 @dataclasses.dataclass
 class ScoreRange:
@@ -196,7 +168,7 @@ class ScoreRange:
 @dataclasses.dataclass
 class SubtaskVerdict:
     subtask: list[str]
-    verdict: list[VerdictRule]
+    verdict: VerdictRule
     score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
 
     @classmethod
@@ -207,7 +179,7 @@ class SubtaskVerdict:
         Raw data format:
         ```
         subtask: str | list[str]
-        verdict: Raw VerdictRule list
+        verdict: Raw VerdictRule
         score:
           - min: 0.0
           - max: 1.0
@@ -229,7 +201,7 @@ class SubtaskVerdict:
             if item not in subtask_list:
                 raise ValueError(f"Subtask {item} does not exist")
 
-        subtask.verdict = VerdictRule.from_raw_list(subtask.verdict)
+        subtask.verdict = VerdictRule.from_raw(subtask.verdict)
         subtask.score = ScoreRange.from_raw(subtask.score)
         
         return subtask
@@ -238,7 +210,7 @@ class SubtaskVerdict:
 @dataclasses.dataclass
 class SolutionVerdict:
     filename: str
-    verdict: list[VerdictRule]
+    verdict: VerdictRule
     judge_verdict: ExpectedVerdict | None = None
     subtask: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
     score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
@@ -255,7 +227,7 @@ class SolutionVerdict:
         if solution.judge_verdict:
             solution.judge_verdict = ExpectedVerdict(solution.judge_verdict)
 
-        solution.verdict = VerdictRule.from_raw_list(solution.verdict)
+        solution.verdict = VerdictRule.from_raw(solution.verdict)
         subtasks: list[SubtaskVerdict] = []
         overwrite_subtasks: list[str] = []
         for item in solution.subtask:
