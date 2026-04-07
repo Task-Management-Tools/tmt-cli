@@ -88,7 +88,7 @@ class VerdictsVerifier(Verifier):
         formatter.println()
         formatter.println(f"Solution {solution.filename}:")
         result = invoke_summary if invoke_summary else command_invoke(
-            formatter=EmptyFormatter(),
+            formatter=formatter,
             context=context,
             submission_files=[submission_file],
             show_reason=False
@@ -96,7 +96,6 @@ class VerdictsVerifier(Verifier):
 
         if result.is_compilation_error():
             self.add_issue("compile_error", submission_file, "Solution compilation error")
-            self.flush_issue_message(formatter)
             return
 
         # Compute column width
@@ -173,7 +172,6 @@ class VerdictsVerifier(Verifier):
                 self.add_issue("score_range", submission_file,
                                f"Overall score {score} violates the score range {default_subtask_rule.score}")
         
-        self.flush_issue_message(formatter)
 
     def verify(
         self, 
@@ -186,11 +184,9 @@ class VerdictsVerifier(Verifier):
             solutions = parse_verdicts(context)
         except (ValueError, TypeError, TMTInvalidConfigError) as e:
             self.add_issue("invalid_config", context.path.verdicts_yaml, str(e))
-            self.flush_issue_message(formatter)
             return
         except TMTMissingFileError as e:
             self.add_issue("missing_config", context.path.verdicts_yaml, str(e))
-            self.flush_issue_message(formatter)
             return
 
         # Check testcase generated
@@ -200,7 +196,6 @@ class VerdictsVerifier(Verifier):
         ):
             self.add_issue("testcases_not_generated", context.path.testcase_summary, 
                            "Testcases not generated, run tmt gen first")
-            self.flush_issue_message(formatter)
             return
 
         all_filename = set(solution.filename for solution in solutions)
@@ -214,7 +209,6 @@ class VerdictsVerifier(Verifier):
                     if filename not in all_filename:
                         self.add_issue("missing_solution", context.path.verdicts_yaml,
                                        f"Solution {filename} is missing in verdicts.yaml")
-        self.flush_issue_message(formatter)
 
         # Verify verdicts
         for solution in solutions:
