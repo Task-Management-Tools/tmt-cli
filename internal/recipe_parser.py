@@ -6,20 +6,11 @@ This module parses a custom format file to generate recipe data structure object
 The parsed data includes testsets, subtasks, and validation rules for programming contests.
 """
 
-from dataclasses import dataclass
 import copy
+import functools
+import inspect
 import re
-from typing import List, Set, Optional
-
-
-@dataclass
-class ParseError:
-    message: str
-    line: int
-
-    def __str__(self):
-        # TODO!
-        raise NotImplementedError
+from typing import Literal, overload
 
 
 class Executable:
@@ -30,36 +21,36 @@ class Executable:
     follows the subprocess format (executable name + arguments).
     """
 
-    def __init__(self, command_sequence: str):
+    def __init__(self, commands: list[list[str]]):
         """
         Parse and add a command sequence separated by pipes.
 
         Args:
-            command_sequence (str): Commands separated by the pipe "|" character.
+            command_sequence (str or list of str): Commands separated by the pipe "|" character.
 
         Raises:
             ValueError: If command sequence is empty or malformed
         """
-
-        # TODO: support '' and ""
-        self.commands: List[List[str]] = []
-
-        if not command_sequence.strip():
-            raise ValueError("Command sequence is empty")
-
-        # Split by pipe and process each command
-        commands = command_sequence.split("|")
+        if len(commands) == 0:
+            raise ValueError("Executable command list should not be empty.")
         for cmd in commands:
-            cmd = cmd.strip()
-            if not cmd:
-                raise ValueError("Empty command found in sequence")
-
-            self.commands.append(cmd.split())
+            if len(cmd) == 0:
+                raise ValueError(
+                    "Executable command list should not contain empty subcommands."
+                )
+        self.commands = commands
 
     def __eq__(self, other):
         if not isinstance(other, Executable):
             return NotImplementedError
         return self.commands == other.commands
+
+
+class Validation(Executable):
+    def __init__(self, commands: list[list[str]]):
+        if len(commands) > 1:
+            raise ValueError("Validation command does not support piping.")
+        super().__init__(commands)
 
 
 TESTCASE_NAME_PLACE_HOLDER = "_tmt_internal_testcase_name"
@@ -72,11 +63,11 @@ class Testcase:
     Each test case contains an Executable object and its name
     """
 
-    def __init__(self, command_sequence: str):
-        self._raw_execute: Executable = Executable(command_sequence)
-        self.execute: Optional[Executable] = None
-        self.validation: List[Executable] = []
-        self._name: Optional[str] = None
+    def __init__(self, exe: Executable):
+        self._raw_execute: Executable = exe
+        self.execute: Executable | None = None
+        self.validation: list[Validation] = []
+        self._name: str | None = None
 
     @property
     def name(self):
@@ -99,12 +90,9 @@ class Testcase:
             for i, arg in enumerate(command_list):
                 command_list[i] = arg.replace(TESTCASE_NAME_PLACE_HOLDER, value)
 
-    def add_validation(self, validation: Executable):
+    def add_validation(self, validation: Validation):
         """
-        Add a validation Executable object for this test case.
-
-        Args:
-            validation (Executable): An Executable object representing a validation
+        Add a validation for this test case.
         """
         if validation not in self.validation:
             self.validation.append(validation)
@@ -119,12 +107,12 @@ class Testset:
 
     def __init__(self, name: str):
         self.name: str = name
-        self.index: Optional[int] = None
-        self.description: Optional[str] = None
-        self.validation: List[Executable] = []
-        self.testcases: List[Testcase] = []
-        self.dependency: List[Testset] = []
-        self.extra_file: Set[str] = set()
+        self.index: int | None = None
+        self.description: str | None = None
+        self.validation: list[Validation] = []
+        self.testcases: list[Testcase] = []
+        self.dependency: list[Testset] = []
+        self.extra_file: set[str] = set()
 
     def assign_index(self, index: int) -> int:
         """
@@ -133,36 +121,27 @@ class Testset:
         self.index = index
         return index + 1
 
-    def add_validation(self, executable: Executable):
+    def add_validation(self, validation: Validation):
         """
         Add a validation command for this testset.
-
-        Args:
-            executable (Executable): Validation executable
         """
-        if executable not in self.validation:
-            self.validation.append(executable)
+        if validation not in self.validation:
+            self.validation.append(validation)
 
     def include_testset(self, testset: "Testset"):
         """
         Include a testset in this testset.
-
-        Args:
-            testset (Testset): The testset to be included
         """
         for deps in testset.dependency + [testset]:
             if deps not in self.dependency:
                 self.dependency.append(deps)
 
-    def add_test(self, command_sequence: str):
+    def add_test(self, exe: Executable):
         """
-        Add a test case by parsing the command sequence.
-
-        Args:
-            command_sequence (str): Command sequence to generate test data
+        Add a test case by parsed the command sequence.
         """
         try:
-            self.testcases.append(Testcase(command_sequence))
+            self.testcases.append(Testcase(exe))
         except ValueError as e:
             raise ValueError(f"Error adding test to testset '{self.name}': {e}")
 
@@ -190,8 +169,6 @@ class Testset:
         Raises:
             ValueError: If the extension format error or it is already added
         """
-        if len(extension) == 0 or extension[0] != ".":
-            raise ValueError(f"Extra file {extension} should start with a dot (.)")
         if extension in self.extra_file:
             raise ValueError(
                 f"Extra file {extension} already added for testset '{self.name}'"
@@ -251,14 +228,14 @@ class RecipeData:
     def __init__(self):
         self.testsets: dict[str, Testset | Subtask] = {}
         self.subtasks: dict[str, Subtask] = {}
-        self.global_validation: List[Executable] = []
+        self.global_validation: list[Validation] = []
 
-    def get_all_test_names(self) -> List[str]:
+    def get_all_test_names(self) -> list[str]:
         """
         Get all test names in order.
 
         Returns:
-            List[str]: List of all test names sorted by testset index and testcase index
+            list[str]: List of all test names sorted by testset index and testcase index
         """
         all_names = []
 
@@ -284,6 +261,7 @@ class RecipeData:
         for testset in self.testsets.values():
             i = testset.assign_index(i)
 
+        # TODO: handle case when all testsets have no testcases (crashes with max() on empty)
         max_testset_index = max(
             filter(None, (testset.index for testset in self.testsets.values()))
         )
@@ -318,6 +296,7 @@ class RecipeData:
         """
         Let all test cases own their validations Executable
         This should be called after parsing is complete.
+        # TODO: validation propagation order is reversed; verify if this matches intended semantics
         """
         for testset in reversed(self.testsets.values()):
             for validation in self.global_validation:
@@ -343,25 +322,24 @@ class ParserContext:
 
     def __init__(self):
         self.recipe_data = RecipeData()
-        self.current_context = None
-        self.current_object = None
-        self.used_names = set()
+        self._scope: Testset | Subtask | None = None
 
-        # Shared data storage for inter-handler communication
-        self.constants = {}  # For storing user-defined constants
+        # For storing user-defined constants
+        self.global_const: dict[str, str] = {}
+        self.local_const: dict[str, str] = {}
 
-    def get_constant(self, name: str, default=None):
-        """
-        Get a constant value by name.
+    @property
+    def scope(self):
+        return self._scope
 
-        Args:
-            name (str): Constant name
-            default: Default value if constant doesn't exist
+    @scope.setter
+    def scope(self, value: Testset | Subtask | None):
+        self._scope = value
+        self.local_const.clear()
 
-        Returns:
-            Constant value or default
-        """
-        return self.constants.get(name, default)
+    @property
+    def const_mapping(self):
+        return self.global_const | self.local_const
 
     def set_constant(self, name: str, value):
         """
@@ -371,260 +349,202 @@ class ParserContext:
             name (str): Constant name
             value: Constant value
         """
-        if self.has_constant(name) and self.constants[name] != value:
+        target_const = self.local_const if self.scope is not None else self.global_const
+        if name in target_const:
             raise ValueError(f"Redefinition on constant {name}")
-        self.constants[name] = value
+        target_const[name] = value
 
-    def has_constant(self, name: str) -> bool:
-        """
-        Check if a constant exists.
+    @overload
+    def shell_split(self, cmdline: str, pipe_split: Literal[False]) -> list[str]: ...
+    @overload
+    def shell_split(
+        self, cmdline: str, pipe_split: Literal[True]
+    ) -> list[list[str]]: ...
 
-        Args:
-            name (str): Constant name
-
-        Returns:
-            bool: True if constant exists
-        """
-        return name in self.constants
-
-    def expand_constants(self, text: str) -> str:
-        """
-        Expand constants in text using ${constant_name} syntax.
-
-        Args:
-            text (str): Text potentially containing constant references
-
-        Returns:
-            str: Text with constants expanded
-
-        Raises:
-            ValueError: If referenced constant doesn't exist
-        """
-
-        def replace_var(match):
+    def substitute(self, text: str) -> str:
+        def replace_var(match: re.Match):
             var_name = match.group(1)
-            if not self.has_constant(var_name):
-                raise ValueError(f"Undefined constant: ${{{var_name}}}")
-            return str(self.constants[var_name])
+            var_val = self.const_mapping.get(var_name)
+            if var_val is None:
+                raise ValueError(f"Undefined constant: {match.group(0)}")
+            return var_val
 
         # Replace ${constant_name} patterns
         return re.sub(r"\$\{([^}]+)\}", replace_var, text)
 
-    def list_expand_constants(self, list_of_text: List[str]):
-        """
-        Expand constants in list of text using ${constant_name} syntax.
+    def shell_split(self, cmdline: str, pipe_split: bool):
 
-        Args:
-            list_of_text (list of str): List of text potentially containing constant references
+        # Strip beginning whitespaces, and add a single after it so tokenizing works:
+        cmdline = cmdline.strip() + " "
+        cmds = []
+        cmd = []
+        # Python alternative (|) is eager, so the quoted alternatives always matches first if possible.
+        for m in re.finditer(r"(?:\"([^\"]*)\"|\'([^\']*)\'|(\|)|(\S+))\s+", cmdline):
+            if m.group(1) is not None:  # double-quoted
+                cmd.append(self.substitute(m.group(1)))
+            elif m.group(2) is not None:  # single-quoted
+                cmd.append(m.group(2))
+            elif m.group(3):  # unquoted pipe
+                if pipe_split:
+                    cmds.append(cmd)
+                    cmd = []
+                else:
+                    cmd.append("|")
+            else:  # bare word
+                cmd.append(self.substitute(m.group(4)))
+        cmds.append(cmd)
+        return cmds if pipe_split else cmd
 
-        Raises:
-            ValueError: If referenced constant doesn't exist
-        """
-        for i, s in enumerate(list_of_text):
-            list_of_text[i] = self.expand_constants(s)
-
-
-class CommandHandler:
-    """
-    Base class for handling different types of commands.
-    """
-
-    def __init__(self, parser_context: ParserContext):
-        self.context = parser_context
-
-    def validate_args(
-        self, parts: List[str], min_args: int, max_args: int | None = None
-    ):
-        """
-        Validate the number of arguments for a command.
-
-        Args:
-            parts (List[str]): Command parts including the command name
-            min_args (int): Minimum number of arguments (excluding command name)
-            max_args (int, optional): Maximum number of arguments
-        """
-        arg_count = len(parts) - 1
-        if arg_count < min_args:
-            raise ValueError(f"@{parts[0]} requires at least {min_args} argument(s)")
-        if max_args is not None and arg_count > max_args:
-            raise ValueError(f"@{parts[0]} requires at most {max_args} argument(s)")
+    def make_executable(self, cmdline: str, type: type[Executable] | type[Validation]):
+        return type(self.shell_split(cmdline, pipe_split=True))
 
 
-class TestsetHandler(CommandHandler):
-    """Handler for @testset commands."""
+class RecipeParser:
+    def __init__(self):
+        self.ctx = ParserContext()
 
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 1, 1)
+        # Register all handlers marked by the decorator
+        self.handlers = {
+            obj._cmd_name: getattr(self, obj.__name__)
+            for obj in self.__class__.__dict__.values()
+            if callable(obj) and hasattr(obj, "_cmd_name")
+        }
 
-        testset_name = parts[1]
-        if testset_name in self.context.recipe_data.testsets.keys():
-            raise ValueError(f"Name '{testset_name}' already used")
+    def _register_command(name: str, preprocess=True):
+        def decorator(func):
+            # Count only parameters that are positional or positional-or-keyword
+            params = inspect.signature(func).parameters.values()
+            num_args = sum(
+                1
+                for p in params
+                if p.kind
+                in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                )
+            )
+            variadic = any(
+                True for p in params if p.kind == inspect.Parameter.VAR_POSITIONAL
+            )
 
-        testset = Testset(testset_name)
-        self.context.recipe_data.testsets[testset_name] = testset
-        self.context.current_context = "testset"
-        self.context.current_object = testset
+            if any(True for p in params if p.kind == inspect.Parameter.KEYWORD_ONLY):
+                raise TypeError(
+                    "Command handler registered must not have keyword-only parameter"
+                )
+            if any(True for p in params if p.kind == inspect.Parameter.VAR_KEYWORD):
+                raise TypeError(
+                    "Command handler registered must not have keyword-only variadic parameter"
+                )
+            if not preprocess and num_args != 2:
+                raise TypeError(
+                    "Command handler registered without preprocessing must have exactly one positional parameter"
+                )
 
+            @functools.wraps(func)
+            def wrapper(*args):
+                # Also counts self as one of them, so diagnostics returns -1
+                if len(args) < num_args:
+                    raise ValueError(
+                        f"@{name} requires at least {num_args - 1} argument(s)"
+                    )
+                if not variadic and len(args) != num_args:
+                    raise ValueError(
+                        f"@{name} requires exactly {num_args - 1} argument(s)"
+                    )
+                result = func(*args)
+                return result
 
-class SubtaskHandler(CommandHandler):
-    """Handler for @subtask commands."""
+            wrapper._cmd_name = name
+            wrapper.preprocess = preprocess
+            return wrapper
 
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 2, 2)
+        return decorator
 
-        subtask_name = parts[1]
-        if subtask_name in self.context.recipe_data.testsets.keys():
-            raise ValueError(f"Name '{subtask_name}' already used")
+    @_register_command("testset")
+    def command_testset(self, name: str):
 
+        if name in self.ctx.recipe_data.testsets.keys():
+            raise ValueError(f"Name '{name}' already used")
+
+        testset = Testset(name)
+        self.ctx.recipe_data.testsets[name] = testset
+        self.ctx.scope = testset
+
+    @_register_command("subtask")
+    def command_subtask(self, name: str, score_s: str):
         try:
-            score = int(parts[2])
+            score = int(score_s)
         except ValueError:
-            raise ValueError(f"Invalid score '{parts[2]}' for subtask")
+            raise ValueError(f"Invalid score '{score_s}' for subtask")
 
-        subtask = Subtask(subtask_name, score)
-        self.context.recipe_data.testsets[subtask_name] = subtask
-        self.context.recipe_data.subtasks[subtask_name] = subtask
-        self.context.current_context = "subtask"
-        self.context.current_object = subtask
+        if name in self.ctx.recipe_data.testsets.keys():
+            raise ValueError(f"Name '{name}' already used")
 
+        subtask = Subtask(name, score)
+        self.ctx.recipe_data.testsets[name] = subtask
+        self.ctx.recipe_data.subtasks[name] = subtask
+        self.ctx.scope = subtask
 
-class GlobalValidationHandler(CommandHandler):
-    """Handler for @global_validation commands."""
-
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 1)
-
-        self.context.list_expand_constants(parts)
-        command_sequence = " ".join(parts[1:])
-        executable = Executable(command_sequence)
-        self.context.recipe_data.global_validation.append(executable)
-        self.context.current_context = None
-        self.context.current_object = None
-
-
-class DescriptionHandler(CommandHandler):
-    """Handler for @description commands."""
-
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 1)
-
-        if self.context.current_context is None:
+    @_register_command("description", preprocess=False)
+    def command_description(self, desc: str):
+        if self.ctx.scope is None:
             raise ValueError(
                 "@description can only be used within testset or subtask context"
             )
 
-        self.context.list_expand_constants(parts)
-        description = " ".join(parts[1:])
-        self.context.current_object.set_description(description)
+        desc = self.ctx.substitute(desc)
+        self.ctx.scope.set_description(desc)
 
+    @_register_command("include")
+    def command_include(self, depend: str):
 
-class IncludeHandler(CommandHandler):
-    """Handler for @include commands."""
-
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 1, 1)
-
-        if self.context.current_context is None:
+        if self.ctx.scope is None:
             raise ValueError(
                 "@include can only be used within testset or subtask context"
             )
 
-        include_name = parts[1]
-
-        # Check if it's a testset or subtask
-        testsets = self.context.recipe_data.testsets
-        if include_name in testsets.keys():
-            self.context.current_object.include_testset(testsets[include_name])
+        testsets = self.ctx.recipe_data.testsets
+        if depend in testsets.keys():
+            self.ctx.scope.include_testset(testsets[depend])
+        # TODO: detect and prevent circular @include dependencies (currently allows self-reference)
         else:
-            raise ValueError(f"Unknown testset or subtask name: '{include_name}'")
+            raise ValueError(f"Unknown testset or subtask name: '{depend}'")
 
+    @_register_command("global_validation", preprocess=False)
+    def command_global_validation(self, remain: str):
+        val = self.ctx.make_executable(remain, Validation)
+        self.ctx.recipe_data.global_validation.append(val)
 
-class ValidationHandler(CommandHandler):
-    """Handler for @validation commands."""
+    @_register_command("validation", preprocess=False)
+    def command_validation(self, remain: str):
 
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 1)
-
-        if self.context.current_context not in ("testset", "subtask"):
+        if self.ctx.scope is None:
             raise ValueError(
                 "@validation can only be used within testset or subtask context"
             )
 
-        self.context.list_expand_constants(parts)
-        self.context.current_object.add_validation(Executable(" ".join(parts[1:])))
+        val = self.ctx.make_executable(remain, Validation)
+        self.ctx.scope.add_validation(val)
 
+    @_register_command("constant")
+    def command_constant(self, name: str, value: str):
+        self.ctx.set_constant(name, value)
 
-class ConstantHandler(CommandHandler):
-    """Handler for @constant commands."""
-
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 2, 2)
-
-        self.context.set_constant(parts[1], parts[2])
-
-
-class ExtrafileHandler(CommandHandler):
-    """Handler for @extra_file commands."""
-
-    def handle(self, parts: List[str]):
-        self.validate_args(parts, 2, 2)
-
-        if self.context.current_context not in ("testset", "subtask"):
+    @_register_command("extra_file")
+    def command_extra_file(self, name: str, ext: str):
+        if self.ctx.scope is None:
             raise ValueError(
                 "@extra_file can only be used within testset or subtask context"
             )
+        if not ext.startswith("."):
+            raise ValueError(f"Extra file {ext} should start with a dot (.)")
 
-        self.context.current_object.add_extrafile(parts[2])
-        self.context.set_constant(parts[1], TESTCASE_NAME_PLACE_HOLDER + parts[2])
-
-
-class CommandRegistry:
-    """
-    Registry for all available command handlers.
-    """
-
-    def __init__(self, parser_context: ParserContext):
-        self.handlers = {
-            "testset": TestsetHandler(parser_context),
-            "subtask": SubtaskHandler(parser_context),
-            "global_validation": GlobalValidationHandler(parser_context),
-            "description": DescriptionHandler(parser_context),
-            "include": IncludeHandler(parser_context),
-            "validation": ValidationHandler(parser_context),
-            "constant": ConstantHandler(parser_context),
-            "extra_file": ExtrafileHandler(parser_context),
-        }
-
-    def get_handler(self, command: str) -> CommandHandler:
-        """
-        Get the handler for a specific command.
-
-        Args:
-            command (str): Command name
-
-        Returns:
-            CommandHandler: Handler for the command
-
-        Raises:
-            ValueError: If command is not recognized
-        """
-        if command not in self.handlers:
-            raise ValueError(f"Unknown command: '@{command}'")
-        return self.handlers[command]
-
-    def register_handler(self, command: str, handler: CommandHandler):
-        """
-        Register a new command handler.
-
-        Args:
-            command (str): Command name
-            handler (CommandHandler): Handler instance
-        """
-        self.handlers[command] = handler
+        self.ctx.scope.add_extrafile(ext)
+        self.ctx.set_constant(name, TESTCASE_NAME_PLACE_HOLDER + ext)
 
 
 def parse_recipe_data(
-    recipe_lines: List[str], is_outputonly: bool = False
+    recipe_lines: list[str], is_outputonly: bool = False
 ) -> RecipeData:
     """
     Parse recipe and return the structured data.
@@ -642,45 +562,52 @@ def parse_recipe_data(
         ValueError: If the recipe format is invalid
     """
 
-    parser_context = ParserContext()
-    command_registry = CommandRegistry(parser_context)
+    parser = RecipeParser()
 
     for line_num, line in enumerate(recipe_lines, 1):
         line = line.strip()
 
-        # Skip empty lines and comments
-        if not line or line.startswith("#"):
+        # Remove comments
+        line = line.partition("#")[0].strip()
+        if not line:
             continue
 
         try:
             # Handle command lines starting with @
             if line.startswith("@"):
-                parts = line[1:].split()
-                if not parts:
-                    raise ValueError("Empty command after '@'")
+                cmd, *args = line.split(maxsplit=1)
+                args = args[0] if args else ""
 
-                command = parts[0]
-                handler = command_registry.get_handler(command)
-                handler.handle(parts)
+                handler = parser.handlers.get(cmd[1:])
+                if handler is None:
+                    raise ValueError(f"Unknown command {cmd}")
+                if handler.preprocess:
+                    handler(*parser.ctx.shell_split(args, pipe_split=False))
+                else:
+                    handler(args)
 
             else:
                 # Expand constants in test generation commands
-                expanded_line = parser_context.expand_constants(line)
-                parser_context.current_object.add_test(expanded_line)
+                exe = parser.ctx.make_executable(line, Executable)
+                if parser.ctx.scope is None:
+                    raise ValueError(
+                        "Stray generation command not within any subtask or testset"
+                    )
+                parser.ctx.scope.add_test(exe)
 
         except ValueError as e:
             raise ValueError(f"Error on line {line_num}: {e}")
 
     # Generate test names after parsing is complete
     if is_outputonly:
-        parser_context.recipe_data.generate_testsetless_test_names()
+        parser.ctx.recipe_data.generate_testsetless_test_names()
     else:
-        parser_context.recipe_data.generate_all_test_names()
+        parser.ctx.recipe_data.generate_all_test_names()
 
     # Push validations to all test cases after parsing is complete
-    parser_context.recipe_data.push_validation_to_testcases()
+    parser.ctx.recipe_data.push_validation_to_testcases()
 
-    return parser_context.recipe_data
+    return parser.ctx.recipe_data
 
 
 if __name__ == "__main__":
@@ -765,12 +692,10 @@ print 1 1
 
         print("\n=== SUBTASKS ===")
         for name, subtask in recipe_data.subtasks.items():
-            print(
-                f"Subtask '{name}' (index: {subtask.subtask_index}, score: {subtask.score})"
-            )
+            print(f"Subtask '{name}' (index: {subtask.index}, score: {subtask.score})")
             if subtask.description:
                 print(f"  Description: {subtask.description}")
-            print(f"  Testsets: {sorted(subtask.tests)}")
+            print(f"  Testsets: {subtask.dependency}")
             print(f"  Validation: {len(subtask.validation)} validators")
             for i, validation in enumerate(subtask.validation):
                 print(f"    Validator {i + 1}: {validation.commands}")
@@ -781,3 +706,4 @@ print 1 1
         pass
     # except Exception as e:
     #     print(f"Error: {e}")
+    # print(shell_split("a | b '|' c", {}))
