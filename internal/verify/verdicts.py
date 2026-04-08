@@ -265,6 +265,12 @@ class VerdictsVerifier(Verifier):
             default_subtask_rule.verdict if not subtask_list else VerdictRule()
         ))
 
+        self._check_default_rule(
+            submission_file,
+            "Overall result",
+            set(verdict_count.keys())
+        )
+
         # Check overall verdict only if no subtask
         if not subtask_list:
             self._check_verdict_rule(
