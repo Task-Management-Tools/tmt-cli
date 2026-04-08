@@ -1,11 +1,9 @@
-from argparse import ArgumentParser
 from collections import Counter
 import os
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
-from internal.verify import VerdictsVerifier
-from internal.verify.verifier import TMTVerifyIssue, TMTVerifyIssueType
+from internal.verify import TMTVerifyIssue, TMTVerifyIssueType, VerdictsVerifier, ConfigVerifier
 
 def _print_verify_issue(issues: list[TMTVerifyIssue], formatter: Formatter, context: TMTContext):
     formatter.println()
@@ -37,12 +35,27 @@ def command_verify(
     Check issues.
     """
     issues: list[TMTVerifyIssue] = []
+    issues += command_verify_config(print_issues=False, formatter=formatter, context=context)
     issues += command_verify_verdicts(solution_filename=None, print_issues=False, formatter=formatter, context=context)
 
     if print_issues:
         _print_verify_issue(issues, formatter, context)
 
     return issues
+
+def command_verify_config(
+    *,
+    print_issues: bool,
+    formatter: Formatter,
+    context: TMTContext
+) -> list[TMTVerifyIssue]:
+    verifier = ConfigVerifier(context)
+    verifier.verify()
+
+    if print_issues:
+        _print_verify_issue(verifier.issues, formatter, context)
+
+    return verifier.issues
 
 def command_verify_verdicts(
     *,

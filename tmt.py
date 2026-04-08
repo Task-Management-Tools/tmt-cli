@@ -1,7 +1,7 @@
 import argparse
 import pathlib
 
-from internal.commands.verify import command_verify_verdicts
+from internal.commands.verify import command_verify_config, command_verify_verdicts
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import (
     command_gen,
@@ -64,6 +64,7 @@ def main():
     verify_subparser.add_parser("all", help="Verify all issue classes.")
     parser_verify_verdicts = verify_subparser.add_parser("verdicts", help="Verify solution verdicts.")
     parser_verify_verdicts.add_argument("-s", "--solution", help="The solution filename in solutions/.")
+    verify_subparser.add_parser("config", help="Verify configs.")
 
     args = parser.parse_args()
 
@@ -120,6 +121,10 @@ def main():
     if args.command == "verify":
         if args.issue_class == "all" or args.issue_class is None:
             ret = command_verify(print_issues=True, formatter=formatter, context=context)
+        elif args.issue_class == "config":
+            ret = command_verify_config(print_issues=True,
+                                        formatter=formatter,
+                                        context=context)
         elif args.issue_class == "verdicts":
             ret = command_verify_verdicts(solution_filename=args.solution, 
                                           print_issues=True, 
