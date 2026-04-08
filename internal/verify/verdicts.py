@@ -93,8 +93,7 @@ class VerdictsVerifier(Verifier):
         verdicts: set[ExpectedVerdict],
     ) -> None:
         rule = VerdictRule(never=[ExpectedVerdict.JUDGE_ERROR,
-                            ExpectedVerdict.TIME_LIMIT_EXCEEDED_WALL,
-                            ExpectedVerdict.UNKNOWN])
+                                  ExpectedVerdict.UNKNOWN])
         if not rule.check_rule(verdicts):
             self.add_issue("default_rule", filename, f"{subtask_name} violates default verdict rule {rule}")
 
@@ -128,7 +127,7 @@ class VerdictsVerifier(Verifier):
                     print_color = formatter.ANSI_YELLOW
                 case ExpectedVerdict.WRONG_ANSWER:
                     print_color = formatter.ANSI_RED
-                case ExpectedVerdict.TIME_LIMIT_EXCEEDED | ExpectedVerdict.TIME_LIMIT_EXCEEDED_WALL:
+                case ExpectedVerdict.TIME_LIMIT_EXCEEDED:
                     print_color = formatter.ANSI_BLUE
                 case ExpectedVerdict.RUNTIME_ERROR:
                     print_color = formatter.ANSI_PURPLE

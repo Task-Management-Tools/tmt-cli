@@ -12,13 +12,12 @@ class ExpectedVerdict(enum.Enum):
     ACCEPTED = ("Accepted", "AC", ["accepted", "AC", "correct"], EvaluationOutcomeGroup.ACCEPTED.outcome_list)
     WRONG_ANSWER = ("Wrong Answer", "WA", ["wrong_answer", "WA", "incorrect"], EvaluationOutcomeGroup.WRONG_ANSWER.outcome_list)
     TIME_LIMIT_EXCEEDED = ("Time Limit Exceeded", "TLE", ["time_limit_exceeded", "time_limit", "timeout", "TLE"], 
-                           [item for item in EvaluationOutcomeGroup.TIMEOUT.outcome_list if item != EvaluationOutcome.TIMEOUT_WALL])
+                           EvaluationOutcomeGroup.TIMEOUT.outcome_list)
     RUNTIME_ERROR = ("Runtime Error", "RTE", ["runtime_error", "RE", "RTE"], EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list)
     PARTIAL = ("Partially Correct", "PC", ["partial", "PC"], EvaluationOutcomeGroup.PARTIAL.outcome_list)
     OUTPUT_LIMIT = ("Output Limit Exceeded", "OLE", ["output_limit_exceeded", "output_limit", "OLE"], EvaluationOutcomeGroup.OUTPUT_LIMIT.outcome_list)
 
     # These verdicts should not be used in verdicts.yaml
-    TIME_LIMIT_EXCEEDED_WALL = ("Time Limit Exceeded (wall)", "TLE(wall)", [], [EvaluationOutcome.TIMEOUT_WALL])
     JUDGE_ERROR = ("Judge Error", "JE", [], EvaluationOutcomeGroup.JUDGE_ERROR.outcome_list)
     UNKNOWN = ("UNKNOWN", "??", [], [])
 
