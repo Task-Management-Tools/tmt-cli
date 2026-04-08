@@ -39,8 +39,8 @@ class CommandInvokeSummary:
     def is_compilation_error(self):
         def is_compilation_error(cresult: CompilationResult | None):
             return cresult is not None and not cresult
-        return any(map(is_compilation_error, self.compilation_result.values()))
 
+        return any(map(is_compilation_error, self.compilation_result.values()))
 
     def __bool__(self):
         if self.directory_error:

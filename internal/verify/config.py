@@ -1,4 +1,3 @@
-from internal.recipe_parser import Subtask
 from internal.verify.verifier import TMTVerifyIssueType
 
 from . import Verifier
@@ -20,14 +19,16 @@ class ConfigVerifier(Verifier):
         path_helper = context.path
 
         # score_not_available
-        if context.recipe.subtasks and \
-                not context.config.judge_convention.value.display_score:
+        if (
+            context.recipe.subtasks
+            and not context.config.judge_convention.value.display_score
+        ):
             self.add_issue(
                 "score_not_available",
                 path_helper.problem_yaml,
-                f"Subtasks used with judge convention {context.config.judge_convention}"
+                f"Subtasks used with judge convention {context.config.judge_convention}",
             )
-            
+
         # no_validator
         no_validator_testcases = []
         for _, testset in context.recipe.testsets.items():
@@ -38,18 +39,19 @@ class ConfigVerifier(Verifier):
             self.add_issue(
                 "no_validator",
                 path_helper.tmt_recipe,
-                f"There is no validator for testcase {','.join(no_validator_testcases)}"
+                f"There is no validator for testcase {','.join(no_validator_testcases)}",
             )
 
         # no_full_subtask
         testcase_count = 0
         for _, testset in context.recipe.testsets.items():
             testcase_count += len(testset.testcases)
-        if context.recipe.subtasks and \
-                not any(len(subtask.get_all_test_names()) == testcase_count
-                for _, subtask in context.recipe.subtasks.items()):
+        if context.recipe.subtasks and not any(
+            len(subtask.get_all_test_names()) == testcase_count
+            for _, subtask in context.recipe.subtasks.items()
+        ):
             self.add_issue(
                 "no_full_subtask",
                 path_helper.tmt_recipe,
-                f"There is no subtask including all testcases"
+                "There is no subtask including all testcases",
             )

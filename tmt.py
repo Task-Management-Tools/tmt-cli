@@ -59,11 +59,16 @@ def main():
     subparsers.add_parser("make-public", help="Build public attachment archive file")
 
     parser_verify = subparsers.add_parser("verify", help="Check issues.")
-    verify_subparser = parser_verify.add_subparsers(dest="issue_class", 
-                                                    help="The issue class to be verified.")
+    verify_subparser = parser_verify.add_subparsers(
+        dest="issue_class", help="The issue class to be verified."
+    )
     verify_subparser.add_parser("all", help="Verify all issue classes.")
-    parser_verify_verdicts = verify_subparser.add_parser("verdicts", help="Verify solution verdicts.")
-    parser_verify_verdicts.add_argument("-s", "--solution", help="The solution filename in solutions/.")
+    parser_verify_verdicts = verify_subparser.add_parser(
+        "verdicts", help="Verify solution verdicts."
+    )
+    parser_verify_verdicts.add_argument(
+        "-s", "--solution", help="The solution filename in solutions/."
+    )
     verify_subparser.add_parser("config", help="Verify configs.")
 
     args = parser.parse_args()
@@ -120,16 +125,20 @@ def main():
 
     if args.command == "verify":
         if args.issue_class == "all" or args.issue_class is None:
-            ret = command_verify(print_issues=True, formatter=formatter, context=context)
+            ret = command_verify(
+                print_issues=True, formatter=formatter, context=context
+            )
         elif args.issue_class == "config":
-            ret = command_verify_config(print_issues=True,
-                                        formatter=formatter,
-                                        context=context)
+            ret = command_verify_config(
+                print_issues=True, formatter=formatter, context=context
+            )
         elif args.issue_class == "verdicts":
-            ret = command_verify_verdicts(solution_filename=args.solution, 
-                                          print_issues=True, 
-                                          formatter=formatter, 
-                                          context=context)
+            ret = command_verify_verdicts(
+                solution_filename=args.solution,
+                print_issues=True,
+                formatter=formatter,
+                context=context,
+            )
         else:
             formatter.println(f"Unknown issue class {args.issue_class}")
             return False

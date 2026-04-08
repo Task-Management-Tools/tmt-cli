@@ -8,20 +8,61 @@ from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.outcomes import EvaluationOutcome, EvaluationOutcomeGroup
 from .context.paths import ProblemDirectoryHelper
 
+
 class ExpectedVerdict(enum.Enum):
-    ACCEPTED = ("Accepted", "AC", ["accepted", "AC", "correct"], EvaluationOutcomeGroup.ACCEPTED.outcome_list)
-    WRONG_ANSWER = ("Wrong Answer", "WA", ["wrong_answer", "WA", "incorrect"], EvaluationOutcomeGroup.WRONG_ANSWER.outcome_list)
-    TIME_LIMIT_EXCEEDED = ("Time Limit Exceeded", "TLE", ["time_limit_exceeded", "time_limit", "timeout", "TLE"], 
-                           EvaluationOutcomeGroup.TIMEOUT.outcome_list)
-    RUNTIME_ERROR = ("Runtime Error", "RTE", ["runtime_error", "RE", "RTE"], EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list)
-    PARTIAL = ("Partially Correct", "PC", ["partial", "PC"], EvaluationOutcomeGroup.PARTIAL.outcome_list)
-    OUTPUT_LIMIT = ("Output Limit Exceeded", "OLE", ["output_limit_exceeded", "output_limit", "OLE"], EvaluationOutcomeGroup.OUTPUT_LIMIT.outcome_list)
+    ACCEPTED = (
+        "Accepted",
+        "AC",
+        ["accepted", "AC", "correct"],
+        EvaluationOutcomeGroup.ACCEPTED.outcome_list,
+    )
+    WRONG_ANSWER = (
+        "Wrong Answer",
+        "WA",
+        ["wrong_answer", "WA", "incorrect"],
+        EvaluationOutcomeGroup.WRONG_ANSWER.outcome_list,
+    )
+    TIME_LIMIT_EXCEEDED = (
+        "Time Limit Exceeded",
+        "TLE",
+        ["time_limit_exceeded", "time_limit", "timeout", "TLE"],
+        EvaluationOutcomeGroup.TIMEOUT.outcome_list,
+    )
+    RUNTIME_ERROR = (
+        "Runtime Error",
+        "RTE",
+        ["runtime_error", "RE", "RTE"],
+        EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list,
+    )
+    PARTIAL = (
+        "Partially Correct",
+        "PC",
+        ["partial", "PC"],
+        EvaluationOutcomeGroup.PARTIAL.outcome_list,
+    )
+    OUTPUT_LIMIT = (
+        "Output Limit Exceeded",
+        "OLE",
+        ["output_limit_exceeded", "output_limit", "OLE"],
+        EvaluationOutcomeGroup.OUTPUT_LIMIT.outcome_list,
+    )
 
     # These verdicts should not be used in verdicts.yaml
-    JUDGE_ERROR = ("Judge Error", "JE", [], EvaluationOutcomeGroup.JUDGE_ERROR.outcome_list)
+    JUDGE_ERROR = (
+        "Judge Error",
+        "JE",
+        [],
+        EvaluationOutcomeGroup.JUDGE_ERROR.outcome_list,
+    )
     UNKNOWN = ("UNKNOWN", "??", [], [])
 
-    def __init__(self, displayed_name: str, short_name: str, alias: list[str], outcome_list: list[EvaluationOutcome]) -> None:
+    def __init__(
+        self,
+        displayed_name: str,
+        short_name: str,
+        alias: list[str],
+        outcome_list: list[EvaluationOutcome],
+    ) -> None:
         self.displayed_name = displayed_name
         self.short_name = short_name
         self.alias = alias
@@ -53,6 +94,7 @@ class ExpectedVerdict(enum.Enum):
             raise ValueError(f"Cannot convert {type(value)} to Verdict")
         return cls.from_str(value)
 
+
 @dataclasses.dataclass
 class VerdictRule:
     must: list[ExpectedVerdict] = dataclasses.field(default_factory=list)
@@ -63,15 +105,28 @@ class VerdictRule:
         if self.must:
             result.append("must=[" + ", ".join([str(item) for item in self.must]) + "]")
         if self.never:
-            result.append("never=[" + ", ".join([str(item) for item in self.never]) + "]")
-        return "{" + ', '.join(result) + "}"
+            result.append(
+                "never=[" + ", ".join([str(item) for item in self.never]) + "]"
+            )
+        return "{" + ", ".join(result) + "}"
 
-    def check_rule(self, verdicts: list[ExpectedVerdict] | set[ExpectedVerdict]) -> bool:
+    def check_rule(
+        self, verdicts: list[ExpectedVerdict] | set[ExpectedVerdict]
+    ) -> bool:
         must_ok = not self.must
         for verdict in verdicts:
-            if verdict in self.never or \
-                    (ExpectedVerdict.ACCEPTED in self.must and verdict != ExpectedVerdict.ACCEPTED) or \
-                    (ExpectedVerdict.PARTIAL in self.must and verdict not in [ExpectedVerdict.ACCEPTED, ExpectedVerdict.PARTIAL]):
+            if (
+                verdict in self.never
+                or (
+                    ExpectedVerdict.ACCEPTED in self.must
+                    and verdict != ExpectedVerdict.ACCEPTED
+                )
+                or (
+                    ExpectedVerdict.PARTIAL in self.must
+                    and verdict
+                    not in [ExpectedVerdict.ACCEPTED, ExpectedVerdict.PARTIAL]
+                )
+            ):
                 return False
             if verdict in self.must:
                 must_ok = True
@@ -100,26 +155,43 @@ class VerdictRule:
             ret = cls(must=[ExpectedVerdict(item) for item in data])
         else:
             ret = cls(**data)
-            ret.must = [ExpectedVerdict(ret.must)] if isinstance(ret.must, (ExpectedVerdict, str)) \
-                        else list(map(ExpectedVerdict, ret.must)) if ret.must \
-                        else []
-            ret.never = [ExpectedVerdict(ret.never)] if isinstance(ret.never, (ExpectedVerdict, str)) \
-                        else list(map(ExpectedVerdict, ret.never)) if ret.never \
-                        else []
+            ret.must = (
+                [ExpectedVerdict(ret.must)]
+                if isinstance(ret.must, (ExpectedVerdict, str))
+                else list(map(ExpectedVerdict, ret.must))
+                if ret.must
+                else []
+            )
+            ret.never = (
+                [ExpectedVerdict(ret.never)]
+                if isinstance(ret.never, (ExpectedVerdict, str))
+                else list(map(ExpectedVerdict, ret.never))
+                if ret.never
+                else []
+            )
 
         found_must = bool(ret.must)
-        found_accepted = any(verdict == ExpectedVerdict.ACCEPTED for verdict in ret.must)
+        found_accepted = any(
+            verdict == ExpectedVerdict.ACCEPTED for verdict in ret.must
+        )
         found_partial = any(verdict == ExpectedVerdict.PARTIAL for verdict in ret.must)
-        found_others = any(verdict not in [ExpectedVerdict.ACCEPTED, ExpectedVerdict.PARTIAL]
-                           for verdict in ret.must + ret.never)
+        found_others = any(
+            verdict not in [ExpectedVerdict.ACCEPTED, ExpectedVerdict.PARTIAL]
+            for verdict in ret.must + ret.never
+        )
         if not found_must:
-            raise ValueError("Verdict rule should contain at least one \"must\" rule")
+            raise ValueError('Verdict rule should contain at least one "must" rule')
         if found_accepted and (found_partial or found_others):
-            raise ValueError("\"accepted\" in \"must\" rule but the rule contains other verdicts (Hint: \"must: accepted\" also bans all other verdicts.)")
+            raise ValueError(
+                '"accepted" in "must" rule but the rule contains other verdicts (Hint: "must: accepted" also bans all other verdicts.)'
+            )
         if found_partial and found_others:
-            raise ValueError("\"partial\" in \"must\" rule but the rule contains other verdicts (Hint: \"must: partial\" also bans all incorrect verdicts.)")
+            raise ValueError(
+                '"partial" in "must" rule but the rule contains other verdicts (Hint: "must: partial" also bans all incorrect verdicts.)'
+            )
 
         return ret
+
 
 @dataclasses.dataclass
 class ScoreRange:
@@ -163,8 +235,11 @@ class ScoreRange:
         if obj.exact is not None:
             obj.exact = float(obj.exact)
         if obj.exact is not None and (obj.min is not None or obj.max is not None):
-            raise ValueError("The exact score is set in a score range but min or max score is also set")
+            raise ValueError(
+                "The exact score is set in a score range but min or max score is also set"
+            )
         return obj
+
 
 @dataclasses.dataclass
 class SubtaskVerdict:
@@ -197,7 +272,7 @@ class SubtaskVerdict:
             subtask.subtask = [subtask.subtask]
         if not isinstance(subtask.subtask, list):
             raise ValueError(f"Invalid subtask: {subtask.subtask}")
-        
+
         subtask.subtask = list(map(str, subtask.subtask))
         for item in subtask.subtask:
             if item not in subtask_list:
@@ -205,9 +280,9 @@ class SubtaskVerdict:
 
         subtask.verdict = VerdictRule.from_raw(subtask.verdict)
         subtask.score = ScoreRange.from_raw(subtask.score)
-        
+
         return subtask
-        
+
 
 @dataclasses.dataclass
 class SolutionVerdict:
@@ -218,7 +293,9 @@ class SolutionVerdict:
     score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
 
     @classmethod
-    def from_raw(cls, data, subtask_list: list[str], helper: ProblemDirectoryHelper) -> "SolutionVerdict":
+    def from_raw(
+        cls, data, subtask_list: list[str], helper: ProblemDirectoryHelper
+    ) -> "SolutionVerdict":
 
         if "except" in data:
             data["except_"] = data.pop("except")
@@ -248,10 +325,13 @@ class SolutionVerdict:
         seen = set()
         for subtask in overwrite_subtasks:
             if subtask in seen:
-                raise ValueError(f"Subtask {subtask} duplicates in verdict rules of {solution.filename}")
+                raise ValueError(
+                    f"Subtask {subtask} duplicates in verdict rules of {solution.filename}"
+                )
             seen.add(subtask)
 
         return solution
+
 
 def parse_verdicts(context: TMTContext):
     helper = context.path
@@ -259,18 +339,17 @@ def parse_verdicts(context: TMTContext):
     try:
         with open(yaml_path, "r") as file:
             verdicts_yaml = yaml.safe_load(file)
-    except (FileNotFoundError, IsADirectoryError, PermissionError) as e: 
+    except (FileNotFoundError, IsADirectoryError, PermissionError) as e:
         raise TMTMissingFileError("config", yaml_path) from e
     except yaml.YAMLError as e:
         raise TMTInvalidConfigError(yaml_path) from e
-    
+
     if not isinstance(verdicts_yaml, list):
         raise ValueError("verdicts.yaml should contain a list.")
-    
+
     solution_list: list[SolutionVerdict] = []
     subtask_list: list[str] = list(context.recipe.subtasks.keys())
     for item in verdicts_yaml:
         solution_list.append(SolutionVerdict.from_raw(item, subtask_list, helper))
 
     return solution_list
-    

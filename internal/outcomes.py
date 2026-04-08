@@ -69,34 +69,50 @@ class EvaluationOutcome(Enum):
     # Internal error.
     INTERNAL_ERROR = "Internal Error"
 
+
 @unique
 class EvaluationOutcomeGroup(Enum):
     ACCEPTED = ("Accepted", [EvaluationOutcome.ACCEPTED])
     PARTIAL = ("Partially Correct", [EvaluationOutcome.PARTIAL])
-    WRONG_ANSWER = ("Wrong Answer", [
-        EvaluationOutcome.WRONG,
-        EvaluationOutcome.NO_FILE,
-        EvaluationOutcome.NO_OUTPUT,
-    ])
-    TIMEOUT = ("Time Limit Exceeded", [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL])
-    RUNTIME_ERROR = ("Runtime Error", [
-        EvaluationOutcome.RUNERROR_SIGNAL,
-        EvaluationOutcome.RUNERROR_EXITCODE,
-        EvaluationOutcome.RUNERROR_MEMORY,
-    ])
-    JUDGE_ERROR = ("Judge Error", [
-        EvaluationOutcome.MANAGER_CRASHED,
-        EvaluationOutcome.MANAGER_FAILED,
-        EvaluationOutcome.MANAGER_TIMEOUT,
-        EvaluationOutcome.CHECKER_CRASHED,
-        EvaluationOutcome.CHECKER_FAILED,
-        EvaluationOutcome.CHECKER_TIMEDOUT,
-        EvaluationOutcome.INTERNAL_ERROR,
-    ])
-    OUTPUT_LIMIT = ("Output Limit Exceeded", [
-        EvaluationOutcome.RUNERROR_OUTPUT,
-        EvaluationOutcome.OUTPUT_LIMIT,
-    ])
+    WRONG_ANSWER = (
+        "Wrong Answer",
+        [
+            EvaluationOutcome.WRONG,
+            EvaluationOutcome.NO_FILE,
+            EvaluationOutcome.NO_OUTPUT,
+        ],
+    )
+    TIMEOUT = (
+        "Time Limit Exceeded",
+        [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL],
+    )
+    RUNTIME_ERROR = (
+        "Runtime Error",
+        [
+            EvaluationOutcome.RUNERROR_SIGNAL,
+            EvaluationOutcome.RUNERROR_EXITCODE,
+            EvaluationOutcome.RUNERROR_MEMORY,
+        ],
+    )
+    JUDGE_ERROR = (
+        "Judge Error",
+        [
+            EvaluationOutcome.MANAGER_CRASHED,
+            EvaluationOutcome.MANAGER_FAILED,
+            EvaluationOutcome.MANAGER_TIMEOUT,
+            EvaluationOutcome.CHECKER_CRASHED,
+            EvaluationOutcome.CHECKER_FAILED,
+            EvaluationOutcome.CHECKER_TIMEDOUT,
+            EvaluationOutcome.INTERNAL_ERROR,
+        ],
+    )
+    OUTPUT_LIMIT = (
+        "Output Limit Exceeded",
+        [
+            EvaluationOutcome.RUNERROR_OUTPUT,
+            EvaluationOutcome.OUTPUT_LIMIT,
+        ],
+    )
     UNKNOWN = ("Unknown", [])
 
     def __init__(self, fullname: str, outcome_list: list[EvaluationOutcome]) -> None:
@@ -107,11 +123,14 @@ class EvaluationOutcomeGroup(Enum):
         return value in self.outcome_list
 
     @classmethod
-    def from_evaluation_outcome(cls, outcome: EvaluationOutcome) -> "EvaluationOutcomeGroup":
+    def from_evaluation_outcome(
+        cls, outcome: EvaluationOutcome
+    ) -> "EvaluationOutcomeGroup":
         for group in list(EvaluationOutcomeGroup):
             if outcome in group:
                 return group
         return EvaluationOutcomeGroup.UNKNOWN
+
 
 @dataclass
 class EvaluationResult:

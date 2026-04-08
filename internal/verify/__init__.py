@@ -7,5 +7,5 @@ __all__ = [
     "TMTVerifyIssueType",
     "Verifier",
     "VerdictsVerifier",
-    "ConfigVerifier"
+    "ConfigVerifier",
 ]

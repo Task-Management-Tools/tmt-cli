@@ -4,8 +4,12 @@ import pytest
 from internal.context import TMTContext
 from internal.formatting.terminal import TerminalFormatter
 from internal.commands import command_clean, command_gen
-from internal.commands.verify import command_verify, command_verify_config, command_verify_verdicts
+from internal.commands.verify import (
+    command_verify_config,
+    command_verify_verdicts,
+)
 from internal.verify.verifier import TMTVerifyIssueType
+
 
 @pytest.mark.parametrize(
     "problem_path, expected_error_count, expected_warning_count",
@@ -30,16 +34,23 @@ def test_verify_config(
     command_gen(
         formatter=formatter, context=context, verify_hash=False, show_reason=False
     )
-    
-    issues = command_verify_config(print_issues=False, 
-                                   formatter=formatter, 
-                                   context=context)
-    
+
+    issues = command_verify_config(
+        print_issues=False, formatter=formatter, context=context
+    )
+
     error_count = sum(1 for issue in issues if issue.type == TMTVerifyIssueType.ERROR)
-    warning_count = sum(1 for issue in issues if issue.type == TMTVerifyIssueType.WARNING)
-    
-    assert error_count == expected_error_count, f"Expected {expected_error_count} errors, found {error_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.ERROR]}"
-    assert warning_count == expected_warning_count, f"Expected {expected_warning_count} warnings, found {warning_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.WARNING]}"
+    warning_count = sum(
+        1 for issue in issues if issue.type == TMTVerifyIssueType.WARNING
+    )
+
+    assert error_count == expected_error_count, (
+        f"Expected {expected_error_count} errors, found {error_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.ERROR]}"
+    )
+    assert warning_count == expected_warning_count, (
+        f"Expected {expected_warning_count} warnings, found {warning_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.WARNING]}"
+    )
+
 
 @pytest.mark.parametrize(
     "problem_path, expected_error_count, expected_warning_count",
@@ -64,17 +75,23 @@ def test_verify_verdicts(
     command_gen(
         formatter=formatter, context=context, verify_hash=False, show_reason=False
     )
-    
-    issues = command_verify_verdicts(solution_filename=None, 
-                                     print_issues=False, 
-                                     formatter=formatter, 
-                                     context=context)
-    
+
+    issues = command_verify_verdicts(
+        solution_filename=None, print_issues=False, formatter=formatter, context=context
+    )
+
     error_count = sum(1 for issue in issues if issue.type == TMTVerifyIssueType.ERROR)
-    warning_count = sum(1 for issue in issues if issue.type == TMTVerifyIssueType.WARNING)
-    
-    assert error_count == expected_error_count, f"Expected {expected_error_count} errors, found {error_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.ERROR]}"
-    assert warning_count == expected_warning_count, f"Expected {expected_warning_count} warnings, found {warning_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.WARNING]}"
+    warning_count = sum(
+        1 for issue in issues if issue.type == TMTVerifyIssueType.WARNING
+    )
+
+    assert error_count == expected_error_count, (
+        f"Expected {expected_error_count} errors, found {error_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.ERROR]}"
+    )
+    assert warning_count == expected_warning_count, (
+        f"Expected {expected_warning_count} warnings, found {warning_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.WARNING]}"
+    )
+
 
 @pytest.mark.parametrize(
     "problem_path, solution_filename, expected_error_count, expected_warning_count",
@@ -102,16 +119,22 @@ def test_verify_verdicts_single(
     command_gen(
         formatter=formatter, context=context, verify_hash=False, show_reason=False
     )
-    
+
     issues = command_verify_verdicts(
         solution_filename=solution_filename,
         print_issues=False,
         formatter=formatter,
-        context=context
+        context=context,
     )
-    
+
     error_count = sum(1 for issue in issues if issue.type == TMTVerifyIssueType.ERROR)
-    warning_count = sum(1 for issue in issues if issue.type == TMTVerifyIssueType.WARNING)
-    
-    assert error_count == expected_error_count, f"Expected {expected_error_count} errors, found {error_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.ERROR]}"
-    assert warning_count == expected_warning_count, f"Expected {expected_warning_count} warnings, found {warning_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.WARNING]}"
+    warning_count = sum(
+        1 for issue in issues if issue.type == TMTVerifyIssueType.WARNING
+    )
+
+    assert error_count == expected_error_count, (
+        f"Expected {expected_error_count} errors, found {error_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.ERROR]}"
+    )
+    assert warning_count == expected_warning_count, (
+        f"Expected {expected_warning_count} warnings, found {warning_count}: {[i.message for i in issues if i.type == TMTVerifyIssueType.WARNING]}"
+    )

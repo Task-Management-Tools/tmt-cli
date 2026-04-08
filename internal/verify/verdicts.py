@@ -1,30 +1,38 @@
 from collections import Counter
 from dataclasses import dataclass
-from enum import Enum, auto
-from http.client import ACCEPTED
+from enum import Enum
 import os
 from pathlib import Path
 
 from internal.commands.invoke import CommandInvokeSummary
 from internal.compilation import languages
 from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
-from internal.formatting.base import Formatter
-from internal.verdicts import ExpectedVerdict, ScoreRange, SolutionVerdict, SubtaskVerdict, VerdictRule, parse_verdicts
 from internal.formatting import Formatter
+from internal.verdicts import (
+    ExpectedVerdict,
+    ScoreRange,
+    SolutionVerdict,
+    SubtaskVerdict,
+    VerdictRule,
+    parse_verdicts,
+)
 from internal.commands import command_invoke
 from internal.outcomes import EvaluationResult
 from . import TMTVerifyIssueType, Verifier
+
 
 class SubtaskResult(Enum):
     INCORRECT = "Incorrect"
     PARTIAL = "Partial"
     CORRECT = "Correct"
 
+
 @dataclass
 class SubtaskOutcome:
     score: float
     result: SubtaskResult
     counter: Counter[ExpectedVerdict]
+
 
 @dataclass
 class VerdictsVerifierResult:
@@ -34,6 +42,7 @@ class VerdictsVerifierResult:
     verdicts: Counter[ExpectedVerdict]
     score_range: ScoreRange
     verdict_rule: VerdictRule
+
 
 class VerdictsVerifier(Verifier):
     name = "verdicts"
@@ -70,9 +79,13 @@ class VerdictsVerifier(Verifier):
                 partial = True
             if verdict not in [ExpectedVerdict.PARTIAL, ExpectedVerdict.ACCEPTED]:
                 incorrect = True
-        result_type = SubtaskResult.INCORRECT if incorrect \
-                     else SubtaskResult.PARTIAL if partial \
-                     else SubtaskResult.CORRECT
+        result_type = (
+            SubtaskResult.INCORRECT
+            if incorrect
+            else SubtaskResult.PARTIAL
+            if partial
+            else SubtaskResult.CORRECT
+        )
         # TODO: compute score based on judge convention
         return SubtaskOutcome(score, result_type, counter)
 
@@ -84,7 +97,9 @@ class VerdictsVerifier(Verifier):
         rule: VerdictRule,
     ) -> None:
         if not rule.check_rule(verdicts):
-            self.add_issue("verdict_rule", filename, f"{subtask_name} violates verdict rule {rule}")
+            self.add_issue(
+                "verdict_rule", filename, f"{subtask_name} violates verdict rule {rule}"
+            )
 
     def _check_default_rule(
         self,
@@ -92,12 +107,17 @@ class VerdictsVerifier(Verifier):
         subtask_name: str,
         verdicts: set[ExpectedVerdict],
     ) -> None:
-        rule = VerdictRule(never=[ExpectedVerdict.JUDGE_ERROR,
-                                  ExpectedVerdict.UNKNOWN])
+        rule = VerdictRule(never=[ExpectedVerdict.JUDGE_ERROR, ExpectedVerdict.UNKNOWN])
         if not rule.check_rule(verdicts):
-            self.add_issue("default_rule", filename, f"{subtask_name} violates default verdict rule {rule}")
+            self.add_issue(
+                "default_rule",
+                filename,
+                f"{subtask_name} violates default verdict rule {rule}",
+            )
 
-    def _print_result_table(self, formatter: Formatter, results: list[VerdictsVerifierResult]):
+    def _print_result_table(
+        self, formatter: Formatter, results: list[VerdictsVerifierResult]
+    ):
 
         # Compute column width
         # Result                                          Expected
@@ -168,15 +188,16 @@ class VerdictsVerifier(Verifier):
             formatter.print(formatter.ANSI_RESET)
 
             if print_score:
-                formatter.print_fixed_width(f"{round(result.score, 2)}", width=score_len)
+                formatter.print_fixed_width(
+                    f"{round(result.score, 2)}", width=score_len
+                )
             print_sequence = []
             for verdict, count in result.verdicts.items():
                 if print_sequence:
                     print_sequence += ", "
                 print_sequence += get_displayed_verdict(verdict)
                 print_sequence += f"*{count}"
-            formatter.print_fixed_width(*print_sequence, 
-                                        width=verdicts_len)
+            formatter.print_fixed_width(*print_sequence, width=verdicts_len)
 
             formatter.print_fixed_width(result.score_range, width=score_range_len)
             print_sequence = []
@@ -190,7 +211,7 @@ class VerdictsVerifier(Verifier):
                 print_sequence = print_sequence[:-1]
             elif not result.verdict_rule.must:
                 pass
-            else: # len(result.verdict_rule.must) == 1
+            else:  # len(result.verdict_rule.must) == 1
                 print_sequence += get_displayed_verdict(result.verdict_rule.must[0])
 
             formatter.println(*print_sequence)
@@ -209,15 +230,21 @@ class VerdictsVerifier(Verifier):
         submission_file = os.path.join(path_helper.solutions, solution.filename)
         formatter.println()
         formatter.println(f"Solution {solution.filename}:")
-        result = invoke_summary if invoke_summary else command_invoke(
-            formatter=formatter,
-            context=context,
-            submission_files=[submission_file],
-            show_reason=False
+        result = (
+            invoke_summary
+            if invoke_summary
+            else command_invoke(
+                formatter=formatter,
+                context=context,
+                submission_files=[submission_file],
+                show_reason=False,
+            )
         )
 
         if result.is_compilation_error():
-            self.add_issue("compile_error", submission_file, "Solution compilation error")
+            self.add_issue(
+                "compile_error", submission_file, "Solution compilation error"
+            )
             return
 
         # Collect subtask rules
@@ -230,44 +257,61 @@ class VerdictsVerifier(Verifier):
         verify_result: list[VerdictsVerifierResult] = []
 
         for subtask_name, subtask in subtask_list.items():
-            outcome = self._get_tests_outcome(result.testcase_results, subtask.get_all_test_names()) # type: ignore
+            outcome = self._get_tests_outcome(
+                result.testcase_results, subtask.get_all_test_names()  # type: ignore
+            )
             score = outcome.score
             result_type = outcome.result
             verdict_count = outcome.counter
 
-            subtask_rule = subtask_rules[subtask_name] if subtask_name in subtask_rules else default_subtask_rule
-            verify_result.append(VerdictsVerifierResult(
-                subtask_name, result_type, score, verdict_count,
-                subtask_rule.score, subtask_rule.verdict
-            ))
+            subtask_rule = (
+                subtask_rules[subtask_name]
+                if subtask_name in subtask_rules
+                else default_subtask_rule
+            )
+            verify_result.append(
+                VerdictsVerifierResult(
+                    subtask_name,
+                    result_type,
+                    score,
+                    verdict_count,
+                    subtask_rule.score,
+                    subtask_rule.verdict,
+                )
+            )
             self._check_verdict_rule(
                 submission_file,
                 f"Subtask {subtask_name}",
                 set(verdict_count.keys()),
-                subtask_rule.verdict
+                subtask_rule.verdict,
             )
             if not subtask_rule.score.check_score(score):
-                self.add_issue("score_range", submission_file,
-                                f"Subtask {subtask_name} score {score} violates the score range {subtask_rule.score}")
+                self.add_issue(
+                    "score_range",
+                    submission_file,
+                    f"Subtask {subtask_name} score {score} violates the score range {subtask_rule.score}",
+                )
 
         # Overall outcome
         outcome = self._get_tests_outcome(
-            result.testcase_results, 
-            context.recipe.get_all_test_names()
+            result.testcase_results, context.recipe.get_all_test_names()
         )
         score = outcome.score
         result_type = outcome.result
         verdict_count = outcome.counter
-        verify_result.append(VerdictsVerifierResult(
-            "Overall", result_type, score, verdict_count,
-            default_subtask_rule.score if not subtask_list else ScoreRange(),
-            default_subtask_rule.verdict if not subtask_list else VerdictRule()
-        ))
+        verify_result.append(
+            VerdictsVerifierResult(
+                "Overall",
+                result_type,
+                score,
+                verdict_count,
+                default_subtask_rule.score if not subtask_list else ScoreRange(),
+                default_subtask_rule.verdict if not subtask_list else VerdictRule(),
+            )
+        )
 
         self._check_default_rule(
-            submission_file,
-            "Overall result",
-            set(verdict_count.keys())
+            submission_file, "Overall result", set(verdict_count.keys())
         )
 
         # Check overall verdict only if no subtask
@@ -275,21 +319,23 @@ class VerdictsVerifier(Verifier):
             self._check_verdict_rule(
                 submission_file,
                 "Overall result",
-                set(verdict_count.keys()), 
-                default_subtask_rule.verdict
+                set(verdict_count.keys()),
+                default_subtask_rule.verdict,
             )
             if not default_subtask_rule.score.check_score(score):
-                self.add_issue("score_range", submission_file,
-                               f"Overall score {score} violates the score range {default_subtask_rule.score}")
-        
+                self.add_issue(
+                    "score_range",
+                    submission_file,
+                    f"Overall score {score} violates the score range {default_subtask_rule.score}",
+                )
+
         self._print_result_table(formatter, verify_result)
-        
 
     def verify(
-        self, 
+        self,
         *,
         solution_filename: str | None,
-        formatter: Formatter, 
+        formatter: Formatter,
     ):
         context = self.context
 
@@ -308,8 +354,11 @@ class VerdictsVerifier(Verifier):
             os.path.exists(context.path.testcase_summary)
             and os.path.isfile(context.path.testcase_summary)
         ):
-            self.add_issue("testcases_not_generated", context.path.testcase_summary, 
-                           "Testcases not generated, run tmt gen first")
+            self.add_issue(
+                "testcases_not_generated",
+                context.path.testcase_summary,
+                "Testcases not generated, run tmt gen first",
+            )
             return
 
         all_filename = set(solution.filename for solution in solutions)
@@ -322,19 +371,20 @@ class VerdictsVerifier(Verifier):
                     for file in Path(context.path.solutions).rglob(f"*{ext}"):
                         filename = os.path.relpath(file, context.path.solutions)
                         if filename not in all_filename:
-                            self.add_issue("missing_solution", context.path.verdicts_yaml,
-                                        f"Solution {filename} is missing in verdicts.yaml")
+                            self.add_issue(
+                                "missing_solution",
+                                context.path.verdicts_yaml,
+                                f"Solution {filename} is missing in verdicts.yaml",
+                            )
 
         # Verify verdicts
         found_solution = False
         for solution in solutions:
             if solution_filename is None or solution.filename == solution_filename:
                 found_solution = True
-                self.verify_single_solution(
-                    formatter=formatter,
-                    solution=solution
-                )
+                self.verify_single_solution(formatter=formatter, solution=solution)
 
         if solution_filename and not found_solution:
-            formatter.println(f"Solution file {solution_filename} not found in verdicts.yaml")
-        
+            formatter.println(
+                f"Solution file {solution_filename} not found in verdicts.yaml"
+            )

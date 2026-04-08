@@ -3,9 +3,17 @@ import os
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
-from internal.verify import TMTVerifyIssue, TMTVerifyIssueType, VerdictsVerifier, ConfigVerifier
+from internal.verify import (
+    TMTVerifyIssue,
+    TMTVerifyIssueType,
+    VerdictsVerifier,
+    ConfigVerifier,
+)
 
-def _print_verify_issue(issues: list[TMTVerifyIssue], formatter: Formatter, context: TMTContext):
+
+def _print_verify_issue(
+    issues: list[TMTVerifyIssue], formatter: Formatter, context: TMTContext
+):
     formatter.println()
     counter: Counter[TMTVerifyIssueType] = Counter()
     for issue in issues:
@@ -17,13 +25,20 @@ def _print_verify_issue(issues: list[TMTVerifyIssue], formatter: Formatter, cont
             case TMTVerifyIssueType.IGNORE:
                 pass
             case TMTVerifyIssueType.WARNING:
-                formatter.println(formatter.ANSI_YELLOW, print_message, formatter.ANSI_RESET)
+                formatter.println(
+                    formatter.ANSI_YELLOW, print_message, formatter.ANSI_RESET
+                )
             case TMTVerifyIssueType.ERROR:
-                formatter.println(formatter.ANSI_RED, print_message, formatter.ANSI_RESET)
+                formatter.println(
+                    formatter.ANSI_RED, print_message, formatter.ANSI_RESET
+                )
             case _:
                 raise NotImplementedError(f"Unknown issue type {issue_type}.")
 
-    formatter.println(f"{counter[TMTVerifyIssueType.WARNING]} warning, {counter[TMTVerifyIssueType.ERROR]} error")
+    formatter.println(
+        f"{counter[TMTVerifyIssueType.WARNING]} warning, {counter[TMTVerifyIssueType.ERROR]} error"
+    )
+
 
 def command_verify(
     *,
@@ -35,19 +50,21 @@ def command_verify(
     Check issues.
     """
     issues: list[TMTVerifyIssue] = []
-    issues += command_verify_config(print_issues=False, formatter=formatter, context=context)
-    issues += command_verify_verdicts(solution_filename=None, print_issues=False, formatter=formatter, context=context)
+    issues += command_verify_config(
+        print_issues=False, formatter=formatter, context=context
+    )
+    issues += command_verify_verdicts(
+        solution_filename=None, print_issues=False, formatter=formatter, context=context
+    )
 
     if print_issues:
         _print_verify_issue(issues, formatter, context)
 
     return issues
 
+
 def command_verify_config(
-    *,
-    print_issues: bool,
-    formatter: Formatter,
-    context: TMTContext
+    *, print_issues: bool, formatter: Formatter, context: TMTContext
 ) -> list[TMTVerifyIssue]:
     verifier = ConfigVerifier(context)
     verifier.verify()
@@ -57,12 +74,13 @@ def command_verify_config(
 
     return verifier.issues
 
+
 def command_verify_verdicts(
     *,
     solution_filename: str | None,
     print_issues: bool,
     formatter: Formatter,
-    context: TMTContext
+    context: TMTContext,
 ) -> list[TMTVerifyIssue]:
     verifier = VerdictsVerifier(context)
     verifier.verify(solution_filename=solution_filename, formatter=formatter)

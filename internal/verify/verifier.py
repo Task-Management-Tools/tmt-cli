@@ -1,10 +1,15 @@
 from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
-import os
 
 from internal.context.context import TMTContext
-from internal.formatting.base import Formatter
+
+
+class TMTVerifyIssueType(Enum):
+    IGNORE = 0
+    WARNING = 1
+    ERROR = 2
+
 
 @dataclass
 class TMTVerifyIssue:
@@ -14,10 +19,6 @@ class TMTVerifyIssue:
     related_file: str
     message: str
 
-class TMTVerifyIssueType(Enum):
-    IGNORE = 0
-    WARNING = 1
-    ERROR = 2
 
 class Verifier(ABC):
     name: str
