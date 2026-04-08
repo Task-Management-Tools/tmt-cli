@@ -117,7 +117,7 @@ class VerdictsVerifier(Verifier):
         score_len = len("Score") + 1 if print_score else 0
         verdicts_len = 30
         result_part_len = max_subtask_len + result_type_len + score_len + verdicts_len
-        score_range_len = len("000-000") if print_score else 0
+        score_range_len = len("[000,000]") if print_score else 0
 
         def get_displayed_verdict(verdict: ExpectedVerdict):
             match verdict:
