@@ -31,7 +31,7 @@ class ExpectedVerdict(enum.Enum):
     RUNTIME_ERROR = (
         "Runtime Error",
         "RTE",
-        ["runtime_error", "RE", "RTE"],
+        ["runtime_error", "run_time_error", "RE", "RTE"],
         EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list,
     )
     PARTIAL = (

@@ -72,7 +72,7 @@ problem_root/
 - `tmt verify` checks for potential issues.
   - `tmt verify` or `tmt verify all` runs all available verification checks.
   - `tmt verify config` checks for configuration errors, such as missing validators or invalid settings.
-  - `tmt verify verdicts [-s|--solutions <solution_filename>]` verifies that solutions in `solutions/` produce their expected outcomes as specified in [`verdicts.yaml`](#verdictsyaml). **Run `tmt gen` before this command to ensure testcases are up-to-date.**      
+  - `tmt verify verdicts [-s|--solutions <solution_filename>]` verifies that solutions in `solutions/` produce their expected outcomes as specified in [`verdicts.yaml`](#verdictsyaml). **Run `tmt gen` before this command to ensure testcases are up-to-date.**
 
 ## `problem.yaml`
 
@@ -167,7 +167,7 @@ cpp:
         min: 0.2
         max: 0.8
 - filename: wrong-solution.cpp
-  verdict: 
+  verdict:
     must: wrong_answer
     never: [accepted, time_limit_exceeded]
 ```
@@ -221,7 +221,7 @@ You can use the following aliases (case-**sensitive**):
 - Accepted: `accepted`, `AC`, `correct`
 - Wrong Answer: `wrong_answer`, `WA`, `incorrect`
 - Time Limit Exceeded: `time_limit_exceeded`, `time_limit`, `timeout`, `TLE`
-- Runtime Error: `runtime_error`, `RE`, `RTE`
+- Runtime Error: `runtime_error`, `run_time_error`, `RE`, `RTE`
 - Partially Correct: `partial`, `PC`
 - Output Limit Exceeded: `output_limit_exceeded`, `output_limit`, `OLE`
 
