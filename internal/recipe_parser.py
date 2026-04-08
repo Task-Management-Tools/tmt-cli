@@ -7,15 +7,17 @@ The parsed data includes testsets, subtasks, and validation rules for programmin
 """
 
 import copy
+from dataclasses import dataclass
 import functools
 import inspect
+import os
 import re
 from typing import Literal, overload
 
 
 class Executable:
     """
-    Represents an executable command with multiple programs to run sequentially.
+    Represents an executable command with multiple programs to run sequentially and connected by pipes.
 
     Each executable contains a list of command lists, where each command list
     follows the subprocess format (executable name + arguments).
@@ -23,20 +25,21 @@ class Executable:
 
     def __init__(self, commands: list[list[str]]):
         """
-        Parse and add a command sequence separated by pipes.
+        Initialize executable with a list of command lists (one per pipeline stage).
 
         Args:
-            command_sequence (str or list of str): Commands separated by the pipe "|" character.
+            commands: List of command lists, where each inner list contains
+                      [command_name, arg1, arg2, ...]. Empty lists are not allowed.
 
         Raises:
-            ValueError: If command sequence is empty or malformed
+            ValueError: If commands is empty or contains empty subcommands
         """
         if len(commands) == 0:
-            raise ValueError("Executable command list should not be empty.")
+            raise ValueError("Executable command list should not be empty")
         for cmd in commands:
             if len(cmd) == 0:
                 raise ValueError(
-                    "Executable command list should not contain empty subcommands."
+                    "Executable command list should not contain empty subcommands"
                 )
         self.commands = commands
 
@@ -47,9 +50,11 @@ class Executable:
 
 
 class Validation(Executable):
+    """Validation command; similar to Executable but only allows one subcommand."""
+
     def __init__(self, commands: list[list[str]]):
         if len(commands) > 1:
-            raise ValueError("Validation command does not support piping.")
+            raise ValueError("Validation command does not support piping")
         super().__init__(commands)
 
 
@@ -57,13 +62,8 @@ TESTCASE_NAME_PLACE_HOLDER = "_tmt_internal_testcase_name"
 
 
 class Testcase:
-    """
-    Represents a test case.
-
-    Each test case contains an Executable object and its name
-    """
-
     def __init__(self, exe: Executable):
+        """Initialize testcase with an executable."""
         self._raw_execute: Executable = exe
         self.execute: Executable | None = None
         self.validation: list[Validation] = []
@@ -122,16 +122,10 @@ class Testset:
         return index + 1
 
     def add_validation(self, validation: Validation):
-        """
-        Add a validation command for this testset.
-        """
         if validation not in self.validation:
             self.validation.append(validation)
 
     def include_testset(self, testset: "Testset"):
-        """
-        Include a testset in this testset.
-        """
         if testset is self:
             return
         for deps in testset.dependency + [testset]:
@@ -140,19 +134,14 @@ class Testset:
 
     def add_test(self, exe: Executable):
         """
-        Add a test case by parsed the command sequence.
+        Add a test case from the generation Executable.
         """
-        try:
-            self.testcases.append(Testcase(exe))
-        except ValueError as e:
-            raise ValueError(f"Error adding test to testset '{self.name}': {e}")
+        tc = Testcase(exe)
+        self.testcases.append(tc)
 
     def set_description(self, description: str):
         """
         Set the description for this testset.
-
-        Args:
-            description (str): Description text
 
         Raises:
             ValueError: If description is already set
@@ -169,30 +158,30 @@ class Testset:
             extension (str): Extra file extension, should start with a dot (.)
 
         Raises:
-            ValueError: If the extension format error or it is already added
+            ValueError: If the extension is already added
         """
         if extension in self.extra_file:
             raise ValueError(
-                f"Extra file {extension} already added for testset '{self.name}'"
+                f"Extra file '{extension}' already added for testset '{self.name}'"
             )
         self.extra_file.add(extension)
 
     def generate_test_names(self, testset_index_width: int):
         """
         Generate standardized names for all test cases in this testset.
-
-        Args:
-            testset_index_width (int): Width for zero-padding testset index
         """
         testcase_index_width = len(str(len(self.testcases)))
         testset_index_padded = str(self.index).zfill(testset_index_width)
 
         for i, test in enumerate(self.testcases, 1):
             testcase_index_padded = str(i).zfill(testcase_index_width)
-            test_name = f"{testset_index_padded}_{self.name}_{testcase_index_padded}"
-            test.name = test_name
+            test.name = f"{testset_index_padded}_{self.name}_{testcase_index_padded}"
 
-    def get_all_test_names(self):
+    def get_all_test_names(self) -> list[str]:
+        """
+        Get all test names in this testset, including dependencies.
+        """
+
         return sum(
             ([tc.name for tc in ts.testcases] for ts in (self.dependency + [self])),
             start=[],
@@ -234,19 +223,14 @@ class RecipeData:
 
     def get_all_test_names(self) -> list[str]:
         """
-        Get all test names in order.
-
-        Returns:
-            list[str]: List of all test names sorted by testset index and testcase index
+        Get all test names based on recipe order.
         """
-        all_names = []
-
         # From Python 3.7+ dict is order-preserving
+        all_names = []
         for testset in self.testsets.values():
             for test in testset.testcases:
                 if test.name:
                     all_names.append(test.name)
-
         return all_names
 
     def generate_all_test_names(self):
@@ -334,6 +318,7 @@ class ParserContext:
 
     @scope.setter
     def scope(self, value: Testset | Subtask | None):
+        """Set current scope and clear local constants."""
         self._scope = value
         self.local_const.clear()
 
@@ -341,40 +326,53 @@ class ParserContext:
     def const_mapping(self):
         return self.global_const | self.local_const
 
-    def set_constant(self, name: str, value):
-        """
-        Set a constant value.
+    def set_constant(self, name: str, value: str):
+        """Set a constant value."""
 
-        Args:
-            name (str): Constant name
-            value: Constant value
-        """
         target_const = self.local_const if self.scope is not None else self.global_const
         if name in target_const:
-            raise ValueError(f"Redefinition on constant {name}")
+            raise ValueError(f"Redefinition on constant '{name}'")
         target_const[name] = value
 
     @overload
     def shell_split(self, cmdline: str, pipe_split: Literal[False]) -> list[str]: ...
+
     @overload
     def shell_split(
         self, cmdline: str, pipe_split: Literal[True]
     ) -> list[list[str]]: ...
 
     def substitute(self, text: str) -> str:
+        """
+        Replace ${constant} patterns with their values.
+
+        Raises:
+            ValueError: If a referenced constant is undefined
+        """
+
         def replace_var(match: re.Match):
             var_name = match.group(1)
             var_val = self.const_mapping.get(var_name)
+            # TODO: this abruptly stops the substitution; if multiple fails this only reports the first one
             if var_val is None:
-                raise ValueError(f"Undefined constant: {match.group(0)}")
+                raise ValueError(f"Undefined constant '{var_name}'")
             return var_val
 
         # Replace ${constant_name} patterns
         return re.sub(r"\$\{([^}]+)\}", replace_var, text)
 
     def shell_split(self, cmdline: str, pipe_split: bool):
+        """
+        Tokenize a command line, supporting quotes and pipes.
 
-        # Strip beginning whitespaces, and add a single after it so tokenizing works:
+        Handles double quotes ("..."), single quotes ('...'), unquoted pipes (|),
+        and bare words. Constants are substituted in unquoted text only.
+
+        Args:
+            cmdline: Command line string to tokenize
+            pipe_split: If True, split on pipes and return list of command lists.
+                        If False, return flat list of tokens with '|' preserved.
+        """
         cmdline = cmdline.strip() + " "
         cmds = []
         cmd = []
@@ -399,6 +397,15 @@ class ParserContext:
         return type(self.shell_split(cmdline, pipe_split=True))
 
 
+@dataclass
+class RecipeParsingError:
+    line_no: int
+    reason: str
+
+    def to_string(self, recipe_path: str):
+        return f"{os.path.relpath(recipe_path, os.getcwd())}:{self.line_no}: error: {self.reason}"
+
+
 class RecipeParser:
     def __init__(self):
         self.ctx = ParserContext()
@@ -411,6 +418,17 @@ class RecipeParser:
         }
 
     def _register_command(name: str, preprocess=True):
+        """
+        Decorator to register command handlers with argument validation.
+
+        Validates handler signature: rejects keyword-only and **kwargs params.
+        Wraps handler to check argument count at runtime.
+
+        Args:
+            name: Command name (without @ prefix)
+            preprocess: If True, shell-split arguments. If False, pass raw string after the command.
+        """
+
         def decorator(func):
             # Count only parameters that are positional or positional-or-keyword
             params = inspect.signature(func).parameters.values()
@@ -427,13 +445,14 @@ class RecipeParser:
                 True for p in params if p.kind == inspect.Parameter.VAR_POSITIONAL
             )
 
-            if any(True for p in params if p.kind == inspect.Parameter.KEYWORD_ONLY):
+            if any(
+                True
+                for p in params
+                if p.kind
+                in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.VAR_KEYWORD)
+            ):
                 raise TypeError(
                     "Command handler registered must not have keyword-only parameter"
-                )
-            if any(True for p in params if p.kind == inspect.Parameter.VAR_KEYWORD):
-                raise TypeError(
-                    "Command handler registered must not have keyword-only variadic parameter"
                 )
             if not preprocess and num_args != 2:
                 raise TypeError(
@@ -464,7 +483,7 @@ class RecipeParser:
     def command_testset(self, name: str):
 
         if name in self.ctx.recipe_data.testsets.keys():
-            raise ValueError(f"Name '{name}' already used")
+            raise ValueError(f"Testset name '{name}' already used")
 
         testset = Testset(name)
         self.ctx.recipe_data.testsets[name] = testset
@@ -478,7 +497,7 @@ class RecipeParser:
             raise ValueError(f"Invalid score '{score_s}' for subtask")
 
         if name in self.ctx.recipe_data.testsets.keys():
-            raise ValueError(f"Name '{name}' already used")
+            raise ValueError(f"Subtask name '{name}' already used")
 
         subtask = Subtask(name, score)
         self.ctx.recipe_data.testsets[name] = subtask
@@ -541,10 +560,45 @@ class RecipeParser:
         self.ctx.scope.add_extrafile(ext)
         self.ctx.set_constant(name, TESTCASE_NAME_PLACE_HOLDER + ext)
 
+    def parse(self, recipe_lines: str) -> list[RecipeParsingError]:
+        errors = []
+        for line_no, line in enumerate(recipe_lines, 1):
+            # Remove comments
+            line = line.partition("#")[0].strip()
+            if not line:
+                continue
+
+            try:
+                # Handle command lines starting with @
+                if line.startswith("@"):
+                    cmd, *args = line.split(maxsplit=1)
+                    args = args[0] if args else ""
+
+                    handler = self.handlers.get(cmd[1:])
+                    if handler is None:
+                        raise ValueError(f"Unknown command '{cmd}'")
+                    if handler.preprocess:
+                        handler(*self.ctx.shell_split(args, pipe_split=False))
+                    else:
+                        handler(args)
+
+                else:
+                    # Expand constants in test generation commands
+                    exe = self.ctx.make_executable(line, Executable)
+                    if self.ctx.scope is None:
+                        raise ValueError(
+                            "Stray generation command (not within any subtask or testset)"
+                        )
+                    self.ctx.scope.add_test(exe)
+
+            except ValueError as e:
+                errors.append(RecipeParsingError(line_no, str(e)))
+        return errors
+
 
 def parse_recipe_data(
     recipe_lines: list[str], is_outputonly: bool = False
-) -> RecipeData:
+) -> RecipeData | list[RecipeParsingError]:
     """
     Parse recipe and return the structured data.
 
@@ -562,40 +616,9 @@ def parse_recipe_data(
     """
 
     parser = RecipeParser()
-
-    for line_num, line in enumerate(recipe_lines, 1):
-        line = line.strip()
-
-        # Remove comments
-        line = line.partition("#")[0].strip()
-        if not line:
-            continue
-
-        try:
-            # Handle command lines starting with @
-            if line.startswith("@"):
-                cmd, *args = line.split(maxsplit=1)
-                args = args[0] if args else ""
-
-                handler = parser.handlers.get(cmd[1:])
-                if handler is None:
-                    raise ValueError(f"Unknown command {cmd}")
-                if handler.preprocess:
-                    handler(*parser.ctx.shell_split(args, pipe_split=False))
-                else:
-                    handler(args)
-
-            else:
-                # Expand constants in test generation commands
-                exe = parser.ctx.make_executable(line, Executable)
-                if parser.ctx.scope is None:
-                    raise ValueError(
-                        "Stray generation command not within any subtask or testset"
-                    )
-                parser.ctx.scope.add_test(exe)
-
-        except ValueError as e:
-            raise ValueError(f"Error on line {line_num}: {e}")
+    error = parser.parse(recipe_lines)
+    if error:
+        return error
 
     # Generate test names after parsing is complete
     if is_outputonly:
