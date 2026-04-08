@@ -258,7 +258,8 @@ class VerdictsVerifier(Verifier):
 
         for subtask_name, subtask in subtask_list.items():
             outcome = self._get_tests_outcome(
-                result.testcase_results, subtask.get_all_test_names()  # type: ignore
+                result.testcase_results,
+                subtask.get_all_test_names(),  # type: ignore
             )
             score = outcome.score
             result_type = outcome.result
