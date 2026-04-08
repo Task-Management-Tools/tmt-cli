@@ -153,7 +153,7 @@ class ScoreRange:
             return data
         if data is None:
             return cls()
-        if isinstance(data, (str, float)):
+        if isinstance(data, (str, float, int)):
             return cls(None, None, float(data))
         obj = cls(**data)
         if obj.min is not None:
@@ -193,11 +193,12 @@ class SubtaskVerdict:
 
         subtask = cls(**data)
 
-        if isinstance(subtask.subtask, str):
+        if not isinstance(subtask.subtask, list):
             subtask.subtask = [subtask.subtask]
         if not isinstance(subtask.subtask, list):
             raise ValueError(f"Invalid subtask: {subtask.subtask}")
         
+        subtask.subtask = list(map(str, subtask.subtask))
         for item in subtask.subtask:
             if item not in subtask_list:
                 raise ValueError(f"Subtask {item} does not exist")
@@ -223,7 +224,7 @@ class SolutionVerdict:
         # check solution file existence
         solution_file = os.path.join(helper.solutions, solution.filename)
         if not os.path.isfile(solution_file):
-            raise FileNotFoundError(f"Solution file {solution} not found.")
+            raise FileNotFoundError(f"Solution file {solution.filename} not found.")
 
         if solution.judge_verdict:
             solution.judge_verdict = ExpectedVerdict(solution.judge_verdict)
