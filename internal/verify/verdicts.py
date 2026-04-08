@@ -282,6 +282,8 @@ class VerdictsVerifier(Verifier):
 
     def verify(
         self, 
+        *,
+        solution_filename: str | None,
         formatter: Formatter, 
     ):
         context = self.context
@@ -318,9 +320,15 @@ class VerdictsVerifier(Verifier):
                                        f"Solution {filename} is missing in verdicts.yaml")
 
         # Verify verdicts
+        found_solution = False
         for solution in solutions:
-            self.verify_single_solution(
-                formatter=formatter,
-                solution=solution
-            )
+            if solution_filename is None or solution.filename == solution_filename:
+                found_solution = True
+                self.verify_single_solution(
+                    formatter=formatter,
+                    solution=solution
+                )
+
+        if solution_filename and not found_solution:
+            formatter.println(f"Solution file {solution_filename} not found in verdicts.yaml")
         

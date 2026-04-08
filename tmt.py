@@ -1,6 +1,7 @@
 import argparse
 import pathlib
 
+from internal.commands.verify import command_verify_verdicts
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import (
     command_gen,
@@ -57,7 +58,12 @@ def main():
 
     subparsers.add_parser("make-public", help="Build public attachment archive file")
 
-    subparsers.add_parser("verify", help="Check issues.")
+    parser_verify = subparsers.add_parser("verify", help="Check issues.")
+    verify_subparser = parser_verify.add_subparsers(dest="issue_class", 
+                                                    help="The issue class to be verified.")
+    verify_subparser.add_parser("all", help="Verify all issue classes.")
+    parser_verify_verdicts = verify_subparser.add_parser("verdicts", help="Verify solution verdicts.")
+    parser_verify_verdicts.add_argument("-s", "--solution", help="The solution filename in solutions/.")
 
     args = parser.parse_args()
 
@@ -112,7 +118,16 @@ def main():
         return ret
 
     if args.command == "verify":
-        ret = command_verify(formatter=formatter, context=context)
+        if args.issue_class == "all" or args.issue_class is None:
+            ret = command_verify(print_issues=True, formatter=formatter, context=context)
+        elif args.issue_class == "verdicts":
+            ret = command_verify_verdicts(solution_filename=args.solution, 
+                                          print_issues=True, 
+                                          formatter=formatter, 
+                                          context=context)
+        else:
+            formatter.println(f"Unknown issue class {args.issue_class}")
+            return False
         return not any(issue.type == TMTVerifyIssueType.ERROR for issue in ret)
 
     return False
