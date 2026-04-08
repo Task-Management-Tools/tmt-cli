@@ -314,15 +314,16 @@ class VerdictsVerifier(Verifier):
 
         all_filename = set(solution.filename for solution in solutions)
 
-        # Check missing solutions
-        for language_type in languages.languages:
-            language = language_type(context)
-            for ext in language.source_extensions:
-                for file in Path(context.path.solutions).rglob(f"*{ext}"):
-                    filename = os.path.relpath(file, context.path.solutions)
-                    if filename not in all_filename:
-                        self.add_issue("missing_solution", context.path.verdicts_yaml,
-                                       f"Solution {filename} is missing in verdicts.yaml")
+        # Check missing solutions (only when solution_filename not provided)
+        if solution_filename is None:
+            for language_type in languages.languages:
+                language = language_type(context)
+                for ext in language.source_extensions:
+                    for file in Path(context.path.solutions).rglob(f"*{ext}"):
+                        filename = os.path.relpath(file, context.path.solutions)
+                        if filename not in all_filename:
+                            self.add_issue("missing_solution", context.path.verdicts_yaml,
+                                        f"Solution {filename} is missing in verdicts.yaml")
 
         # Verify verdicts
         found_solution = False
