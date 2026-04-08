@@ -1,4 +1,5 @@
 import dataclasses
+from operator import itemgetter
 import os
 import re
 import pathlib
@@ -149,16 +150,83 @@ def format_public(
     return ZipOperationResult(filename=dest)
 
 
-def filter_secret(zf: BinaryIO, f: TextIO):
+def filter_secret(zf: BinaryIO, f: TextIO, filename: str):
+    """
+    Filters secret from a text stream to a binary stream.
+    The filename is requried for diagnostics.
+
+    Raises RuntimeError if a line is too similar to BEGIN/END SECRET.
+    """
+
+    def fuzzy_match(text: str, target: str, threshold: int):
+        """
+        If matches, returns a tuple representing the first index and the respective substring.
+        """
+
+        def edit_distance(a: str, b: str):
+            dp = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+            for i in range(len(a) + 1):
+                dp[i][0] = i
+            for i in range(len(b) + 1):
+                dp[0][i] = i
+            for i in range(len(a)):
+                for j in range(len(b)):
+                    dp[i + 1][j + 1] = min(
+                        dp[i][j] + (a[i] != b[j]), dp[i][j + 1] + 1, dp[i + 1][j] + 1
+                    )
+            return dp[-1][-1]
+
+        processed = text.translate(
+            str.maketrans(
+                string.ascii_lowercase, string.ascii_uppercase, string.whitespace
+            )
+        )
+        target = target.translate(
+            str.maketrans(
+                string.ascii_lowercase, string.ascii_uppercase, string.whitespace
+            )
+        )
+
+        for i in range(len(processed)):
+            subtext = processed[i : i + len(target)]
+            if edit_distance(subtext, target) <= threshold:
+                index_mapping = list(
+                    map(
+                        itemgetter(0),
+                        filter(
+                            lambda x: x[1] not in string.whitespace, enumerate(text, 0)
+                        ),
+                    )
+                )
+                start = index_mapping[i]
+                end = index_mapping[i + len(subtext) - 1] + 1
+                return start + 1, text[start:end]
+        return None
+
     hide = False
     improper = False
-    for line in f.readlines():
-        if re.search(r"BEGIN\s+SECRET", line):
+    for i, line in enumerate(f.readlines(), 1):
+        # match begin secret
+        begin_secret = end_secret = False
+        if re.search(r"\bBEGIN\s+SECRET\b", line):
+            begin_secret = True
+        elif re.search(r"\bEND\s+SECRET\b", line):
+            end_secret = True
+        elif (fmatch := fuzzy_match(line, "BEGIN SECRET", 3)) is not None:
+            raise RuntimeError(
+                f"{filename}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'BEGIN SECRET'"
+            )
+        elif (fmatch := fuzzy_match(line, "END SECRET", 2)) is not None:
+            raise RuntimeError(
+                f"{filename}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'END SECRET'"
+            )
+        # write line
+        if begin_secret:
             improper = improper or hide
             hide = True
         if not hide:
             zf.write(line.encode())
-        if re.search(r"END\s+SECRET", line):
+        if end_secret:
             improper = improper or not hide
             hide = False
     return improper or hide
@@ -184,7 +252,12 @@ def header_public(
 
     # CMS logic
     with zipf.open(dest, "w") as zf, open(public_file, "r") as f:
-        improper_filter = filter_secret(zf, f)
+        try:
+            improper_filter = filter_secret(
+                zf, f, str(public_file.relative_to(os.getcwd()))
+            )
+        except RuntimeError as e:
+            return ZipOperationResult(filename=dest, error=e.args[0])
 
     if improper_filter:
         return ZipOperationResult(
@@ -229,7 +302,12 @@ def grader_public(
         return ZipOperationResult(filename=dest, error=reason)
 
     with zipf.open(dest, "w") as zf, open(public_grader_path, "r") as f:
-        improper_filter = filter_secret(zf, f)
+        try:
+            improper_filter = filter_secret(
+                zf, f, str(public_grader_path.relative_to(os.getcwd()))
+            )
+        except RuntimeError as e:
+            return ZipOperationResult(filename=dest, error=e.args[0])
 
     if improper_filter:
         return ZipOperationResult(

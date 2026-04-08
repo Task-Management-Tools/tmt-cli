@@ -1,3 +1,5 @@
 // BEGIN SECRET
-// nothing should remain
+// END SECRET
+#define PUBLIC
+// BEGIN SECRET
 // END SECRET

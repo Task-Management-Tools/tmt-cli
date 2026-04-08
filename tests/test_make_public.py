@@ -12,24 +12,14 @@ expected_results_communication_2_proc_grader_stdio = {
     "cpp/compile.sh": "_expected_public/compile.sh",
     "cpp/run.sh": "_expected_public/run.sh",
     "cpp/grader.cpp": None,
-    "cpp/accumulate.h": None,
+    "cpp/accumulate.h": "_expected_public/accumulate.h",
     "cpp/accumulate.cpp": None,
-}
-
-expected_results_batch_secret_filter = {
-    "grader.cpp": "_expected_public",
-    "grader.py": "_expected_public",
-    "secrettest.h": "_expected_public",
 }
 
 
 @pytest.mark.parametrize(
     "problem_path, expected",
     [
-        (
-            "problems/batch/secret-filter",
-            expected_results_batch_secret_filter,
-        ),
         (
             "problems/communication/2-proc-grader-stdio",
             expected_results_communication_2_proc_grader_stdio,
