@@ -214,11 +214,15 @@ class SolutionVerdict:
     filename: str
     verdict: VerdictRule
     judge_verdict: ExpectedVerdict | None = None
-    subtask: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
+    except_: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
     score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
 
     @classmethod
     def from_raw(cls, data, subtask_list: list[str], helper: ProblemDirectoryHelper) -> "SolutionVerdict":
+
+        if "except" in data:
+            data["except_"] = data.pop("except")
+
         solution = cls(**data)
 
         # check solution file existence
@@ -232,11 +236,11 @@ class SolutionVerdict:
         solution.verdict = VerdictRule.from_raw(solution.verdict)
         subtasks: list[SubtaskVerdict] = []
         overwrite_subtasks: list[str] = []
-        for item in solution.subtask:
+        for item in solution.except_:
             subtask = SubtaskVerdict.from_raw(item, subtask_list)
             subtasks.append(subtask)
             overwrite_subtasks += [item for item in subtask.subtask]
-        solution.subtask = subtasks
+        solution.except_ = subtasks
 
         solution.score = ScoreRange.from_raw(solution.score)
 

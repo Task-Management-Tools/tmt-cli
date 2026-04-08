@@ -222,7 +222,7 @@ class VerdictsVerifier(Verifier):
 
         # Collect subtask rules
         subtask_rules: dict[str, SubtaskVerdict] = dict()
-        for subtask_verdict in solution.subtask:
+        for subtask_verdict in solution.except_:
             for subtask in subtask_verdict.subtask:
                 subtask_rules[subtask] = subtask_verdict
         default_subtask_rule = SubtaskVerdict([], solution.verdict, solution.score)
