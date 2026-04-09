@@ -118,26 +118,44 @@ class VerdictsVerifier(Verifier):
     def _print_result_table(
         self, formatter: Formatter, results: list[VerdictsVerifierResult]
     ):
+        print_subtask = bool(self.context.recipe.subtasks)
+        print_score = self.context.config.judge_convention.value.display_score
 
         # Compute column width
         # Result                                          Expected
         # Subtask Result  Score     Verdicts              Score     Verdicts
-        max_subtask_len = len("Subtask")
-        subtask_list = self.context.recipe.subtasks
-        for subtask in subtask_list:
-            max_subtask_len = max(max_subtask_len, len(subtask))
+        max_subtask_len = len("Subtask") if print_subtask else 0
+        result_type_len = len("Result")
+        score_len = len("Score") if print_score else 0
+        verdicts_len = len("Verdicts")
+        score_range_len = len("Score") if print_score else 0
 
-        print_subtask = bool(subtask_list)
-        print_score = self.context.config.judge_convention.value.display_score
+        for result in results:
+            if print_subtask:
+                max_subtask_len = max(max_subtask_len, len(result.name))
+            result_type_len = max(result_type_len, len(result.result_type.value))
+            if print_score:
+                score_len = max(score_len, len(f"{round(result.score, 2)}"))
+                score_range_len = max(score_range_len, len(str(result.score_range)))
 
-        max_subtask_len += 1
-        if not print_subtask:
-            max_subtask_len = 0
-        result_type_len = len("Incorrect") + 1
-        score_len = len("Score") + 1 if print_score else 0
-        verdicts_len = 30
+            # Calculate plain text length of verdicts
+            v_len = 0
+            for i, (verdict, count) in enumerate(result.verdicts.items()):
+                if i > 0:
+                    v_len += 2  # ", "
+                v_len += len(str(count)) + 1 + len(verdict.short_name)
+            verdicts_len = max(verdicts_len, v_len)
+
+        # Add padding
+        if print_subtask:
+            max_subtask_len += 2
+        result_type_len += 2
+        if print_score:
+            score_len += 2
+            score_range_len += 2
+        verdicts_len += 2
+
         result_part_len = max_subtask_len + result_type_len + score_len + verdicts_len
-        score_range_len = len("[000,000]") if print_score else 0
 
         def get_displayed_verdict(verdict: ExpectedVerdict):
             match verdict:
