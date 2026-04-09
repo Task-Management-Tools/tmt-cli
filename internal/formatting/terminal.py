@@ -5,6 +5,7 @@ from internal.context import TMTContext
 from internal.outcomes import (
     CompilationOutcome,
     EvaluationOutcome,
+    EvaluationOutcomeGroup,
     EvaluationResult,
     ExecutionOutcome,
 )
@@ -131,33 +132,6 @@ class TerminalFormatter(Formatter):
         else:
             self.print(reason)
 
-    group_accepted = [EvaluationOutcome.ACCEPTED]
-    group_partial = [EvaluationOutcome.PARTIAL]
-    group_wrong_answer = [
-        EvaluationOutcome.WRONG,
-        EvaluationOutcome.NO_FILE,
-        EvaluationOutcome.NO_OUTPUT,
-    ]
-    group_timeout = [EvaluationOutcome.TIMEOUT, EvaluationOutcome.TIMEOUT_WALL]
-    group_runtime_error = [
-        EvaluationOutcome.RUNERROR_SIGNAL,
-        EvaluationOutcome.RUNERROR_EXITCODE,
-        EvaluationOutcome.RUNERROR_MEMORY,
-    ]
-    group_judge_error = [
-        EvaluationOutcome.MANAGER_CRASHED,
-        EvaluationOutcome.MANAGER_FAILED,
-        EvaluationOutcome.MANAGER_TIMEOUT,
-        EvaluationOutcome.CHECKER_CRASHED,
-        EvaluationOutcome.CHECKER_FAILED,
-        EvaluationOutcome.CHECKER_TIMEDOUT,
-        EvaluationOutcome.INTERNAL_ERROR,
-    ]
-    group_output_limit = [
-        EvaluationOutcome.RUNERROR_OUTPUT,
-        EvaluationOutcome.OUTPUT_LIMIT,
-    ]
-
     def print_checker_status(self, result):
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
@@ -166,37 +140,37 @@ class TerminalFormatter(Formatter):
                 "[", checker_color, checker_status, self.ANSI_RESET, "]", width=8
             )
 
-        if result.verdict in self.group_accepted:
+        if result.verdict in EvaluationOutcomeGroup.ACCEPTED:
             return print_result(self.ANSI_GREEN, "OK")
-        elif result.verdict in self.group_partial:
+        elif result.verdict in EvaluationOutcomeGroup.PARTIAL:
             return print_result(self.ANSI_GREEN, "OK")
-        elif result.verdict in self.group_wrong_answer:
+        elif result.verdict in EvaluationOutcomeGroup.WRONG_ANSWER:
             return print_result(self.ANSI_GREEN, "OK")
-        elif result.verdict in self.group_timeout:
+        elif result.verdict in EvaluationOutcomeGroup.TIMEOUT:
             return print_result(self.ANSI_GREY, "SKIP")
-        elif result.verdict in self.group_runtime_error:
+        elif result.verdict in EvaluationOutcomeGroup.RUNTIME_ERROR:
             return print_result(self.ANSI_GREY, "SKIP")
-        elif result.verdict in self.group_output_limit:
+        elif result.verdict in EvaluationOutcomeGroup.OUTPUT_LIMIT:
             return print_result(self.ANSI_GREY, "SKIP")
-        elif result.verdict in self.group_judge_error:
+        elif result.verdict in EvaluationOutcomeGroup.JUDGE_ERROR:
             return print_result(self.ANSI_RED_BG, "FAIL")
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {result.verdict}")
 
     def get_verdict_color(self, verdict: EvaluationOutcome):
-        if verdict in self.group_accepted:
+        if verdict in EvaluationOutcomeGroup.ACCEPTED:
             return self.ANSI_GREEN
-        elif verdict in self.group_partial:
+        elif verdict in EvaluationOutcomeGroup.PARTIAL:
             return self.ANSI_YELLOW
-        elif verdict in self.group_wrong_answer:
+        elif verdict in EvaluationOutcomeGroup.WRONG_ANSWER:
             return self.ANSI_RED
-        elif verdict in self.group_timeout:
+        elif verdict in EvaluationOutcomeGroup.TIMEOUT:
             return self.ANSI_BLUE
-        elif verdict in self.group_runtime_error:
+        elif verdict in EvaluationOutcomeGroup.RUNTIME_ERROR:
             return self.ANSI_PURPLE
-        elif verdict in self.group_output_limit:
+        elif verdict in EvaluationOutcomeGroup.OUTPUT_LIMIT:
             return self.ANSI_ORANGE
-        elif verdict in self.group_judge_error:
+        elif verdict in EvaluationOutcomeGroup.JUDGE_ERROR:
             return self.ANSI_RED
         else:
             raise ValueError(f"Unexpected EvaluationOutcome {verdict}")

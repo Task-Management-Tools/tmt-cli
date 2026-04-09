@@ -36,14 +36,17 @@ class CommandInvokeSummary:
         self.directory_error: bool = False
         self.compilation_result: dict[CompilationSlot, CompilationResult] = {}
 
+    def is_compilation_error(self):
+        def is_compilation_error(cresult: CompilationResult | None):
+            return cresult is not None and not cresult
+
+        return any(map(is_compilation_error, self.compilation_result.values()))
+
     def __bool__(self):
         if self.directory_error:
             return False
 
-        def is_compilation_error(cresult: CompilationResult | None):
-            return cresult is not None and not cresult
-
-        if any(map(is_compilation_error, self.compilation_result.values())):
+        if self.is_compilation_error():
             return False
 
         # TODO this should check for expected verdicts; right now only failures are checked against

@@ -69,6 +69,10 @@ problem_root/
   - `[-y|--yes]` skips confirmations.
 - `tmt export output.zip` exports the generated testcases to `output.zip`.
   - The format is determined by `problem.yaml:judge_convention` and currently only `icpc` is supported.
+- `tmt verify` checks for potential issues.
+  - `tmt verify` or `tmt verify all` runs all available verification checks.
+  - `tmt verify config` checks for configuration errors, such as missing validators or invalid settings.
+  - `tmt verify verdicts [-s|--solutions <solution_filename>]` verifies that solutions in `solutions/` produce their expected outcomes as specified in [`verdicts.yaml`](#verdictsyaml). **Run `tmt gen` before this command to ensure testcases are up-to-date.**
 
 ## `problem.yaml`
 
@@ -144,20 +148,83 @@ cpp:
 
 ## `verdicts.yaml`
 
+`verdicts.yaml` specifies the expected behavior of solutions in the `solutions/` directory. It is used by `tmt verify` to validate solution outcomes and by `tmt export` for categorization.
+
 ### Example
 
 ```yaml
-- filename: sol.cpp
+- filename: model-solution.cpp
   verdict: accepted
-- filename: sol.py
-  verdict: accepted
-- filename: overflow.cpp
-  verdict: wrong_answer
+- filename: partial-solution.cpp
+  verdict: partial
+  except:
+    - subtask: [s1, s2]
+      verdict: accepted
+      score: 1.0
+    - subtask: s3
+      verdict: [wrong_answer, time_limit_exceeded]
+      score:
+        min: 0.2
+        max: 0.8
+- filename: wrong-solution.cpp
+  verdict:
+    must: wrong_answer
+    never: [accepted, time_limit_exceeded]
 ```
 
-- It should contain the information of the expected verdict of the submissions in `solutions/`.
-  - Currently, it is only used by `tmt export` to categorize `solutions/` into verdict folders.
-  - We are planning to add a `tmt verify` command that will rely on this file.
+### Fields
+
+- `filename`: Path to the solution relative to the `solutions/` directory.
+- `verdict`: The expected verdict (see [Verdict Rule Syntax](#verdict-rule-syntax)).
+- `score`: (Optional) Expected score (see [Score Range Syntax](#score-range-syntax)).
+- `judge_verdict`: (Optional) The verdict category used by `tmt export`. If omitted, exporters may infer it from the `verdict` field.
+- `except`: (Optional) A list of subtask-specific expectations that override the top-level defaults.
+  - `subtask`: A subtask name or a list of subtask names.
+  - `verdict`: Expected verdict(s) for these subtasks.
+  - `score`: (Optional) Expected score range for these subtasks.
+
+Each subtask may appear in only one `except` entry. For subtasks listed in `except`, the subtask-specific `verdict` and `score` are verified. Subtasks not explicitly mentioned in `except` default to the top-level `verdict` and `score` requirements. If subtasks are defined in the problem, `tmt verify` checks them individually and does **not** verify the overall outcome; otherwise, it checks the overall outcome with the top-level `verdict` and `score`.
+
+### Verdict Rule Syntax
+
+A verdict rule defines which outcomes are acceptable. It can be specified in several formats:
+
+1.  Simple String: `verdict: accepted`
+    - The solution *must* result in this verdict.
+      It is equivalent to `must: accepted`.
+2.  List of Strings: `verdict: [accepted, partial]`
+    - The solution *must* result in one of these verdicts.
+      It is equivalent to `must: [accepted, partial]`.
+3.  Rule Object:
+    - `must`: A verdict or list of verdicts. At least one must be achieved.
+    - `never`: A verdict or list of verdicts. None of these are allowed.
+
+- `must` must contain at least one verdict.
+- If `must` contains `accepted`, no other verdicts are allowed.
+- If `must` contains `partial`, only `accepted` and `partial` are allowed.
+- All verdicts not listed in `never` are otherwise allowed.
+- "Judge Error" is not allowed by default.
+
+### Score Range Syntax
+
+1.  Simple Number: `score: 1.0`
+    - Equivalent to `exact: 1.0`.
+2.  Range Object:
+    - `min`: (Optional) Minimum acceptable score (inclusive).
+    - `max`: (Optional) Maximum acceptable score (inclusive).
+    - `exact`: (Optional) Exact required score. This field and `min`/`max` should not be used at the same time.
+
+### Recognized Verdicts
+
+You can use the following aliases (case-**sensitive**):
+
+- Accepted: `accepted`, `AC`, `correct`
+- Wrong Answer: `wrong_answer`, `WA`, `incorrect`
+- Time Limit Exceeded: `time_limit_exceeded`, `time_limit`, `timeout`, `TLE`
+- Runtime Error: `runtime_error`, `run_time_error`, `RE`, `RTE`
+- Partially Correct: `partial`, `PC`
+- Output Limit Exceeded: `output_limit_exceeded`, `output_limit`, `OLE`
+
 
 ## Recipe syntax
 

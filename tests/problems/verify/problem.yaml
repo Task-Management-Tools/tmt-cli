@@ -1,0 +1,28 @@
+title: Verify test
+short_name: verify
+description: A dummy problem for testing verify command
+
+input_extension: .in # "." is required
+output_extension: .out
+
+judge_convention: cms
+problem_type: batch
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 1 GiB
+  output_limit: unlimited
+
+answer_generation: 
+  type: solution
+  filename: model-solution.cpp
+
+checker:
+  type: custom
+  filename: checker.cpp
+
+tmt_version: latest

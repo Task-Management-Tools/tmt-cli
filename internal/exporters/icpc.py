@@ -4,6 +4,7 @@ from typing import List, IO
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
+from internal.verdicts import ExpectedVerdict, parse_verdicts
 
 from .base import FolderFormatExporter
 
@@ -67,6 +68,8 @@ class ICPCExporter(FolderFormatExporter):
 
         """Setup submissions"""
 
+        verdicts = parse_verdicts(context)
+
         def recognize_verdict(
             formatter: Formatter,
             context: TMTContext,
@@ -76,21 +79,26 @@ class ICPCExporter(FolderFormatExporter):
             verdicts_folder = "unknown"
             idx = matched_file.parts.index("solutions")
             file_name = Path(*matched_file.parts[idx + 1 :])
-            try:
-                with open(supplementary_files[0], "r") as file:
-                    verdicts = yaml.safe_load(file)
-            except Exception:
-                verdicts = {}
 
-            for file in verdicts:
-                if "filename" not in file or "verdict" not in file:
+            verdict_mapping = {
+                ExpectedVerdict.RUNTIME_ERROR: "run_time_error",
+                ExpectedVerdict.TIME_LIMIT_EXCEEDED: "time_limit_exceeded",
+                ExpectedVerdict.WRONG_ANSWER: "wrong_answer",
+                ExpectedVerdict.ACCEPTED: "accepted",
+            }
+
+            for solution in verdicts:
+                if solution.filename != str(file_name):
                     continue
-                if str(file["filename"]) == str(file_name):
-                    if isinstance(file["verdict"], list):
-                        verdicts_folder = file["verdict"][0]
-                    else:
-                        verdicts_folder = file["verdict"]
-            return Path(verdicts_folder) / file_name
+                if solution.judge_verdict is not None:
+                    if solution.judge_verdict in verdict_mapping:
+                        verdicts_folder = verdict_mapping[solution.judge_verdict]
+                else:
+                    for verdict, folder in verdict_mapping.items():
+                        if verdict in solution.verdict.must:
+                            verdicts_folder = folder
+
+            return str(Path(verdicts_folder) / file_name)
 
         self.add_regex_copy_operation(
             r"^solutions/.*\..*",
