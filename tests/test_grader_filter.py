@@ -59,6 +59,7 @@ def test_grader_filter_normal(input: str, expected: str | FilterResult):
 
     if expected is FilterResult.WARNING:
         assert any(i.warning for i in issues)
+        assert not any(i.error for i in issues)
     elif expected is FilterResult.ERROR:
         assert any(i.error for i in issues)
         assert issues[0].error  # make sure that reported issue is also an error

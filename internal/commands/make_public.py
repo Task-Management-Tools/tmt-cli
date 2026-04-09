@@ -148,7 +148,17 @@ def format_public(
     return ZipOperationResult(filename=dest)
 
 
-def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[ZipOperationResult]:
+# TODO: this dataclass is only used for the following function for convenience.
+# when refactor makes sense, eliminate the usage of this one (maybe in favor of tmt-verify)
+
+
+@dataclasses.dataclass
+class GraderFilterIssue:
+    warning: str | None = None
+    error: str | None = None
+
+
+def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[GraderFilterIssue]:
     """
     Filters secret from a text stream to a binary stream.
     The filename is requried for diagnostics.
@@ -204,7 +214,7 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[ZipOperationRes
         return None
 
     hide = False
-    issues: list[ZipOperationResult] = []
+    issues: list[GraderFilterIssue] = []
     for i, line in enumerate(f.readlines(), 1):
         # match begin secret
         begin_secret = end_secret = False
@@ -214,9 +224,8 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[ZipOperationRes
             end_secret = True
         if begin_secret and end_secret:
             issues.append(
-                ZipOperationResult(
-                    filename=None,
-                    error=f"{srcname}:{i}: BEGIN and END SECRET found on the same line.",
+                GraderFilterIssue(
+                    error=f"{srcname}:{i}: BEGIN and END SECRET found on the same line."
                 )
             )
         # typo detect
@@ -224,15 +233,13 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[ZipOperationRes
             pass
         elif (fmatch := fuzzy_match(line, "BEGIN SECRET", 3)) is not None:
             issues.append(
-                ZipOperationResult(
-                    filename=None,
+                GraderFilterIssue(
                     warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'BEGIN SECRET'.",
                 )
             )
         elif (fmatch := fuzzy_match(line, "END SECRET", 2)) is not None:
             issues.append(
-                ZipOperationResult(
-                    filename=None,
+                GraderFilterIssue(
                     warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'END SECRET'.",
                 )
             )
@@ -240,8 +247,7 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[ZipOperationRes
         if begin_secret:
             if hide:
                 issues.append(
-                    ZipOperationResult(
-                        filename=None,
+                    GraderFilterIssue(
                         error=f"{srcname}:{i}: Found BEGIN SECRET while the secret section is already opened.",
                     )
                 )
@@ -251,17 +257,15 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[ZipOperationRes
         if end_secret:
             if not hide:
                 issues.append(
-                    ZipOperationResult(
-                        filename=None,
-                        error=f"{srcname}:{i}: Found END SECRET while the secret section is already closed.",
+                    GraderFilterIssue(
+                        error=f"{srcname}: {i}: Found END SECRET while the secret section is already closed."
                     )
                 )
             hide = False
 
     if hide:
         issues.append(
-            ZipOperationResult(
-                filename=None,
+            GraderFilterIssue(
                 error=f"{srcname}:{i}: The last SECRET section is not properly closed.",
             )
         )
@@ -291,11 +295,9 @@ def header_public(
     # CMS logic
     with zipf.open(dest, "w") as zf, open(public_file, "r") as f:
         issues = filter_secret(zf, f, str(public_file.relative_to(os.getcwd())))
-        for i in issues:
-            i.filename = dest
         if issues:
             # TODO: the current framework does not allow all error reporting
-            return issues[0]
+            return ZipOperationResult(filename=dest, **issues[0])
 
     return ZipOperationResult(filename=dest)
 
@@ -337,11 +339,9 @@ def grader_public(
 
     with zipf.open(dest, "w") as zf, open(public_grader_path, "r") as f:
         issues = filter_secret(zf, f, str(public_grader_path.relative_to(os.getcwd())))
-        for i in issues:
-            i.filename = dest
         if issues:
             # TODO: the current framework does not allow all error reporting
-            return issues[0]
+            return ZipOperationResult(filename=dest, **issues[0])
 
     return ZipOperationResult(filename=dest)
 
