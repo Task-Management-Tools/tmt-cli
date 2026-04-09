@@ -8,10 +8,8 @@ from typing import TextIO, BinaryIO, Protocol
 from zipfile import ZipFile
 
 from internal.compilation import languages
-from internal.context.config import ProblemType
+from internal.context import JudgeConvention, ProblemType, TMTContext
 from internal.formatting import Formatter
-from internal.context import TMTContext
-from internal.context import JudgeConvention
 
 
 class SafeFormatter(string.Formatter):
@@ -47,7 +45,7 @@ class ZipOperation(Protocol):
 def check_duped_file(zipf: ZipFile, filename: str) -> tuple[bool, str | None]:
     """
     Returns a pair.
-    The first component is True if the filename coincides with another file or directory, or any parent is already a file.
+    The first component is True if the filename coincides with another file or directory in the zip archive, or any parent is already a file.
     The second component is the reason.
 
     Args:
@@ -150,12 +148,14 @@ def format_public(
     return ZipOperationResult(filename=dest)
 
 
-def filter_secret(zf: BinaryIO, f: TextIO, filename: str):
+def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[ZipOperationResult]:
     """
     Filters secret from a text stream to a binary stream.
     The filename is requried for diagnostics.
 
-    Raises RuntimeError if a line is too similar to BEGIN/END SECRET.
+    Returns a list of issues.
+    If a line is too similar to BEGIN/END SECRET, reports warning; if BEGIN-END pair is not properly matched, reports error.
+    The results are ordered such that error precedes warning.
     """
 
     def fuzzy_match(text: str, target: str, threshold: int):
@@ -204,32 +204,70 @@ def filter_secret(zf: BinaryIO, f: TextIO, filename: str):
         return None
 
     hide = False
-    improper = False
+    issues: list[ZipOperationResult] = []
     for i, line in enumerate(f.readlines(), 1):
         # match begin secret
         begin_secret = end_secret = False
         if re.search(r"\bBEGIN\s+SECRET\b", line):
             begin_secret = True
-        elif re.search(r"\bEND\s+SECRET\b", line):
+        if re.search(r"\bEND\s+SECRET\b", line):
             end_secret = True
+        if begin_secret and end_secret:
+            issues.append(
+                ZipOperationResult(
+                    filename=None,
+                    error=f"{srcname}:{i}: BEGIN and END SECRET found on the same line.",
+                )
+            )
+        # typo detect
+        if begin_secret or end_secret:
+            pass
         elif (fmatch := fuzzy_match(line, "BEGIN SECRET", 3)) is not None:
-            raise RuntimeError(
-                f"{filename}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'BEGIN SECRET'"
+            issues.append(
+                ZipOperationResult(
+                    filename=None,
+                    warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'BEGIN SECRET'.",
+                )
             )
         elif (fmatch := fuzzy_match(line, "END SECRET", 2)) is not None:
-            raise RuntimeError(
-                f"{filename}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'END SECRET'"
+            issues.append(
+                ZipOperationResult(
+                    filename=None,
+                    warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'END SECRET'.",
+                )
             )
-        # write line
+        # write lines
         if begin_secret:
-            improper = improper or hide
+            if hide:
+                issues.append(
+                    ZipOperationResult(
+                        filename=None,
+                        error=f"{srcname}:{i}: Found BEGIN SECRET while the secret section is already opened.",
+                    )
+                )
             hide = True
         if not hide:
             zf.write(line.encode())
         if end_secret:
-            improper = improper or not hide
+            if not hide:
+                issues.append(
+                    ZipOperationResult(
+                        filename=None,
+                        error=f"{srcname}:{i}: Found END SECRET while the secret section is already closed.",
+                    )
+                )
             hide = False
-    return improper or hide
+
+    if hide:
+        issues.append(
+            ZipOperationResult(
+                filename=None,
+                error=f"{srcname}:{i}: The last SECRET section is not properly closed.",
+            )
+        )
+    # Python sort is stable, so line number is not messed up.
+    issues.sort(key=lambda i: i.error is None)
+    return issues
 
 
 def header_public(
@@ -252,17 +290,13 @@ def header_public(
 
     # CMS logic
     with zipf.open(dest, "w") as zf, open(public_file, "r") as f:
-        try:
-            improper_filter = filter_secret(
-                zf, f, str(public_file.relative_to(os.getcwd()))
-            )
-        except RuntimeError as e:
-            return ZipOperationResult(filename=dest, error=e.args[0])
+        issues = filter_secret(zf, f, str(public_file.relative_to(os.getcwd())))
+        for i in issues:
+            i.filename = dest
+        if issues:
+            # TODO: the current framework does not allow all error reporting
+            return issues[0]
 
-    if improper_filter:
-        return ZipOperationResult(
-            filename=dest, warning="BEGIN-END SECRET is not properly matched"
-        )
     return ZipOperationResult(filename=dest)
 
 
@@ -302,17 +336,13 @@ def grader_public(
         return ZipOperationResult(filename=dest, error=reason)
 
     with zipf.open(dest, "w") as zf, open(public_grader_path, "r") as f:
-        try:
-            improper_filter = filter_secret(
-                zf, f, str(public_grader_path.relative_to(os.getcwd()))
-            )
-        except RuntimeError as e:
-            return ZipOperationResult(filename=dest, error=e.args[0])
+        issues = filter_secret(zf, f, str(public_grader_path.relative_to(os.getcwd())))
+        for i in issues:
+            i.filename = dest
+        if issues:
+            # TODO: the current framework does not allow all error reporting
+            return issues[0]
 
-    if improper_filter:
-        return ZipOperationResult(
-            filename=dest, warning="BEGIN-END SECRET is not properly matched"
-        )
     return ZipOperationResult(filename=dest)
 
 
