@@ -63,4 +63,5 @@ def test_grader_filter_normal(input: str, expected: str | FilterResult):
         assert any(i.error for i in issues)
         assert issues[0].error  # make sure that reported issue is also an error
     else:
+        assert issues == []
         assert expected == out_stream.getvalue().decode()
