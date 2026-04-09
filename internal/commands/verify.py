@@ -26,7 +26,10 @@ def _print_verify_issue(
                 pass
             case TMTVerifyIssueType.WARNING:
                 formatter.println(
-                    formatter.ANSI_YELLOW, "Warning: ", print_message, formatter.ANSI_RESET
+                    formatter.ANSI_YELLOW,
+                    "Warning: ",
+                    print_message,
+                    formatter.ANSI_RESET,
                 )
             case TMTVerifyIssueType.ERROR:
                 formatter.println(
