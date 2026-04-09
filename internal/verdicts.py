@@ -215,9 +215,11 @@ class ScoreRange:
             return f"{self.exact}"
         if self.min is None and self.max is None:
             return ""
-        min_str = str(self.min) if self.min is not None else ""
-        max_str = str(self.max) if self.max is not None else ""
-        return f"[{min_str},{max_str}]"
+        if self.max is None:
+            return f">= {self.min}"
+        if self.min is None:
+            return f"<= {self.max}"
+        return f"[{self.min}, {self.max}]"
 
     @classmethod
     def from_raw(cls, data) -> "ScoreRange":

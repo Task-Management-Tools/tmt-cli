@@ -26,7 +26,6 @@ class Verifier(ABC):
 
     def __init__(self, context: TMTContext) -> None:
         self.issues: list[TMTVerifyIssue] = []
-        self.issue_print_pointer = 0
         self.context = context
 
     def add_issue(self, code: str, related_file: str, message: str) -> None:

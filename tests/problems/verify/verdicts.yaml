@@ -13,7 +13,7 @@
   verdict: wrong_answer
   except:
   - subtask: 1
-    verdict: accepted
+    verdict: AC
   - subtask: 2
     verdict: partial
     score:
@@ -21,4 +21,4 @@
   - subtask: 34
     verdict:
       must: wrong_answer
-      never: time_limit_exceeded
+      never: TLE

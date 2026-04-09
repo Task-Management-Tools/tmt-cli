@@ -1,4 +1,4 @@
-from internal.verify.verifier import TMTVerifyIssueType
+from internal.verify import TMTVerifyIssueType
 
 from . import Verifier
 
@@ -26,7 +26,7 @@ class ConfigVerifier(Verifier):
             self.add_issue(
                 "score_not_available",
                 path_helper.problem_yaml,
-                f"Subtasks used with judge convention {context.config.judge_convention}",
+                f"Subtasks used with judge convention {context.config.judge_convention.name}",
             )
 
         # no_validator
@@ -39,7 +39,7 @@ class ConfigVerifier(Verifier):
             self.add_issue(
                 "no_validator",
                 path_helper.tmt_recipe,
-                f"There is no validator for testcase {','.join(no_validator_testcases)}",
+                f"There is no validator for testcase {', '.join(no_validator_testcases)}",
             )
 
         # no_full_subtask

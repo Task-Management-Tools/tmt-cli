@@ -8,7 +8,7 @@ from internal.commands.verify import (
     command_verify_config,
     command_verify_verdicts,
 )
-from internal.verify.verifier import TMTVerifyIssueType
+from internal.verify import TMTVerifyIssueType
 
 
 @pytest.mark.parametrize(

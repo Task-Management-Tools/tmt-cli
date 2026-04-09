@@ -28,7 +28,7 @@ class SubtaskResult(Enum):
 
 
 @dataclass
-class SubtaskOutcome:
+class SubtaskOutcome:  # TODO: infer from invoke generated summary
     score: float
     result: SubtaskResult
     counter: Counter[ExpectedVerdict]
@@ -195,20 +195,24 @@ class VerdictsVerifier(Verifier):
             for verdict, count in result.verdicts.items():
                 if print_sequence:
                     print_sequence += ", "
-                print_sequence += get_displayed_verdict(verdict)
-                print_sequence += f"*{count}"
+                print_sequence += f"{count} "
+                print_sequence += get_displayed_verdict(
+                    verdict
+                )  # TODO: decide this format
             formatter.print_fixed_width(*print_sequence, width=verdicts_len)
 
             formatter.print_fixed_width(result.score_range, width=score_range_len)
             print_sequence = []
             if result.verdict_rule.never or len(result.verdict_rule.must) >= 2:
                 print_sequence += ["must: "]
+                # verdicts parser guarantees must is not empty
                 for verdict in result.verdict_rule.must:
                     print_sequence += get_displayed_verdict(verdict) + [", "]
-                print_sequence += ["never: "]
-                for verdict in result.verdict_rule.never:
-                    print_sequence += get_displayed_verdict(verdict) + [", "]
-                print_sequence = print_sequence[:-1]
+                if result.verdict_rule.never:
+                    print_sequence += ["never: "]
+                    for verdict in result.verdict_rule.never:
+                        print_sequence += get_displayed_verdict(verdict) + [", "]
+                print_sequence = print_sequence[:-1]  # trailing comma
             elif not result.verdict_rule.must:
                 pass
             else:  # len(result.verdict_rule.must) == 1

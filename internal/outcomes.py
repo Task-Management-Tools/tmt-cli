@@ -70,7 +70,6 @@ class EvaluationOutcome(Enum):
     INTERNAL_ERROR = "Internal Error"
 
 
-@unique
 class EvaluationOutcomeGroup(Enum):
     ACCEPTED = ("Accepted", [EvaluationOutcome.ACCEPTED])
     PARTIAL = ("Partially Correct", [EvaluationOutcome.PARTIAL])
