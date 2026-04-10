@@ -1,4 +1,5 @@
-import dataclasses
+from dataclasses import dataclass, asdict
+from operator import itemgetter
 import os
 import re
 import pathlib
@@ -7,10 +8,8 @@ from typing import TextIO, BinaryIO, Protocol
 from zipfile import ZipFile
 
 from internal.compilation import languages
-from internal.context.config import ProblemType
+from internal.context import JudgeConvention, ProblemType, TMTContext
 from internal.formatting import Formatter
-from internal.context import TMTContext
-from internal.context import JudgeConvention
 
 
 class SafeFormatter(string.Formatter):
@@ -29,7 +28,7 @@ class SafeFormatter(string.Formatter):
             raise ValueError(f"'{field_name}' is not a valid config attribute")
 
 
-@dataclasses.dataclass
+@dataclass
 class ZipOperationResult:
     filename: str | None
     error: str | None = None
@@ -46,7 +45,7 @@ class ZipOperation(Protocol):
 def check_duped_file(zipf: ZipFile, filename: str) -> tuple[bool, str | None]:
     """
     Returns a pair.
-    The first component is True if the filename coincides with another file or directory, or any parent is already a file.
+    The first component is True if the filename coincides with another file or directory in the zip archive, or any parent is already a file.
     The second component is the reason.
 
     Args:
@@ -149,19 +148,128 @@ def format_public(
     return ZipOperationResult(filename=dest)
 
 
-def filter_secret(zf: BinaryIO, f: TextIO):
+@dataclass
+class GraderFilterIssue:
+    # TODO: this dataclass is only used for the following function for convenience.
+    # when refactor makes sense, eliminate the usage of this one (maybe in favor of tmt-verify)
+    warning: str | None = None
+    error: str | None = None
+
+
+def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[GraderFilterIssue]:
+    """
+    Filters secret from a text stream to a binary stream.
+    The filename is requried for diagnostics.
+
+    Returns a list of issues.
+    If a line is too similar to BEGIN/END SECRET, reports warning; if BEGIN-END pair is not properly matched, reports error.
+    The results are ordered such that error precedes warning.
+    """
+
+    def fuzzy_match(text: str, target: str, threshold: int):
+        """
+        If matches, returns a tuple representing the first index and the respective substring.
+        """
+
+        def edit_distance(a: str, b: str):
+            dp = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+            for i in range(len(a) + 1):
+                dp[i][0] = i
+            for i in range(len(b) + 1):
+                dp[0][i] = i
+            for i in range(len(a)):
+                for j in range(len(b)):
+                    dp[i + 1][j + 1] = min(
+                        dp[i][j] + (a[i] != b[j]), dp[i][j + 1] + 1, dp[i + 1][j] + 1
+                    )
+            return dp[-1][-1]
+
+        processed = text.translate(
+            str.maketrans(
+                string.ascii_lowercase, string.ascii_uppercase, string.whitespace
+            )
+        )
+        target = target.translate(
+            str.maketrans(
+                string.ascii_lowercase, string.ascii_uppercase, string.whitespace
+            )
+        )
+
+        for i in range(len(processed)):
+            subtext = processed[i : i + len(target)]
+            if edit_distance(subtext, target) <= threshold:
+                index_mapping = list(
+                    map(
+                        itemgetter(0),
+                        filter(
+                            lambda x: x[1] not in string.whitespace, enumerate(text, 0)
+                        ),
+                    )
+                )
+                start = index_mapping[i]
+                end = index_mapping[i + len(subtext) - 1] + 1
+                return start + 1, text[start:end]
+        return None
+
     hide = False
-    improper = False
-    for line in f.readlines():
-        if re.match(r"BEGIN\s+SECRET", line):
-            improper = improper or hide
+    issues: list[GraderFilterIssue] = []
+    for i, line in enumerate(f.readlines(), 1):
+        # match begin secret
+        begin_secret = end_secret = False
+        if re.search(r"\bBEGIN\s+SECRET\b", line):
+            begin_secret = True
+        if re.search(r"\bEND\s+SECRET\b", line):
+            end_secret = True
+        if begin_secret and end_secret:
+            issues.append(
+                GraderFilterIssue(
+                    error=f"{srcname}:{i}: BEGIN and END SECRET found on the same line."
+                )
+            )
+        # typo detect
+        if begin_secret or end_secret:
+            pass
+        elif (fmatch := fuzzy_match(line, "BEGIN SECRET", 3)) is not None:
+            issues.append(
+                GraderFilterIssue(
+                    warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'BEGIN SECRET'.",
+                )
+            )
+        elif (fmatch := fuzzy_match(line, "END SECRET", 2)) is not None:
+            issues.append(
+                GraderFilterIssue(
+                    warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'END SECRET'.",
+                )
+            )
+        # write lines
+        if begin_secret:
+            if hide:
+                issues.append(
+                    GraderFilterIssue(
+                        error=f"{srcname}:{i}: Found BEGIN SECRET while the secret section is already opened.",
+                    )
+                )
             hide = True
         if not hide:
             zf.write(line.encode())
-        if re.match(r"END\s+SECRET", line):
-            improper = improper or not hide
+        if end_secret:
+            if not hide:
+                issues.append(
+                    GraderFilterIssue(
+                        error=f"{srcname}: {i}: Found END SECRET while the secret section is already closed."
+                    )
+                )
             hide = False
-    return improper or hide
+
+    if hide:
+        issues.append(
+            GraderFilterIssue(
+                error=f"{srcname}:{i}: The last SECRET section is not properly closed.",
+            )
+        )
+    # Python sort is stable, so line number is not messed up.
+    issues.sort(key=lambda i: i.error is None)
+    return issues
 
 
 def header_public(
@@ -184,12 +292,11 @@ def header_public(
 
     # CMS logic
     with zipf.open(dest, "w") as zf, open(public_file, "r") as f:
-        improper_filter = filter_secret(zf, f)
+        issues = filter_secret(zf, f, str(public_file.relative_to(os.getcwd())))
+        if issues:
+            # TODO: the current framework does not allow all error reporting
+            return ZipOperationResult(filename=dest, **asdict(issues[0]))
 
-    if improper_filter:
-        return ZipOperationResult(
-            filename=dest, warning="BEGIN-END SECRET is not properly matched"
-        )
     return ZipOperationResult(filename=dest)
 
 
@@ -229,12 +336,11 @@ def grader_public(
         return ZipOperationResult(filename=dest, error=reason)
 
     with zipf.open(dest, "w") as zf, open(public_grader_path, "r") as f:
-        improper_filter = filter_secret(zf, f)
+        issues = filter_secret(zf, f, str(public_grader_path.relative_to(os.getcwd())))
+        if issues:
+            # TODO: the current framework does not allow all error reporting
+            return ZipOperationResult(filename=dest, **asdict(issues[0]))
 
-    if improper_filter:
-        return ZipOperationResult(
-            filename=dest, warning="BEGIN-END SECRET is not properly matched"
-        )
     return ZipOperationResult(filename=dest)
 
 

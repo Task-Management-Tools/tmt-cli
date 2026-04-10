@@ -53,7 +53,7 @@ def main():
     parser_export = subparsers.add_parser("export", help="Export packages")
     parser_export.add_argument("output", help="The filename of the exported zip file.")
 
-    subparsers.add_parser("make-public", help="Build public attachment archive file")
+    subparsers.add_parser("make-public", help="Build public attachment archive file.")
 
     args = parser.parse_args()
 
