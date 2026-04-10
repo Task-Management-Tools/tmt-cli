@@ -1,4 +1,4 @@
-import dataclasses
+from dataclasses import dataclass, asdict
 from operator import itemgetter
 import os
 import re
@@ -28,7 +28,7 @@ class SafeFormatter(string.Formatter):
             raise ValueError(f"'{field_name}' is not a valid config attribute")
 
 
-@dataclasses.dataclass
+@dataclass
 class ZipOperationResult:
     filename: str | None
     error: str | None = None
@@ -148,12 +148,10 @@ def format_public(
     return ZipOperationResult(filename=dest)
 
 
-# TODO: this dataclass is only used for the following function for convenience.
-# when refactor makes sense, eliminate the usage of this one (maybe in favor of tmt-verify)
-
-
-@dataclasses.dataclass
+@dataclass
 class GraderFilterIssue:
+    # TODO: this dataclass is only used for the following function for convenience.
+    # when refactor makes sense, eliminate the usage of this one (maybe in favor of tmt-verify)
     warning: str | None = None
     error: str | None = None
 
@@ -297,7 +295,7 @@ def header_public(
         issues = filter_secret(zf, f, str(public_file.relative_to(os.getcwd())))
         if issues:
             # TODO: the current framework does not allow all error reporting
-            return ZipOperationResult(filename=dest, **issues[0])
+            return ZipOperationResult(filename=dest, **asdict(issues[0]))
 
     return ZipOperationResult(filename=dest)
 
@@ -341,7 +339,7 @@ def grader_public(
         issues = filter_secret(zf, f, str(public_grader_path.relative_to(os.getcwd())))
         if issues:
             # TODO: the current framework does not allow all error reporting
-            return ZipOperationResult(filename=dest, **issues[0])
+            return ZipOperationResult(filename=dest, **asdict(issues[0]))
 
     return ZipOperationResult(filename=dest)
 
