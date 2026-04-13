@@ -3,7 +3,4 @@
 int accumulateA(int n);
 int accumulateB(int n);
 
-// BEGIN SECRET
-// this line is not present in public grader
-// END SECRET
 #endif // ACCUMULATE_H

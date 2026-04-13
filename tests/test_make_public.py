@@ -12,7 +12,7 @@ expected_results_communication_2_proc_grader_stdio = {
     "cpp/compile.sh": "_expected_public/compile.sh",
     "cpp/run.sh": "_expected_public/run.sh",
     "cpp/grader.cpp": None,
-    "cpp/accumulate.h": None,
+    "cpp/accumulate.h": "_expected_public/accumulate.h",
     "cpp/accumulate.cpp": None,
 }
 
