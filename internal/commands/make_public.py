@@ -353,7 +353,7 @@ def grader_public(
         return ZipOperationResult(filename=dest, error=reason)
 
     with (
-        zip_open_unix(zipf, dest, grader_path) as zf,
+        zip_open_unix(zipf, dest, grader) as zf,
         open(public_grader_path, "r") as f,
     ):
         issues = filter_secret(zf, f, str(public_grader_path.relative_to(os.getcwd())))
