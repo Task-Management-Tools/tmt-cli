@@ -309,7 +309,7 @@ def header_public(
 
     # CMS logic
     with zip_open_unix(zipf, dest, public_file) as zf, open(public_file, "r") as f:
-        rel_path = public_file.relative_to(os.getcwd(), walk_up=True)
+        rel_path = os.path.relpath(public_file, os.getcwd())
         issues = filter_secret(zf, f, str(rel_path))
         if issues:
             # TODO: the current framework does not allow all error reporting
@@ -357,7 +357,7 @@ def grader_public(
         zip_open_unix(zipf, dest, grader) as zf,
         open(public_grader_path, "r") as f,
     ):
-        rel_path = public_grader_path.relative_to(os.getcwd(), walk_up=True)
+        rel_path = os.path.relpath(public_grader_path, os.getcwd())
         issues = filter_secret(zf, f, str(rel_path))
         if issues:
             # TODO: the current framework does not allow all error reporting
