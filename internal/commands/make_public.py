@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from operator import itemgetter
+import functools
 import os
 import re
 import pathlib
@@ -166,50 +166,58 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[GraderFilterIss
     The results are ordered such that error precedes warning.
     """
 
-    def fuzzy_match(text: str, target: str, threshold: int):
-        """
-        If matches, returns a tuple representing the first index and the respective substring.
-        """
+    class FuzzyMatcher:
+        preproc = str.maketrans(
+            string.ascii_lowercase, string.ascii_uppercase, string.whitespace
+        )
 
-        def edit_distance(a: str, b: str):
-            dp = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
-            for i in range(len(a) + 1):
-                dp[i][0] = i
-            for i in range(len(b) + 1):
-                dp[0][i] = i
+        def __init__(self, target: str):
+            target = target.translate(self.preproc)
+            chars = set(map(ord, target))
+            mex = min(set(range(len(chars) + 1)) - set(chars))
+
+            self.target = target
+            self.bad = chr(mex)  # a character not in the target string
+            self.regex = re.compile(f"[^{target}]")
+
+        def normalize(self, s: str):
+            s.translate(self.preproc)
+            s = self.regex.sub(self.bad, s)
+            return s
+
+        @classmethod
+        @functools.lru_cache
+        def edit_distance(cls, a: str, b: str, threshold: int):
+            dp = list(range(len(b) + 1))
             for i in range(len(a)):
+                dp[0] = i
+                for j in reversed(range(len(b))):
+                    dp[j + 1] = min(dp[j] + (a[i] != b[j]), dp[j + 1] + 1)
                 for j in range(len(b)):
-                    dp[i + 1][j + 1] = min(
-                        dp[i][j] + (a[i] != b[j]), dp[i][j + 1] + 1, dp[i + 1][j] + 1
-                    )
-            return dp[-1][-1]
+                    dp[j + 1] = min(dp[j + 1], dp[j] + 1)
+                if max(dp) > threshold:
+                    return threshold + 1
+            return dp[-1]
 
-        processed = text.translate(
-            str.maketrans(
-                string.ascii_lowercase, string.ascii_uppercase, string.whitespace
-            )
-        )
-        target = target.translate(
-            str.maketrans(
-                string.ascii_lowercase, string.ascii_uppercase, string.whitespace
-            )
-        )
+        def match(self, s: str, threshold: int):
 
-        for i in range(len(processed)):
-            subtext = processed[i : i + len(target)]
-            if edit_distance(subtext, target) <= threshold:
-                index_mapping = list(
-                    map(
-                        itemgetter(0),
-                        filter(
-                            lambda x: x[1] not in string.whitespace, enumerate(text, 0)
-                        ),
-                    )
-                )
-                start = index_mapping[i]
-                end = index_mapping[i + len(subtext) - 1] + 1
-                return start + 1, text[start:end]
-        return None
+            processed = self.normalize(s)
+            for i in range(len(processed)):
+                subtext = processed[i : i + len(self.target)]
+                if subtext.count(self.bad) > threshold:
+                    continue
+
+                if self.edit_distance(subtext, self.target, threshold) <= threshold:
+                    index_mapping = [
+                        i for i, ch in enumerate(s) if ch not in string.whitespace
+                    ]
+                    start = index_mapping[i]
+                    end = index_mapping[i + len(subtext) - 1] + 1
+                    return start + 1, s[start:end]
+            return None
+
+    begin_matcher = FuzzyMatcher("BEGIN SECRET")
+    end_matcher = FuzzyMatcher("END SECRET")
 
     hide = False
     issues: list[GraderFilterIssue] = []
@@ -229,13 +237,13 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[GraderFilterIss
         # typo detect
         if begin_secret or end_secret:
             pass
-        elif (fmatch := fuzzy_match(line, "BEGIN SECRET", 3)) is not None:
+        elif (fmatch := begin_matcher.match(line, 3)) is not None:
             issues.append(
                 GraderFilterIssue(
                     warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'BEGIN SECRET'.",
                 )
             )
-        elif (fmatch := fuzzy_match(line, "END SECRET", 2)) is not None:
+        elif (fmatch := end_matcher.match(line, 2)) is not None:
             issues.append(
                 GraderFilterIssue(
                     warning=f"{srcname}:{i}:{fmatch[0]}: '{fmatch[1]}' too similar to 'END SECRET'.",
