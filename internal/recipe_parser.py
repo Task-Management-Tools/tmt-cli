@@ -15,7 +15,7 @@ import re
 from typing import Literal, overload
 
 
-class Executable:
+class Command:
     """
     Represents an executable command with multiple programs to run sequentially and connected by pipes.
 
@@ -35,21 +35,19 @@ class Executable:
             ValueError: If commands is empty or contains empty subcommands
         """
         if len(commands) == 0:
-            raise ValueError("Executable command list should not be empty")
+            raise ValueError("Command list should not be empty")
         for cmd in commands:
             if len(cmd) == 0:
-                raise ValueError(
-                    "Executable command list should not contain empty subcommands"
-                )
+                raise ValueError("Command list should not contain empty subcommands")
         self.commands = commands
 
     def __eq__(self, other):
-        if not isinstance(other, Executable):
+        if not isinstance(other, Command):
             return NotImplementedError
         return self.commands == other.commands
 
 
-class Validation(Executable):
+class Validation(Command):
     """Validation command; similar to Executable but only allows one subcommand."""
 
     def __init__(self, commands: list[list[str]]):
@@ -62,10 +60,10 @@ TESTCASE_NAME_PLACE_HOLDER = "_tmt_internal_testcase_name"
 
 
 class Testcase:
-    def __init__(self, exe: Executable):
+    def __init__(self, exe: Command):
         """Initialize testcase with an executable."""
-        self._raw_execute: Executable = exe
-        self.execute: Executable | None = None
+        self._raw_execute: Command = exe
+        self.execute: Command | None = None
         self.validation: list[Validation] = []
         self._name: str | None = None
 
@@ -132,7 +130,7 @@ class Testset:
             if deps not in self.dependency:
                 self.dependency.append(deps)
 
-    def add_test(self, exe: Executable):
+    def add_test(self, exe: Command):
         """
         Add a test case from the generation Executable.
         """
@@ -393,7 +391,7 @@ class ParserContext:
         cmds.append(cmd)
         return cmds if pipe_split else cmd
 
-    def make_executable(self, cmdline: str, type: type[Executable] | type[Validation]):
+    def make_executable(self, cmdline: str, type: type[Command] | type[Validation]):
         return type(self.shell_split(cmdline, pipe_split=True))
 
 
@@ -584,7 +582,7 @@ class RecipeParser:
 
                 else:
                     # Expand constants in test generation commands
-                    exe = self.ctx.make_executable(line, Executable)
+                    exe = self.ctx.make_executable(line, Command)
                     if self.ctx.scope is None:
                         raise ValueError(
                             "Stray generation command (not within any subtask or testset)"
@@ -630,102 +628,3 @@ def parse_recipe_data(
     parser.ctx.recipe_data.push_validation_to_testcases()
 
     return parser.ctx.recipe_data
-
-
-if __name__ == "__main__":
-    # Test the parser with sample data
-    sample_data = """
-@global_validation validator
-
-@testset samples
-manual s1.in
-manual s2.in
-
-@testset handmade
-print 30 11 | swap
-print 30 22 | swap
-print 47 24
-print 2147483647 1
-print 2147483647 2147483647
-manual 1.in
-
-@subtask A 1
-print 1 1
-
-@subtask B 2
-@include A
-@include A
-
-@subtask C 3
-@include B
-@include B
-
-@subtask D 4
-@include C
-@include C
-
-@subtask E 5
-@include D
-@include D
-
-@subtask F 6
-@include E
-@include E
-
-@subtask G 7
-@include F
-@include F
-
-@subtask H 8
-@validation validator
-@include G
-@include G
-"""
-
-    try:
-        # Parse the sample data
-        recipe_data = parse_recipe_data(sample_data.split("\n"))
-
-        # Print parsed results
-        print("=== TESTSETS ===")
-        for name, testset in recipe_data.testsets.items():
-            print(f"Testset '{name}' (index: {testset.index})")
-            if len(testset.extra_file) != 0:
-                print(f"  Extra files: {list(testset.extra_file)}")
-            if testset.description:
-                print(f"  Description: {testset.description}")
-            print(f"  Tests: {len(testset.testcases)}")
-            for i, test in enumerate(testset.testcases):
-                print(
-                    f"    Test {i + 1} (Name: {test.name}): {len(test.execute.commands)} commands"
-                )
-                for j, cmd in enumerate(test.execute.commands):
-                    print(f"      Command {j + 1}: {cmd}")
-                print(
-                    f"      Validation for test {i + 1}: {len(test.validation)} validators"
-                )
-                for j, validation in enumerate(test.validation):
-                    print(f"        Validator {j + 1}: {validation.commands}")
-
-        print("\n=== GLOBAL VALIDATION ===")
-        print(f"Global validation: {len(recipe_data.global_validation)} validators")
-        for i, validation in enumerate(recipe_data.global_validation):
-            print(f"  Global validation {i + 1}: {validation.commands}")
-
-        print("\n=== SUBTASKS ===")
-        for name, subtask in recipe_data.subtasks.items():
-            print(f"Subtask '{name}' (index: {subtask.index}, score: {subtask.score})")
-            if subtask.description:
-                print(f"  Description: {subtask.description}")
-            print(f"  Testsets: {subtask.dependency}")
-            print(f"  Validation: {len(subtask.validation)} validators")
-            for i, validation in enumerate(subtask.validation):
-                print(f"    Validator {i + 1}: {validation.commands}")
-
-        print("\nParsing completed successfully!")
-
-    finally:
-        pass
-    # except Exception as e:
-    #     print(f"Error: {e}")
-    # print(shell_split("a | b '|' c", {}))
