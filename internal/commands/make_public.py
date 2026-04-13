@@ -5,11 +5,20 @@ import re
 import pathlib
 import string
 from typing import TextIO, BinaryIO, Protocol
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
+from contextlib import contextmanager
 
 from internal.compilation import languages
 from internal.context import JudgeConvention, ProblemType, TMTContext
 from internal.formatting import Formatter
+
+
+@contextmanager
+def zip_open_unix(zipf: ZipFile, dest: str, src: os.PathLike, mode: str = "w"):
+    info = ZipInfo(dest)
+    info.external_attr = (os.stat(src).st_mode & 0xFFFF) << 16
+    with zipf.open(info, mode) as zf:
+        yield zf
 
 
 class SafeFormatter(string.Formatter):
@@ -102,7 +111,7 @@ def raw_public(
     if duped:
         return ZipOperationResult(filename=dest, error=reason)
 
-    with zipf.open(dest, "w") as zf:
+    with zip_open_unix(zipf, dest, public_file) as zf:
         zf.write(public_file.read_bytes())
 
     return ZipOperationResult(filename=dest)
@@ -136,7 +145,7 @@ def format_public(
         return ZipOperationResult(filename=dest, error=reason)
 
     try:
-        with zipf.open(dest, "w") as zf:
+        with zip_open_unix(zipf, dest, public_file) as zf:
             zf.write(
                 SafeFormatter()
                 .format(public_file.read_text(), config=context.config)
@@ -299,7 +308,7 @@ def header_public(
         return ZipOperationResult(filename=dest, error=reason)
 
     # CMS logic
-    with zipf.open(dest, "w") as zf, open(public_file, "r") as f:
+    with zip_open_unix(zipf, dest, public_file) as zf, open(public_file, "r") as f:
         issues = filter_secret(zf, f, str(public_file.relative_to(os.getcwd())))
         if issues:
             # TODO: the current framework does not allow all error reporting
@@ -343,7 +352,10 @@ def grader_public(
     if duped:
         return ZipOperationResult(filename=dest, error=reason)
 
-    with zipf.open(dest, "w") as zf, open(public_grader_path, "r") as f:
+    with (
+        zip_open_unix(zipf, dest, grader_path) as zf,
+        open(public_grader_path, "r") as f,
+    ):
         issues = filter_secret(zf, f, str(public_grader_path.relative_to(os.getcwd())))
         if issues:
             # TODO: the current framework does not allow all error reporting
@@ -385,9 +397,9 @@ def sample_testcase_public(
         if duped:
             return ZipOperationResult(filename=dest, error=reason)
 
-    with zipf.open(input_dest, "w") as zf:
+    with zip_open_unix(zipf, input_dest, testcase_input) as zf:
         zf.write(testcase_input.read_bytes())
-    with zipf.open(output_dest, "w") as zf:
+    with zip_open_unix(zipf, output_dest, testcase_output) as zf:
         zf.write(testcase_output.read_bytes())
 
     return ZipOperationResult(filename=filename)
@@ -423,7 +435,7 @@ def hidden_testcase_public(
         if duped:
             return ZipOperationResult(filename=input_dest, error=reason)
 
-        with zipf.open(input_dest, "w") as zf:
+        with zip_open_unix(zipf, input_dest, testcase_input) as zf:
             zf.write(testcase_input.read_bytes())
 
     return ZipOperationResult(filename=", ".join(files))
