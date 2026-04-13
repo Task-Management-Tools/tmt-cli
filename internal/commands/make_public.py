@@ -181,7 +181,7 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[GraderFilterIss
             self.regex = re.compile(f"[^{target}]")
 
         def normalize(self, s: str):
-            s.translate(self.preproc)
+            s = s.translate(self.preproc)
             s = self.regex.sub(self.bad, s)
             return s
 
@@ -195,7 +195,7 @@ def filter_secret(zf: BinaryIO, f: TextIO, srcname: str) -> list[GraderFilterIss
                     dp[j + 1] = min(dp[j] + (a[i] != b[j]), dp[j + 1] + 1)
                 for j in range(len(b)):
                     dp[j + 1] = min(dp[j + 1], dp[j] + 1)
-                if max(dp) > threshold:
+                if min(dp) > threshold:
                     return threshold + 1
             return dp[-1]
 
