@@ -1,0 +1,41 @@
+{
+    "name": "tmt-recipe",
+    "displayName": "TMT recipe file",
+    "description": "Syntax highlighting for recipe files",
+    "version": "0.0.1",
+    "publisher": "local",
+    "engines": {
+        "vscode": "^1.0.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "recipe",
+                "aliases": [
+                    "TMT recipe file",
+                    "recipe"
+                ],
+                "extensions": [
+                    ".recipe"
+                ],
+                "filenamePatterns": [
+                    "**/recipe"
+                ],
+                "icon": {
+                    "dark": "./icons/recipe.svg",
+                    "light": "./icons/recipe.svg"
+                }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "recipe",
+                "scopeName": "source.recipe",
+                "path": "./syntaxes/recipe.tmLanguage.json"
+            }
+        ]
+    }
+}

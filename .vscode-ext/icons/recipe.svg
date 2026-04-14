@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- https://github.com/microsoft/vscode/issues/178986 -->
+  <g transform="translate(4, 0)">
+    <path transform="translate(5.0000,20.0247) scale(0.005967,-0.005967)"
+          d="M762 1121V0H467V1121H61V1349H1168V1121Z"
+          fill="#9F74B3"/>
+    <path transform="translate(12.3333,20.0247) scale(0.005967,-0.005967)"
+          d="M908 0V868Q908 973 924 1169Q865 879 849 828L725 360H507L381 828Q352 936 305 1169L312 1069Q319 964 319 868V0H99V1349H446L581 850Q596 803 619 619Q639 774 659 849L795 1349H1130V0Z"
+          fill="#9F74B3"/>
+    <path transform="translate(19.6667,20.0247) scale(0.005967,-0.005967)"
+          d="M762 1121V0H467V1121H61V1349H1168V1121Z"
+          fill="#9F74B3"/>
+  </g>
+</svg>

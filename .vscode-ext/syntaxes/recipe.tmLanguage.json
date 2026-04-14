@@ -1,0 +1,62 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "recipe",
+    "patterns": [
+        {
+            "include": "#comment"
+        },
+        {
+            "include": "#keyword"
+        },
+        {
+            "include": "#generator_name"
+        },
+        {
+            "include": "#pipe"
+        },
+        {
+            "include": "#variable"
+        },
+        {
+            "include": "#string"
+        },
+        {
+            "include": "#number"
+        }
+    ],
+    "repository": {
+        "comment": {
+            "match": "#.*$",
+            "name": "comment.line.number-sign.recipe"
+        },
+        "keyword": {
+            "match": "@\\w+",
+            "name": "keyword.control.recipe"
+        },
+        "generator_name": {
+            "match": "(?:^|\\|)\\s*(\\w+)",
+            "captures": {
+                "1": {
+                    "name": "entity.name.function.recipe"
+                }
+            }
+        },
+        "pipe": {
+            "match": "\\|",
+            "name": "keyword.operator.pipe.recipe"
+        },
+        "variable": {
+            "match": "\\$\\{?\\w+\\}?",
+            "name": "variable.other.recipe"
+        },
+        "string": {
+            "match": "\"[^\"\\\\]*(?:\\\\.[^\"\\\\]*)*\"|'[^'\\\\]*(?:\\\\.[^'\\\\]*)*'",
+            "name": "string.quoted.recipe"
+        },
+        "number": {
+            "match": "\\b\\d+\\b",
+            "name": "constant.numeric.recipe"
+        }
+    },
+    "scopeName": "source.recipe"
+}
