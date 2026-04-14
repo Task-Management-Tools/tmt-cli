@@ -288,7 +288,7 @@ class SubtaskVerdict:
 
 @dataclasses.dataclass
 class SolutionVerdict:
-    filename: str
+    filename: str  # TODO: support multiple files
     verdict: VerdictRule
     judge_verdict: str | None = None  # The parser does not check if this is valid.
     except_: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
