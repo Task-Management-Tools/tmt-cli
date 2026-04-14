@@ -90,7 +90,9 @@ def command_verify_verdicts(
     if solution_filename:
         candidate_file_path = Path(solution_filename).resolve()
         if candidate_file_path.is_relative_to(context.path.solutions):
-            solution_filename = os.path.relpath(candidate_file_path, context.path.solutions)
+            solution_filename = os.path.relpath(
+                candidate_file_path, context.path.solutions
+            )
 
     verifier = VerdictsVerifier(context)
     verifier.verify(solution_filename=solution_filename, formatter=formatter)
