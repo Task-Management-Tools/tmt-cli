@@ -201,6 +201,33 @@ def complex_recipe_result():
                          [CommandMatcher("validator", "--N=200000"),
                           CommandMatcher("validator-tester")])
 
+def diamond_recipe_result():
+    a = (TestsetMatcher(name="A", index=1, desc=None)
+         .val("val")
+         .testcase("1_A_1", gen=["gen"], val=[["val"]]))
+
+    b = (TestsetMatcher(name="B", index=2, desc=None)
+         .val("val")
+         .depend(a))
+
+    c = (TestsetMatcher(name="C", index=3, desc=None)
+         .val("val")
+         .depend(a))
+
+    d = (SubtaskMatcher(name="D", index=None, desc=None, score=100)
+         .val("val")
+         .depend(a, b, c))
+
+    return RecipeMatcher([a, b, c, d], [])
+
+
+def cursed_recipe_result():
+    a = (TestsetMatcher(name="space-> <-space", index=1, desc=None)
+         .val("|", "  ", "")
+         .testcase("1_space-> <-space_1", gen=[["|"], ["| |", '"'], ["|", "|", "'", "'abcdef"]])
+         .testcase("1_space-> <-space_2", gen=[["gen", '#'], ["gen", '#']]))
+
+    return RecipeMatcher([a], [])
 # fmt: on
 
 
@@ -208,6 +235,8 @@ def complex_recipe_result():
     "recipe_path, expected",
     [
         ("recipes/complex.recipe", complex_recipe_result),
+        ("recipes/diamond.recipe", diamond_recipe_result),
+        ("recipes/cursed.recipe", cursed_recipe_result),
     ],
 )
 def test_recipe(
@@ -218,3 +247,42 @@ def test_recipe(
     with open(problem_dir, "r") as f:
         recipe = parse_recipe_data(f.readlines())
     expected().match(recipe)
+
+
+def parse_invalid_recipes():
+
+    path = pathlib.Path(__file__).parent.resolve() / "recipes/invalid.recipe"
+    lines = path.read_text().splitlines(keepends=True)
+
+    recipes = {}
+    current_name, current_lines = None, []
+
+    for line in lines:
+        if line.startswith("#!pytest"):
+            if current_name is not None:
+                recipes[current_name] = current_lines
+            parts = line.split(maxsplit=1)
+            if len(parts) == 1:
+                raise ValueError(f"invalid.recipe: test has no name: {line!r}")
+            current_name = parts[1].strip()
+            if current_name in recipes:
+                raise ValueError(
+                    f"invalid.recipe: duplicate test name: {current_name!r}"
+                )
+            current_lines = []
+        else:
+            current_lines.append(line)
+
+    if current_name is not None:
+        recipes[current_name] = current_lines
+    return recipes
+
+
+@pytest.mark.parametrize(
+    "recipe_content",
+    [pytest.param(v, id=k) for k, v in parse_invalid_recipes().items()],
+)
+def test_failing_recipe(recipe_content: list[str]):
+    recipe = parse_recipe_data(recipe_content)
+    print(recipe)
+    assert not isinstance(recipe, rp.RecipeData)

@@ -1,0 +1,13 @@
+@testset A
+gen
+
+@testset B
+@include A
+
+@testset C
+@include A
+
+@subtask D 100
+@include B
+@include C
+@validation val

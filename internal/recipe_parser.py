@@ -536,7 +536,7 @@ class RecipeParser:
 
         if self.ctx.scope is None:
             raise ValueError(
-                "@validation can only be used within testset or subtask context"
+                "@validation can only be used within testset or subtask context; use @global_validation instead"
             )
 
         val = self.ctx.make_executable(remain, Validation)

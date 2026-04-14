@@ -1,0 +1,47 @@
+# This file contains multiple tests for invalid recipes.
+# Each test starts with the magic string '#!pytest'
+# To add a test, simply start your test at the bottom.
+#!pytest stray testcase
+gen A
+
+#!pytest same name"
+@subtask A 10
+@testset A
+
+#!pytest bad constant/file definition #1
+@global_validation val ${N}
+
+#!pytest bad constant/file definition #2
+@subtask A 10
+gen
+
+@subtask B 10
+@extra_file test .test
+@validation val ${test}
+@include A
+
+#!pytest bad constant/file definition #3
+@subtask A 10
+@extra_file test .test
+
+@subtask B 10
+@extra_file test .not-test
+@include A
+
+#!pytest invalid include #1
+@subtask A 10
+@include B
+
+#!pytest invalid include #2
+@include A
+
+#!pytest double description
+@subtask A 10
+@description one and two and
+@description three
+
+#!pytest non-global validation
+@validation val
+
+#!pytest invalid command
+@feinberg
