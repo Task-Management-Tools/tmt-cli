@@ -290,7 +290,7 @@ class SubtaskVerdict:
 class SolutionVerdict:
     filename: str
     verdict: VerdictRule
-    judge_verdict: ExpectedVerdict | None = None
+    judge_verdict: str | None = None # The parser does not check if this is valid.
     except_: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
     score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
 
@@ -308,9 +308,6 @@ class SolutionVerdict:
         solution_file = os.path.join(helper.solutions, solution.filename)
         if not os.path.isfile(solution_file):
             raise FileNotFoundError(f"Solution file {solution.filename} not found.")
-
-        if solution.judge_verdict:
-            solution.judge_verdict = ExpectedVerdict(solution.judge_verdict)
 
         solution.verdict = VerdictRule.from_raw(solution.verdict)
         subtasks: list[SubtaskVerdict] = []

@@ -177,7 +177,7 @@ cpp:
 - `filename`: Path to the solution relative to the `solutions/` directory.
 - `verdict`: The expected verdict (see [Verdict Rule Syntax](#verdict-rule-syntax)).
 - `score`: (Optional) Expected score (see [Score Range Syntax](#score-range-syntax)).
-- `judge_verdict`: (Optional) The verdict category used by `tmt export`. If omitted, exporters may infer it from the `verdict` field.
+- `judge_verdict`: (Optional) The verdict category used by `tmt export`. If omitted, exporters may infer it from the `verdict` field. This should be a string and will be parsed by the exporter directly, without any alias translation.
 - `except`: (Optional) A list of subtask-specific expectations that override the top-level defaults.
   - `subtask`: A subtask name or a list of subtask names.
   - `verdict`: Expected verdict(s) for these subtasks.

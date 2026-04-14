@@ -91,12 +91,20 @@ class ICPCExporter(FolderFormatExporter):
                 if solution.filename != str(file_name):
                     continue
                 if solution.judge_verdict is not None:
-                    if solution.judge_verdict in verdict_mapping:
-                        verdicts_folder = verdict_mapping[solution.judge_verdict]
+                    # TODO: add warning for unknown judge verdict
+                    verdicts_folder = solution.judge_verdict
                 else:
-                    for verdict, folder in verdict_mapping.items():
-                        if verdict in solution.verdict.must:
-                            verdicts_folder = folder
+                    wrong_verdict_count = 0
+                    use_rejected = False
+                    for verdict in solution.verdict.must:
+                        if verdict in verdict_mapping:
+                            verdicts_folder = verdict_mapping[verdict]
+                        if verdict != ExpectedVerdict.ACCEPTED:
+                            wrong_verdict_count += 1
+                            if verdict not in verdict_mapping:
+                                use_rejected = True
+                    if wrong_verdict_count > 1 or use_rejected:
+                        verdicts_folder = "rejected"
 
             return str(Path(verdicts_folder) / file_name)
 
