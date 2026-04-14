@@ -143,7 +143,7 @@ class VerdictsVerifier(Verifier):
             for i, (verdict, count) in enumerate(result.verdicts.items()):
                 if i > 0:
                     v_len += 2  # ", "
-                v_len += len(str(count)) + 1 + len(verdict.short_name)
+                v_len += len(verdict.short_name) + 2 + len(str(count))
             verdicts_len = max(verdicts_len, v_len)
 
         # Add padding
@@ -213,10 +213,8 @@ class VerdictsVerifier(Verifier):
             for verdict, count in result.verdicts.items():
                 if print_sequence:
                     print_sequence += ", "
-                print_sequence += f"{count} "
-                print_sequence += get_displayed_verdict(
-                    verdict
-                )  # TODO: decide this format
+                print_sequence += get_displayed_verdict(verdict)
+                print_sequence += f": {count}"
             formatter.print_fixed_width(*print_sequence, width=verdicts_len)
 
             formatter.print_fixed_width(result.score_range, width=score_range_len)
