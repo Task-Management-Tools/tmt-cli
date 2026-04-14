@@ -4,7 +4,7 @@ from typing import List, IO
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
-from internal.verdicts import ExpectedVerdict, parse_verdicts
+from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
 
 from .base import FolderFormatExporter
 

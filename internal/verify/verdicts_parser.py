@@ -3,10 +3,10 @@ import enum
 import os
 import yaml
 
-from internal.context.context import TMTContext
+from internal.context import TMTContext
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal.outcomes import EvaluationOutcome, EvaluationOutcomeGroup
-from .context.paths import ProblemDirectoryHelper
+from internal.context.paths import ProblemDirectoryHelper
 
 
 class ExpectedVerdict(enum.Enum):
@@ -290,7 +290,7 @@ class SubtaskVerdict:
 class SolutionVerdict:
     filename: str
     verdict: VerdictRule
-    judge_verdict: str | None = None # The parser does not check if this is valid.
+    judge_verdict: str | None = None  # The parser does not check if this is valid.
     except_: list[SubtaskVerdict] = dataclasses.field(default_factory=list)
     score: ScoreRange = dataclasses.field(default_factory=ScoreRange)
 

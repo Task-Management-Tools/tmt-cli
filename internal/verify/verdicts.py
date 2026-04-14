@@ -8,7 +8,7 @@ from internal.commands.invoke import CommandInvokeSummary
 from internal.compilation import languages
 from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
 from internal.formatting import Formatter
-from internal.verdicts import (
+from internal.verify.verdicts_parser import (
     ExpectedVerdict,
     ScoreRange,
     SolutionVerdict,
