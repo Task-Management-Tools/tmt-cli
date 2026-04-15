@@ -55,6 +55,7 @@ class VerdictsVerifier(Verifier):
         "verdict_rule": TMTVerifyIssueType.ERROR,
         "score_range": TMTVerifyIssueType.ERROR,
         "default_rule": TMTVerifyIssueType.ERROR,
+        "solution_not_found": TMTVerifyIssueType.ERROR,
     }
 
     def _get_tests_outcome(
@@ -406,6 +407,8 @@ class VerdictsVerifier(Verifier):
                 self.verify_single_solution(formatter=formatter, solution=solution)
 
         if solution_filename and not found_solution:
-            formatter.println(
-                f"Solution file {solution_filename} not found in verdicts.yaml"
+            self.add_issue(
+                "solution_not_found",
+                context.path.verdicts_yaml,
+                f"Solution file {solution_filename} not found in verdicts.yaml",
             )

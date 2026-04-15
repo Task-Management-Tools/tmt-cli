@@ -99,6 +99,7 @@ def test_verify_verdicts(
         ("problems/verify", "model-solution.cpp", 0, 0),
         ("problems/verify", "correct-verdict.cpp", 0, 0),
         ("problems/verify", "incorrect-verdict.cpp", 4, 0),
+        ("problems/verify", "what-is-this-file.cpp", 1, 0),
     ],
 )
 def test_verify_verdicts_single(
