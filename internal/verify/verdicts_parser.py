@@ -19,19 +19,19 @@ class ExpectedVerdict(enum.Enum):
     WRONG_ANSWER = (
         "Wrong Answer",
         "WA",
-        ["wrong_answer", "WA", "incorrect"],
+        ["wrong_answer", "wrong-answer", "WA", "incorrect"],
         EvaluationOutcomeGroup.WRONG_ANSWER.outcome_list,
     )
     TIME_LIMIT_EXCEEDED = (
         "Time Limit Exceeded",
         "TLE",
-        ["time_limit_exceeded", "time_limit", "timeout", "TLE"],
+        ["time_limit_exceeded", "time-limit-exceeded", "time_limit", "time-limit", "timeout", "TLE"],
         EvaluationOutcomeGroup.TIMEOUT.outcome_list,
     )
     RUNTIME_ERROR = (
         "Runtime Error",
         "RTE",
-        ["runtime_error", "run_time_error", "RE", "RTE"],
+        ["runtime_error", "runtime-error", "run_time_error", "run-time-error", "RE", "RTE"],
         EvaluationOutcomeGroup.RUNTIME_ERROR.outcome_list,
     )
     PARTIAL = (
@@ -43,7 +43,7 @@ class ExpectedVerdict(enum.Enum):
     OUTPUT_LIMIT = (
         "Output Limit Exceeded",
         "OLE",
-        ["output_limit_exceeded", "output_limit", "OLE"],
+        ["output_limit_exceeded", "output-limit-exceeded", "output_limit", "output-limit", "OLE"],
         EvaluationOutcomeGroup.OUTPUT_LIMIT.outcome_list,
     )
 

@@ -162,14 +162,14 @@ cpp:
       verdict: accepted
       score: 1.0
     - subtask: s3
-      verdict: [wrong_answer, time_limit_exceeded]
+      verdict: [wrong-answer, time-limit-exceeded]
       score:
         min: 0.2
         max: 0.8
 - filename: wrong-solution.cpp
   verdict:
-    must: wrong_answer
-    never: [accepted, time_limit_exceeded]
+    must: wrong-answer
+    never: [accepted, time-limit-exceeded]
 ```
 
 ### Fields
@@ -219,11 +219,13 @@ A verdict rule defines which outcomes are acceptable. It can be specified in sev
 You can use the following aliases (case-**sensitive**):
 
 - Accepted: `accepted`, `AC`, `correct`
-- Wrong Answer: `wrong_answer`, `WA`, `incorrect`
-- Time Limit Exceeded: `time_limit_exceeded`, `time_limit`, `timeout`, `TLE`
-- Runtime Error: `runtime_error`, `run_time_error`, `RE`, `RTE`
+- Wrong Answer: `wrong-answer`, `WA`, `incorrect`
+- Time Limit Exceeded: `time-limit-exceeded`, `time-limit`, `timeout`, `TLE`
+- Runtime Error: `runtime-error`, `run-time-error`, `RE`, `RTE`
 - Partially Correct: `partial`, `PC`
-- Output Limit Exceeded: `output_limit_exceeded`, `output_limit`, `OLE`
+- Output Limit Exceeded: `output-limit-exceeded`, `output-limit`, `OLE`
+
+For the kebab-case names, using snake_case (e.g. `wrong_answer`) is also allowed.
 
 
 ## Recipe syntax
