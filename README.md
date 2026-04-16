@@ -31,7 +31,7 @@ Optional environment variables:
 ## Directory structure
 
 ```
-problem_root/
+problem-root/
 ├── problem.yaml
 ├── compiler.yaml
 ├── recipe
@@ -72,7 +72,7 @@ problem_root/
 - `tmt verify` checks for potential issues.
   - `tmt verify` or `tmt verify all` runs all available verification checks.
   - `tmt verify config` checks for configuration errors, such as missing validators or invalid settings.
-  - `tmt verify verdicts [-s|--solutions <solution_filename>]` verifies that solutions in `solutions/` produce their expected outcomes as specified in [`verdicts.yaml`](#verdictsyaml). **Run `tmt gen` before this command to ensure testcases are up-to-date.**
+  - `tmt verify verdicts [-s|--solutions <solution-filename>]` verifies that solutions in `solutions/` produce their expected outcomes as specified in [`verdicts.yaml`](#verdictsyaml). **Run `tmt gen` before this command to ensure testcases are up-to-date.**
 
 ## `problem.yaml`
 
@@ -277,7 +277,7 @@ manual 1.in
   - For instance, `@constant MAXN 10000` defines `MAXN` that could be referred as `${MAXN}` in later lines.
 - `@extra-file <NAME> <.ext>` creates an extra file with the filename `<testcase-name><.ext>` for each testcase in the current testset or subtask. This enables generators to externally store auxiliary information for their generated testcases.
   - For instance, using `@extra-file FIGURE .png` allows generators to generate corresponding visualizations along with the test cases.
-  - Note that generators are responsible for opening these files. Users should pass the filenames by including the defined constant in the generation command (e.g., `my_generator --figure=${FIGURE}`).
+  - Note that generators are responsible for opening these files. Users should pass the filenames by including the defined constant in the generation command (e.g., `my-generator --figure=${FIGURE}`).
 - `manual <input> <output>` (`manual` but with an additional argument `<output>`) forces the testcase output to a file from `generator/manual/` and marks it as forced output for checker rules.
 - Piped sequences
   - A generator command can be a shell-like pipeline sequence of executables, split by `|`. (e.g. `step1 args1 | step2 args2`)
