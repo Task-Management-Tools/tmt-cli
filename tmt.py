@@ -1,6 +1,7 @@
 import argparse
 import pathlib
 
+from internal.commands.verify import command_verify_config, command_verify_verdicts
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import (
     command_gen,
@@ -8,10 +9,12 @@ from internal.commands import (
     command_clean,
     command_export,
     command_make_public,
+    command_verify,
 )
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 from internal import __version__
 from internal.formatting import TerminalFormatter
+from internal.verify.verifier import TMTVerifyIssueType
 
 
 def main():
@@ -54,6 +57,19 @@ def main():
     parser_export.add_argument("output", help="The filename of the exported zip file.")
 
     subparsers.add_parser("make-public", help="Build public attachment archive file.")
+
+    parser_verify = subparsers.add_parser("verify", help="Check issues.")
+    verify_subparser = parser_verify.add_subparsers(
+        dest="issue_class", help="The issue class to be verified."
+    )
+    verify_subparser.add_parser("all", help="Verify all issue classes.")
+    parser_verify_verdicts = verify_subparser.add_parser(
+        "verdicts", help="Verify solution verdicts."
+    )
+    parser_verify_verdicts.add_argument(
+        "-s", "--solution", help="The solution filename in solutions/."
+    )
+    verify_subparser.add_parser("config", help="Verify configs.")
 
     args = parser.parse_args()
 
@@ -106,6 +122,27 @@ def main():
     if args.command == "make-public":
         ret = command_make_public(formatter=formatter, context=context)
         return ret
+
+    if args.command == "verify":
+        if args.issue_class == "all" or args.issue_class is None:
+            ret = command_verify(
+                print_issues=True, formatter=formatter, context=context
+            )
+        elif args.issue_class == "config":
+            ret = command_verify_config(
+                print_issues=True, formatter=formatter, context=context
+            )
+        elif args.issue_class == "verdicts":
+            ret = command_verify_verdicts(
+                solution_filename=args.solution,
+                print_issues=True,
+                formatter=formatter,
+                context=context,
+            )
+        else:
+            formatter.println(f"Unknown issue class {args.issue_class}")
+            return False
+        return not any(issue.type == TMTVerifyIssueType.ERROR for issue in ret)
 
     return False
 

@@ -1,0 +1,19 @@
+@subtask 1 10
+gen 1
+
+@subtask 2 10
+gen 2
+
+@subtask 34 10
+gen 3
+gen 4
+
+@subtask 5 10
+gen 5
+
+@subtask full 100
+@description No additional constraints
+@include 1
+@include 2
+@include 34
+@include 5

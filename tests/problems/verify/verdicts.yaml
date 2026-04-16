@@ -1,0 +1,24 @@
+- filename: model-solution.cpp
+  verdict: accepted
+- filename: correct-verdict.cpp
+  verdict: wrong_answer
+  except:
+  - subtask: 1
+    verdict: accepted
+  - subtask: 2
+    verdict: partial
+  - subtask: 34
+    verdict: [wrong_answer, time_limit_exceeded]
+- filename: incorrect-verdict.cpp
+  verdict: wrong_answer
+  except:
+  - subtask: 1
+    verdict: AC
+  - subtask: 2
+    verdict: partial
+    score:
+      max: 0.5
+  - subtask: 34
+    verdict:
+      must: wrong_answer
+      never: TLE
