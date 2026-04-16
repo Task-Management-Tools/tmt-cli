@@ -1,4 +1,4 @@
-@global_validation validator 
+@global-validation validator
 
 @testset samples
 manual s1.in

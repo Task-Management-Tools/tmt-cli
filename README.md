@@ -235,7 +235,7 @@ For the kebab-case names, using snake_case (e.g. `wrong_answer`) is also allowed
 ### Example
 
 ```text
-@global_validation myvalidator
+@global-validation myvalidator
 
 @testset samples
 manual s1.in
@@ -260,9 +260,9 @@ manual 1.in
 ### Basic `@` commands
 
 - `@testset <name>` starts a new testset.
-- `@global_validation <executable ...>` adds a validator for all testcases.
+- `@global-validation <executable ...>` adds a validator for all testcases.
   - The validator executable is resolved in `validator/` subfolder.
-  - In this example, `@global_validation myvalidator` means that all testcases should pass the validation of `validator/myvalidator.cpp`
+  - In this example, `@global-validation myvalidator` means that all testcases should pass the validation of `validator/myvalidator.cpp`
   - Note that in ICPC convention, validators must exit with code `42` to pass.
 - `@validation <executable ...>` adds a validator for the current testset or subtask.
 
@@ -275,8 +275,8 @@ manual 1.in
 - `@include <testset-or-subtask>` includes a testset or all testsets from another subtask into the current subtask.
 - `@constant <NAME> <value>` defines a constant that could be used afterwards.
   - For instance, `@constant MAXN 10000` defines `MAXN` that could be referred as `${MAXN}` in later lines.
-- `@extra_file <NAME> <.ext>` creates an extra file with the filename `<testcase-name><.ext>` for each testcase in the current testset or subtask. This enables generators to externally store auxiliary information for their generated testcases.
-  - For instance, using `@extra_file FIGURE .png` allows generators to generate corresponding visualizations along with the test cases.
+- `@extra-file <NAME> <.ext>` creates an extra file with the filename `<testcase-name><.ext>` for each testcase in the current testset or subtask. This enables generators to externally store auxiliary information for their generated testcases.
+  - For instance, using `@extra-file FIGURE .png` allows generators to generate corresponding visualizations along with the test cases.
   - Note that generators are responsible for opening these files. Users should pass the filenames by including the defined constant in the generation command (e.g., `my_generator --figure=${FIGURE}`).
 - `manual <input> <output>` (`manual` but with an additional argument `<output>`) forces the testcase output to a file from `generator/manual/` and marks it as forced output for checker rules.
 - Piped sequences

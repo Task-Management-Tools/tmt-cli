@@ -1,4 +1,4 @@
-@global_validation validator
+@global-validation validator
 
 @testset good
 print 100 200
@@ -9,7 +9,7 @@ manual input.in
 manual input.in | swap
 
 @testset proof
-@extra_file PROOF .proof
+@extra-file PROOF .proof
 print-with-proof 12 23 ${PROOF}
 
 @testset bad
