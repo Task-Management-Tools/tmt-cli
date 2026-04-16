@@ -1,6 +1,8 @@
 - filename: sol.cpp
   verdict: accepted
-- filename: sol.py 
+
+- filename: sol.py
   verdict: accepted
+
 - filename: overflow.cpp
-  verdict: wrong_answer 
+  verdict: wrong-answer

@@ -1,10 +1,14 @@
 - filename: sol.cpp
   verdict: accepted
+
 - filename: brute.cpp
-  verdict: wrong_answer
+  verdict: wrong-answer
+
 - filename: exit.cpp
-  verdict: wrong_answer
+  verdict: wrong-answer
+
 - filename: no-flush.cpp
-  verdict: time_limit_exceeded
+  verdict: time-limit-exceeded
+
 - filename: sleep.cpp
-  verdict: time_limit_exceeded
+  verdict: time-limit-exceeded
