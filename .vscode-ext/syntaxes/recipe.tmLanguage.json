@@ -1,0 +1,146 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "recipe",
+    "patterns": [
+        { "include": "#comment" },
+        { "include": "#keywords" },
+        { "include": "#invalid-pipe" },
+        { "include": "#generation" }
+    ],
+    "repository": {
+        "comment": {
+            "match": "#.*(?=$)",
+            "name": "comment.line.number-sign.recipe"
+        },
+        "variable": {
+            "match": "\\$\\{\\w+\\}",
+            "name": "variable.other"
+        },
+        "double-quoted-token": {
+            "begin": "\"(?=[^\"]*\"\\s)",
+            "end": "\"\\s+",
+            "name": "string.quoted.double",
+            "patterns": [ { "include": "#variable" } ]
+        },
+        "single-quoted-token": {
+            "begin": "'(?=[^']*'\\s)",
+            "end": "'\\s+",
+            "name": "string.quoted.single",
+            "patterns": [ { "include": "#variable" } ]
+        },
+        "unquoted-token": {
+            "begin": "",
+            "end": "\\s+",
+            "name": "string.unquoted",
+            "patterns": [ { "include": "#variable" } ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "begin": "(@description)\\s++",
+                    "end": "$",
+                    "beginCaptures": { "1": { "name": "keyword.control.description" } },
+                    "name": "string.unquoted",
+                    "patterns": [ { "include": "#variable" } ]
+                },
+                {
+                    "match": "(@testset|@include)\\s+((\"([^\"]*)\")|('([^']*)')|(\\S+))\\s*(?:$|(#.*$))",
+                    "captures": {
+                        "1": { "name": "keyword.control" },
+                        "2": { "name": "meta.argument" },
+                        "3": { "name": "string.quoted.double" },
+                        "4": { "name": "entity.name.tag" },
+                        "5": { "name": "string.quoted.single" },
+                        "6": { "name": "entity.name.tag" },
+                        "7": { "name": "entity.name.tag" },
+                        "8": { "name": "comment.line.number-sign.recipe" }
+                    }
+                },
+                {
+                    "match": "(@subtask)\\s+((\"([^\"]*)\")|('([^']*)')|(\\S+))\\s+(\\d+|\\d*.\\d+)\\s*(?:$|(#.*$))",
+                    "captures": {
+                        "1": { "name": "keyword.control.recipe" },
+                        "2": { "name": "meta.argument" },
+                        "3": { "name": "string.quoted.double" },
+                        "4": { "name": "entity.name.tag" },
+                        "5": { "name": "string.quoted.single" },
+                        "6": { "name": "entity.name.tag" },
+                        "7": { "name": "entity.name.tag" },
+                        "8": { "name": "constant.numeric.recipe" },
+                        "9": { "name": "comment.line.number-sign.recipe" }
+                    }
+                },
+                {
+                    "match": "(@constant)\\s+(\\S+)\\s+((\"[^\"]*\")|('[^']*')|(\\S+))\\s*(?:$|(#.*$))",
+                    "captures": {
+                        "1": { "name": "keyword.control.recipe" },
+                        "2": { "name": "variable.other.recipe" },
+                        "3": { "name": "meta.argument" },
+                        "4": { "name": "string.quoted.double" },
+                        "5": { "name": "string.quoted.single" },
+                        "6": { "name": "string.unquoted" },
+                        "7": { "name": "comment.line.number-sign" }
+                    }
+                },
+                {
+                    "match": "(@extra_file)\\s+(\\S+)\\s+(\\.\\S+)\\s*(?:$|(#.*$))",
+                    "captures": {
+                        "1": { "name": "keyword.control.recipe" },
+                        "2": { "name": "variable.other.recipe" },
+                        "3": { "name": "string.unquoted" },
+                        "4": { "name": "comment.line.number-sign" }
+                    }
+                },
+                {
+                    "begin": "(@global_validation|@validation)\\s+(\"[^\"]*\"|'[^']*'|\\S+)\\s+",
+                    "beginCaptures": {
+                        "1": { "name": "keyword.control" },
+                        "2": { "name": "entity.name.function.recipe" }
+                    },
+                    "end": "$",
+                    "patterns": [
+                        { "include": "#single-quoted-token" },
+                        { "include": "#double-quoted-token" },
+                        {
+                            "match": "\\|\\s+",
+                            "name": "invalid.illegal.validation.pipe"
+                        },
+                        { "include": "#unquoted-token" }
+                    ]
+                },
+                {
+                    "match": "@.*",
+                    "name": "invalid.illegal.keyword.recipe"
+                }
+            ]
+        },
+        "invalid-pipe": {
+            "match": "^\\s*\\|\\s+",
+            "name": "invalid.illegal.starting-pipe"
+        },
+        "generation": {
+            "begin": "(\"[^\"]*\"|'[^']*'|\\S+)\\s+",
+            "end": "$",
+            "name": "entity.name.function.recipe",
+            "patterns": [
+                { "include": "#single-quoted-token" },
+                { "include": "#double-quoted-token" },
+                { "include": "#comment" },
+                {
+                    "match": "\\|\\s+\\|\\s+",
+                    "name": "invalid.illegal.double-pipe"
+                },
+                {
+                    "match": "\\|\\s+(\"[^\"]*\"|'[^']*'|\\S+)\\s+",
+                    "name": "entity.name.function.recipe"
+                },
+                {
+                    "match": "\\|\\s+",
+                    "name": "invalid.illegal.ending-pipe"
+                },
+                { "include": "#unquoted-token" }
+            ]
+        }
+    },
+    "scopeName": "source.recipe"
+}

@@ -3,7 +3,7 @@ import pathlib
 import yaml
 
 
-from internal.recipe_parser import parse_recipe_data
+from internal.recipe_parser import RecipeData, parse_recipe_data
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 
 from .paths import ProblemDirectoryHelper
@@ -44,10 +44,15 @@ class TMTContext:
         try:
             with open(self.path.tmt_recipe) as file:
                 # TODO: the last one feels hacky, but unless this is deferred there is no way to do this
-                self.recipe = parse_recipe_data(
+                recipe = parse_recipe_data(
                     file.readlines(),
                     self.config.problem_type == ProblemType.OUTPUT_ONLY,
                 )
+            if not isinstance(recipe, RecipeData):
+                raise ValueError(
+                    "\n".join([e.to_string(self.path.tmt_recipe) for e in recipe])
+                )
+            self.recipe = recipe
         except OSError as e:
             raise TMTMissingFileError("config", self.path.tmt_recipe) from e
         except ValueError as e:

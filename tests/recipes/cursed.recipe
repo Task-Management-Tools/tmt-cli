@@ -1,0 +1,4 @@
+@testset "space-> <-space"
+@validation '|' '  ' ''
+'|' | '| |' '"' | "|" '|' "'" 'abcdef # the last quote is unmatched so taken as a whole
+gen '#' | gen '#'

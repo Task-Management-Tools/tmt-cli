@@ -1,0 +1,42 @@
+@constant MAX_N 200000
+@constant SMALL_N 100
+
+@testset t1
+gen --N=${SMALL_N} seed=1
+gen --N=${SMALL_N} seed=2
+
+@testset t2
+@constant SMALL_N 2000 # overrides in this scope
+gen --N=${SMALL_N} seed=1
+gen --N=${SMALL_N} seed=2
+
+@testset edge_case
+@extra_file NOTE .note
+@description edge cases for N <= ${SMALL_N}
+special --N=1 --note=${NOTE}
+special --N=2 --note=${NOTE}
+gen --N=${SMALL_N} seed=1 | make_extreme
+
+# maybe add these to the top next time
+@global_validation validator --N=${MAX_N}
+@global_validation validator-tester
+
+@subtask s1 20
+@extra_file NOTE .note
+extra --N=5 --note=${NOTE} seed=1
+@description $N \leq ${SMALL_N}$
+@include t1
+@include edge_case
+@validation validator --N=${SMALL_N}
+
+@subtask s2 30
+@description $N \leq 2000$
+@include s1
+@include t2
+@validation validator --N=2000
+
+@subtask s3 50
+@description               No additional constraints
+@include s2
+gen --N=${MAX_N} seed=1
+gen --N=${MAX_N} seed=2
