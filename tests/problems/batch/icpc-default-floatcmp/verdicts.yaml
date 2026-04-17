@@ -1,18 +1,26 @@
 - filename: model-solution.cpp
-  verdict: accepted
+  verdict: accepte
+
 - filename: abs1e-4.cpp
-  verdict: wrong_answer
+  verdict: wrong-answer
+
 - filename: abs1e-6.cpp
   verdict: accepted
+
 - filename: abs1e-7.cpp
   verdict: accepted
+
 - filename: exact.cpp
   verdict: accepted
+
 - filename: no-setprecision.cpp
-  verdict: wrong_answer
+  verdict: wrong-answer
+
 - filename: rel1e-4.cpp
-  verdict: wrong_answer
+  verdict: wrong-answer
+
 - filename: rel1e-6.cpp
   verdict: accepted
+
 - filename: rel1e-7.cpp
   verdict: accepted

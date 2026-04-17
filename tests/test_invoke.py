@@ -80,102 +80,102 @@ expected_results_batch_no_testdata = {
 }
 
 expected_results_batch_cms_checker = {
-    ("model-solution.cpp",):     { "1_full_1": (CORRECT,   SCORE == 1,   REASON == "correct reason", FEEDBACK == "correct feedback") },
-    ("wrong.cpp",):              { "1_full_1": (WRONG,     SCORE == 0,   REASON == "wrong reason",   FEEDBACK == "wrong feedback") },
-    ("partial.cpp",):            { "1_full_1": (PARTIAL,   SCORE == 0.5, REASON == "partial reason", FEEDBACK == "partial feedback") },
-    ("checker-crash.cpp",):      { "1_full_1": (CHK_CRASH, SCORE == 0) },
-    ("checker-utf8-crash.cpp",): { "1_full_1": (CHK_FAIL,  SCORE == 0) },
-    ("checker-fail.cpp",):       { "1_full_1": (CHK_FAIL,  SCORE == 0) },
-    ("checker-singal.cpp",):     { "1_full_1": (CHK_CRASH, SCORE == 0) },
-    ("checker-timeout.cpp",):    { "1_full_1": (CHK_TLE,   SCORE == 0) },
+    ("model-solution.cpp",):     { "1-full-1": (CORRECT,   SCORE == 1,   REASON == "correct reason", FEEDBACK == "correct feedback") },
+    ("wrong.cpp",):              { "1-full-1": (WRONG,     SCORE == 0,   REASON == "wrong reason",   FEEDBACK == "wrong feedback") },
+    ("partial.cpp",):            { "1-full-1": (PARTIAL,   SCORE == 0.5, REASON == "partial reason", FEEDBACK == "partial feedback") },
+    ("checker-crash.cpp",):      { "1-full-1": (CHK_CRASH, SCORE == 0) },
+    ("checker-utf8-crash.cpp",): { "1-full-1": (CHK_FAIL,  SCORE == 0) },
+    ("checker-fail.cpp",):       { "1-full-1": (CHK_FAIL,  SCORE == 0) },
+    ("checker-singal.cpp",):     { "1-full-1": (CHK_CRASH, SCORE == 0) },
+    ("checker-timeout.cpp",):    { "1-full-1": (CHK_TLE,   SCORE == 0) },
 }
 
 expected_results_batch_cms_whitediff = {
-    ("extra-line.py",):          { "1_full_1": (WRONG,   SCORE == 0) },
-    ("extra-space.py",):         { "1_full_1": (CORRECT, SCORE == 1) },
-    ("extra-token.py",):         { "1_full_1": (WRONG,   SCORE == 0) },
-    ("extra-trailing-line.py",): { "1_full_1": (CORRECT, SCORE == 1) },
-    ("less-line.py",):           { "1_full_1": (WRONG,   SCORE == 0) },
-    ("less-space.py",):          { "1_full_1": (CORRECT, SCORE == 1) },
-    ("less-token.py",):          { "1_full_1": (WRONG,   SCORE == 0) },
-    ("missing-token.py",):       { "1_full_1": (WRONG,   SCORE == 0) },
-    ("model-solution.py",):      { "1_full_1": (CORRECT, SCORE == 1) },
-    ("without-last-eol.py",):    { "1_full_1": (CORRECT, SCORE == 1) },
+    ("extra-line.py",):          { "1-full-1": (WRONG,   SCORE == 0) },
+    ("extra-space.py",):         { "1-full-1": (CORRECT, SCORE == 1) },
+    ("extra-token.py",):         { "1-full-1": (WRONG,   SCORE == 0) },
+    ("extra-trailing-line.py",): { "1-full-1": (CORRECT, SCORE == 1) },
+    ("less-line.py",):           { "1-full-1": (WRONG,   SCORE == 0) },
+    ("less-space.py",):          { "1-full-1": (CORRECT, SCORE == 1) },
+    ("less-token.py",):          { "1-full-1": (WRONG,   SCORE == 0) },
+    ("missing-token.py",):       { "1-full-1": (WRONG,   SCORE == 0) },
+    ("model-solution.py",):      { "1-full-1": (CORRECT, SCORE == 1) },
+    ("without-last-eol.py",):    { "1-full-1": (CORRECT, SCORE == 1) },
 }
 
 expected_results_batch_cms_grader = {
-    ("model-solution.cpp",): { "1_full_1": (CORRECT, SCORE == 1) },
-    ("model-solution.py",):  { "1_full_1": (CORRECT, SCORE == 1) },
-    ("wrong.cpp",):          { "1_full_1": (WRONG,   SCORE == 0) },
-    ("wrong.py",):           { "1_full_1": (WRONG,   SCORE == 0) },
+    ("model-solution.cpp",): { "1-full-1": (CORRECT, SCORE == 1) },
+    ("model-solution.py",):  { "1-full-1": (CORRECT, SCORE == 1) },
+    ("wrong.cpp",):          { "1-full-1": (WRONG,   SCORE == 0) },
+    ("wrong.py",):           { "1-full-1": (WRONG,   SCORE == 0) },
 }
 
 expected_results_batch_cms_verdict = {
-    ("cpp.cpp",):    { "1_full_01": (CORRECT,  SCORE == 1),
-                       "1_full_02": (WRONG,    SCORE == 0),
-                       "1_full_03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
-                       "1_full_04": (NO_FILE,  SCORE == 0),
-                       "1_full_05": (TLE_CPU,  SCORE == 0),
-                       "1_full_06": (TLE_WALL, SCORE == 0),
-                       "1_full_07": (RTE_EXIT, SCORE == 0),
-                       "1_full_08": (RTE_SIG,  SCORE == 0),
-                       "1_full_09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
-                       "1_full_10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
-                       "1_full_11": (RTE,      SCORE == 0),
-                       "1_full_12": (MLE,      SCORE == 0), },
-    ("python3.py",): { "1_full_01": (CORRECT,  SCORE == 1),
-                       "1_full_02": (WRONG,    SCORE == 0),
-                       "1_full_03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
-                       "1_full_04": (WRONG,    SCORE == 0), # Did not implement this in Python
-                       "1_full_05": (TLE_CPU,  SCORE == 0),
-                       "1_full_06": (TLE_WALL, SCORE == 0),
-                       "1_full_07": (RTE_EXIT, SCORE == 0),
-                       "1_full_08": (RTE_SIG,  SCORE == 0),
-                       "1_full_09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
-                       "1_full_10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
-                       "1_full_11": (RTE,      SCORE == 0),
-                       "1_full_12": (MLE,      SCORE == 0), },
+    ("cpp.cpp",):    { "1-full-01": (CORRECT,  SCORE == 1),
+                       "1-full-02": (WRONG,    SCORE == 0),
+                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
+                       "1-full-04": (NO_FILE,  SCORE == 0),
+                       "1-full-05": (TLE_CPU,  SCORE == 0),
+                       "1-full-06": (TLE_WALL, SCORE == 0),
+                       "1-full-07": (RTE_EXIT, SCORE == 0),
+                       "1-full-08": (RTE_SIG,  SCORE == 0),
+                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
+                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
+                       "1-full-11": (RTE,      SCORE == 0),
+                       "1-full-12": (MLE,      SCORE == 0), },
+    ("python3.py",): { "1-full-01": (CORRECT,  SCORE == 1),
+                       "1-full-02": (WRONG,    SCORE == 0),
+                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
+                       "1-full-04": (WRONG,    SCORE == 0), # Did not implement this in Python
+                       "1-full-05": (TLE_CPU,  SCORE == 0),
+                       "1-full-06": (TLE_WALL, SCORE == 0),
+                       "1-full-07": (RTE_EXIT, SCORE == 0),
+                       "1-full-08": (RTE_SIG,  SCORE == 0),
+                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
+                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
+                       "1-full-11": (RTE,      SCORE == 0),
+                       "1-full-12": (MLE,      SCORE == 0), },
 }
 
 expected_results_batch_icpc_checker = {
     # Only test the first file because the second is the same
-    ("model-solution.cpp",):  { "1_input_1": (CORRECT,   SCORE == 1, REASON == "correct feedback") },
-    ("wrong.cpp",):           { "1_input_1": (WRONG,     SCORE == 0, REASON == "wrong feedback") },
-    ("checker-crash.cpp",):   { "1_input_1": (CHK_CRASH, SCORE == 0) },
-    ("checker-timeout.cpp",): { "1_input_1": (CHK_TLE,   SCORE == 0) },
+    ("model-solution.cpp",):  { "1-input-1": (CORRECT,   SCORE == 1, REASON == "correct feedback") },
+    ("wrong.cpp",):           { "1-input-1": (WRONG,     SCORE == 0, REASON == "wrong feedback") },
+    ("checker-crash.cpp",):   { "1-input-1": (CHK_CRASH, SCORE == 0) },
+    ("checker-timeout.cpp",): { "1-input-1": (CHK_TLE,   SCORE == 0) },
 }
 
 expected_results_batch_icpc_default_floatcmp = {
-    ("model-solution.cpp",):   { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("abs1e-4.cpp",):          { "1_full_1": (WRONG,     SCORE == 0) },
-    ("abs1e-6.cpp",):          { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("abs1e-7.cpp",):          { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("rel1e-4.cpp",):          { "1_full_1": (WRONG,     SCORE == 0) },
-    ("rel1e-6.cpp",):          { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("rel1e-7.cpp",):          { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("exact.cpp",):            { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("no-setprecision.cpp",):  { "1_full_1": (WRONG,     SCORE == 0) },
+    ("model-solution.cpp",):   { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("abs1e-4.cpp",):          { "1-full-1": (WRONG,     SCORE == 0) },
+    ("abs1e-6.cpp",):          { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("abs1e-7.cpp",):          { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("rel1e-4.cpp",):          { "1-full-1": (WRONG,     SCORE == 0) },
+    ("rel1e-6.cpp",):          { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("rel1e-7.cpp",):          { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("exact.cpp",):            { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("no-setprecision.cpp",):  { "1-full-1": (WRONG,     SCORE == 0) },
 }
 
 expected_results_communication_1_proc_grader_stdio = {
-    ("model-solution.cpp",): { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("exit-0.cpp",):         { "1_full_1": (WRONG,     SCORE == 0) },
-    ("exit-1.cpp",):         { "1_full_1": (RTE_EXIT,  SCORE == 0) },
-    ("sleep.cpp",):          { "1_full_1": (TLE_WALL,  SCORE == 0) },
+    ("model-solution.cpp",): { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("exit-0.cpp",):         { "1-full-1": (WRONG,     SCORE == 0) },
+    ("exit-1.cpp",):         { "1-full-1": (RTE_EXIT,  SCORE == 0) },
+    ("sleep.cpp",):          { "1-full-1": (TLE_WALL,  SCORE == 0) },
 }
 
 expected_results_communication_2_proc_grader_stdio = {
-    ("model-solution.cpp",):       { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("first-proc-exit-0.cpp",):    { "1_full_1": (WRONG,     SCORE == 0) },
-    ("first-proc-exit-1.cpp",):    { "1_full_1": (RTE_EXIT,  SCORE == 0) },
-    ("second-proc-exit-0.cpp",):   { "1_full_1": (WRONG,     SCORE == 0) },
-    ("second-proc-exit-1.cpp",):   { "1_full_1": (RTE_EXIT,  SCORE == 0) },
-    ("one-side-cpu.cpp",):         { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("two-side-cpu.cpp",):         { "1_full_1": (TLE_CPU,   SCORE == 0) },
-    ("one-side-sleep-short.cpp",): { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("two-side-sleep-short.cpp",): { "1_full_1": (CORRECT,   SCORE == 1) },
-    ("one-side-sleep-long.cpp",):  { "1_full_1": (TLE_WALL,  SCORE == 0) },
-    ("two-side-sleep-long.cpp",):  { "1_full_1": (TLE_WALL,  SCORE == 0) },
+    ("model-solution.cpp",):       { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("first-proc-exit-0.cpp",):    { "1-full-1": (WRONG,     SCORE == 0) },
+    ("first-proc-exit-1.cpp",):    { "1-full-1": (RTE_EXIT,  SCORE == 0) },
+    ("second-proc-exit-0.cpp",):   { "1-full-1": (WRONG,     SCORE == 0) },
+    ("second-proc-exit-1.cpp",):   { "1-full-1": (RTE_EXIT,  SCORE == 0) },
+    ("one-side-cpu.cpp",):         { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("two-side-cpu.cpp",):         { "1-full-1": (TLE_CPU,   SCORE == 0) },
+    ("one-side-sleep-short.cpp",): { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("two-side-sleep-short.cpp",): { "1-full-1": (CORRECT,   SCORE == 1) },
+    ("one-side-sleep-long.cpp",):  { "1-full-1": (TLE_WALL,  SCORE == 0) },
+    ("two-side-sleep-long.cpp",):  { "1-full-1": (TLE_WALL,  SCORE == 0) },
 }
 
 expected_results_outputonly_basic = {

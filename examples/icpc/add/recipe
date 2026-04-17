@@ -1,4 +1,4 @@
-@global_validation validator 
+@global-validation validator
 
 @testset samples
 manual s1.in
@@ -6,8 +6,8 @@ manual s2.in
 
 @testset handmade
 print 30 11 | swap
-print 30 22 | swap 
+print 30 22 | swap
 print 47 24
-print 2147483647 1 
+print 2147483647 1
 print 2147483647 2147483647
 manual 1.in

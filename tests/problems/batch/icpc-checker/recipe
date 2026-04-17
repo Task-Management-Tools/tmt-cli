@@ -4,5 +4,5 @@ manual input.in
 @testset override
 manual input.in correct.ans
 
-@testset bad_override
+@testset bad-override
 manual input.in wrong.ans

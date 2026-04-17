@@ -1,4 +1,4 @@
-@global_validation validator
+@global-validation validator
 
 @testset normal
 print valid
@@ -8,5 +8,5 @@ print timeout
 print remove
 
 @testset proof
-@extra_file PROOF .proof
+@extra-file PROOF .proof
 prover ${PROOF} proof

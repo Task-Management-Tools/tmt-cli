@@ -1,9 +1,9 @@
-@global_validation validator 
+@global-validation validator
 
 @testset samples
 manual s1.in
 
 @testset handmade
 manual 01.in
-manual 02_extreme_cases.in
+manual 02-extreme-cases.in
 manual random.in

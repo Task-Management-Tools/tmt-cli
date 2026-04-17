@@ -1,10 +1,14 @@
 - filename: sol.cpp
   verdict: accepted
-- filename: sol.py 
+
+- filename: sol.py
   verdict: accepted
-- filename: different_int.cc
-  verdict: wrong_answer 
-- filename: different_linear_search.cc 
-  verdict: time_limit_exceeded 
-- filename: different_no_abs.cc 
-  verdict: wrong_answer 
+
+- filename: different-int.cc
+  verdict: wrong-answer
+
+- filename: different-linear-search.cc
+  verdict: time-limit-exceeded
+
+- filename: different-no-abs.cc
+  verdict: wrong-answer

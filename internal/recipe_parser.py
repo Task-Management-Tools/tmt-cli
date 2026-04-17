@@ -210,7 +210,7 @@ class Testset:
 
         for i, test in enumerate(self.testcases, 1):
             testcase_index_padded = str(i).zfill(testcase_index_width)
-            test_name = f"{testset_index_padded}_{self.name}_{testcase_index_padded}"
+            test_name = f"{testset_index_padded}-{self.name}-{testcase_index_padded}"
             test.name = test_name
 
     def get_all_test_names(self):
@@ -489,7 +489,7 @@ class SubtaskHandler(CommandHandler):
 
 
 class GlobalValidationHandler(CommandHandler):
-    """Handler for @global_validation commands."""
+    """Handler for @global-validation commands."""
 
     def handle(self, parts: List[str]):
         self.validate_args(parts, 1)
@@ -564,14 +564,14 @@ class ConstantHandler(CommandHandler):
 
 
 class ExtrafileHandler(CommandHandler):
-    """Handler for @extra_file commands."""
+    """Handler for @extra-file commands."""
 
     def handle(self, parts: List[str]):
         self.validate_args(parts, 2, 2)
 
         if self.context.current_context not in ("testset", "subtask"):
             raise ValueError(
-                "@extra_file can only be used within testset or subtask context"
+                "@extra-file can only be used within testset or subtask context"
             )
 
         self.context.current_object.add_extrafile(parts[2])
@@ -587,12 +587,12 @@ class CommandRegistry:
         self.handlers = {
             "testset": TestsetHandler(parser_context),
             "subtask": SubtaskHandler(parser_context),
-            "global_validation": GlobalValidationHandler(parser_context),
+            "global-validation": GlobalValidationHandler(parser_context),
             "description": DescriptionHandler(parser_context),
             "include": IncludeHandler(parser_context),
             "validation": ValidationHandler(parser_context),
             "constant": ConstantHandler(parser_context),
-            "extra_file": ExtrafileHandler(parser_context),
+            "extra-file": ExtrafileHandler(parser_context),
         }
 
     def get_handler(self, command: str) -> CommandHandler:
@@ -686,7 +686,7 @@ def parse_recipe_data(
 if __name__ == "__main__":
     # Test the parser with sample data
     sample_data = """
-@global_validation validator
+@global-validation validator
 
 @testset samples
 manual s1.in

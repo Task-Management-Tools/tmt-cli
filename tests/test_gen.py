@@ -51,80 +51,80 @@ expected_results_batch_no_testdata = (
 
 expected_results_batch_cms_checker = (
     ExpectedCompilation(gen=True, val=True, sol=True, check=True),
-    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK,   checker=OK), }
+    { "1-full-1": expected_result_helper(gen=OK,   val=OK,   ans=OK,   checker=OK), }
 )
 
 expected_results_batch_cms_whitediff = (
     ExpectedCompilation(gen=True, val=True, sol=True),
-    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+    { "1-full-1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
 )
 
 expected_results_batch_cms_grader = (
     ExpectedCompilation(gen=True, val=True, sol=True),
-    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+    { "1-full-1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
 )
 
 expected_results_batch_icpc_checker = (
     ExpectedCompilation(gen=True, val=True, sol=True, check=True),
     {
-        "1_input_1":        expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
-        "2_override_1":     expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
-        "3_bad_override_1": expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
+        "1-input-1":        expected_result_helper(gen=OK, val=OK, ans=OK,      checker=OK),
+        "2-override-1":     expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=OK),
+        "3-bad-override-1": expected_result_helper(gen=OK, val=OK, ans=SKIP_OK, checker=FAIL),
     }
 )
 
 expected_results_batch_icpc_floatcmp = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     {
-        "1_full_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1-full-1":        expected_result_helper(gen=OK, val=OK, ans=OK),
     }
 )
 
 expected_results_batch_icpc_generator = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     {
-        "1_good_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_2":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_3":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_4":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_good_6":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "2_proof_1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "3_bad_1":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "3_bad_2":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "3_bad_3":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad_4":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
-        "3_bad_5":   expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
-        "3_bad_6":   expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
-        "3_bad_7":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "1-good-1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-good-2":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-good-3":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-good-4":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-good-5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-good-6":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2-proof-1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "3-bad-1":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3-bad-2":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "3-bad-3":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3-bad-4":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3-bad-5":   expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
+        "3-bad-6":   expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
+        "3-bad-7":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
     }
 )
 
 expected_results_batch_icpc_validator = (
     ExpectedCompilation(gen=True, val=True, sol=True),
     {
-        "1_normal_1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "1_normal_2":  expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
-        "1_normal_3":  expected_result_helper(gen=OK,   val=RTE,  ans=SKIP),
-        "1_normal_4":  expected_result_helper(gen=OK,   val=TLE,  ans=SKIP),
-        "1_normal_5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
-        "2_proof_1":   expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-normal-1":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-normal-2":  expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
+        "1-normal-3":  expected_result_helper(gen=OK,   val=RTE,  ans=SKIP),
+        "1-normal-4":  expected_result_helper(gen=OK,   val=TLE,  ans=SKIP),
+        "1-normal-5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "2-proof-1":   expected_result_helper(gen=OK,   val=OK,   ans=OK),
     }
 )
 
 expected_results_interactive_guess = (
     ExpectedCompilation(gen=True, val=True, sol=True, interact=True),
     {
-        "1_full_1":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_full_2":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_full_3":        expected_result_helper(gen=OK, val=OK, ans=OK),
-        "1_full_4":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1-full-1":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1-full-2":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1-full-3":        expected_result_helper(gen=OK, val=OK, ans=OK),
+        "1-full-4":        expected_result_helper(gen=OK, val=OK, ans=OK),
     }
 )
 
 expected_results_communication_general = (
     ExpectedCompilation(gen=True, val=True, manager=True, sol=True),
-    { "1_full_1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
+    { "1-full-1": expected_result_helper(gen=OK,   val=OK,   ans=OK), }
 )
 
 expected_results_outputonly_basic = (
