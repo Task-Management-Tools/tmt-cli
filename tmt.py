@@ -114,7 +114,7 @@ def main():
     elif os.getenv("FORCE_COLOR"):
         formatter = TerminalFormatter()
     # fallback to terminal detection
-    elif os.isatty(sys.stdout):
+    elif os.isatty(sys.stdout.fileno()):
         formatter = TerminalFormatter()
     else:
         formatter = PlainFormatter()
