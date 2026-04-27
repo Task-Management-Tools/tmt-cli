@@ -10,7 +10,8 @@ SHELL := /bin/bash
 
 # This can be overridden by environment variables
 CXX ?= g++
-CXXFLAGS := $(foreach dir, $(INCLUDE_PATHS), -I $(dir)) $(CXXFLAGS)
+INCPATHS := $(foreach dir, $(INCLUDE_PATHS), -I $(dir))
+CXXFLAGS := $(CXXFLAGS)
 
 DEP = build/$(TARGET_NAME).d
 EXE = build/$(TARGET_NAME)
@@ -26,11 +27,11 @@ endif
 all: build $(EXE)
 
 $(DEP): build
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $(SRCS) -MT $(EXE) -MF $@
+	$(CXX) $(INCPATHS) -fdiagnostics-color=never -MM $(SRCS) $(CXXFLAGS) -MT $(EXE) -MF $@
 include $(DEP)
 
 $(EXE): $(SRCS)
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $(SRCS) -o $(EXE) 2> $(LOG)
+	$(CXX) $(INCPATHS) -fdiagnostics-color=never $(SRCS) $(CXXFLAGS) -o $(EXE) 2> $(LOG)
 
 emit-log:
 	@if [[ -f $(LOG) ]]; then \
@@ -44,5 +45,5 @@ build:
 
 # clean:
 # 	rm -rf build
-	
+
 .PHONY: all emit-log
