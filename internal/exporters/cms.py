@@ -14,26 +14,7 @@ from internal.formatting import Formatter
 from internal.context import TMTContext
 
 from .base import FolderFormatExporter
-from .operations import ConversionOperation
-
-
-class DumpFileOperation(ConversionOperation):
-    """Custom file processing operation"""
-
-    def __init__(self, target_path: str, content: str):
-        self.target_path = target_path
-        self.content = content
-
-    def target_name(self) -> str:
-        return self.target_path
-
-    def execute(
-        self, formatter: Formatter, context: TMTContext, output_folder: Path
-    ) -> None:
-        target = output_folder / Path(self.target_path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(self.content.encode())
-        formatter.println("[", formatter.ANSI_GREEN, "OK", formatter.ANSI_RESET, "]")
+from .operations import DumpFileOperation
 
 
 class CMSExporter(FolderFormatExporter):

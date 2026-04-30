@@ -9,8 +9,14 @@ from internal.formatting import Formatter
 from internal.context import TMTContext
 
 
-class ConversionOperation(ABC):
+class ExportOperation(ABC):
     """Base class for different types of conversion operations"""
+
+    @property
+    @abstractmethod
+    def target_name(self) -> None:
+        """Execute the conversion operation"""
+        pass
 
     @abstractmethod
     def execute(
@@ -20,13 +26,14 @@ class ConversionOperation(ABC):
         pass
 
 
-class CopyFileOperation(ConversionOperation):
+class CopyFileOperation(ExportOperation):
     """Simple file copy operation"""
 
     def __init__(self, source_path: str, target_path: str):
         self.source_path = source_path
         self.target_path = target_path
 
+    @property
     def target_name(self) -> str:
         return self.target_path
 
@@ -55,7 +62,7 @@ class CopyFileOperation(ConversionOperation):
             )
 
 
-class CustomFileOperation(ConversionOperation):
+class CustomFileOperation(ExportOperation):
     """Custom file processing operation"""
 
     def __init__(
@@ -68,6 +75,7 @@ class CustomFileOperation(ConversionOperation):
         self.target_path = target_path
         self.processor_func = processor_func
 
+    @property
     def target_name(self) -> str:
         return self.target_path
 
@@ -98,7 +106,7 @@ class CustomFileOperation(ConversionOperation):
         formatter.println("[", formatter.ANSI_GREEN, "OK", formatter.ANSI_RESET, "]")
 
 
-class RegexCopyOperation(ConversionOperation):
+class RegexCopyOperation(ExportOperation):
     """Copy files matching regex pattern"""
 
     def __init__(
@@ -119,6 +127,7 @@ class RegexCopyOperation(ConversionOperation):
         self.custom_func = custom_func
         self.supplementary_files = supplementary_files or []
 
+    @property
     def target_name(self) -> str:
         return self.target_path + "/ (" + self.pattern.pattern + ")"
 
@@ -192,13 +201,14 @@ class RegexCopyOperation(ConversionOperation):
         formatter.println("[", formatter.ANSI_GREEN, "OK", formatter.ANSI_RESET, "]")
 
 
-class ExternalFileOperation(ConversionOperation):
-    """Copy external files (not from input folder)"""
+class DumpFileOperation(ExportOperation):
+    """Custom file processing operation"""
 
-    def __init__(self, external_path: str, target_path: str):
-        self.external_path = Path(external_path)
+    def __init__(self, target_path: str, content: str):
         self.target_path = target_path
+        self.content = content
 
+    @property
     def target_name(self) -> str:
         return self.target_path
 
@@ -207,21 +217,5 @@ class ExternalFileOperation(ConversionOperation):
     ) -> None:
         target = output_folder / Path(self.target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
-
-        if self.external_path.exists():
-            if self.external_path.is_file():
-                shutil.copy2(self.external_path, target)
-            elif self.external_path.is_dir():
-                shutil.copytree(self.external_path, target, dirs_exist_ok=True)
-            formatter.println(
-                "[", formatter.ANSI_GREEN, "OK", formatter.ANSI_RESET, "]"
-            )
-        else:
-            formatter.println(
-                "[",
-                formatter.ANSI_YELLOW,
-                "WARN",
-                formatter.ANSI_RESET,
-                "]",
-                f" Source {self.external_path} does not exist",
-            )
+        target.write_bytes(self.content.encode())
+        formatter.println("[", formatter.ANSI_GREEN, "OK", formatter.ANSI_RESET, "]")

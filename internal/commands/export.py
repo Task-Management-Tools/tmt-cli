@@ -3,7 +3,7 @@ from typing import Optional
 from internal.formatting import Formatter
 from internal.context import TMTContext
 from internal.context import JudgeConvention
-from internal.exporters.icpc import ICPCExporter
+from internal.exporters.domjudge_legacy import DOMJudgeLegacyExporter
 from internal.exporters.cms import CMSExporter
 
 
@@ -23,7 +23,7 @@ def command_export(
 
     match package_format:
         case JudgeConvention.ICPC:
-            exporter = ICPCExporter(formatter, context, output_path)
+            exporter = DOMJudgeLegacyExporter(formatter, context, output_path)
         case JudgeConvention.CMS:
             exporter = CMSExporter(formatter, context, output_path)
         case _:

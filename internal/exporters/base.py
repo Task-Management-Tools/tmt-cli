@@ -7,11 +7,10 @@ from internal.formatting import Formatter
 from internal.context import TMTContext
 
 from .operations import (
-    ConversionOperation,
+    ExportOperation,
     CopyFileOperation,
     CustomFileOperation,
     RegexCopyOperation,
-    ExternalFileOperation,
 )
 
 
@@ -20,7 +19,7 @@ class FolderFormatExporter:
 
     def __init__(self, output_path: str):
         self.output_path = output_path
-        self.operations: List[ConversionOperation] = []
+        self.operations: List[ExportOperation] = []
 
     def add_copy_operation(self, source_path: str, target_path: str) -> None:
         """Add a simple file copy operation"""
@@ -68,18 +67,13 @@ class FolderFormatExporter:
         )
         self.operations.append(operation)
 
-    def add_external_file_operation(self, external_path: str, target_path: str) -> None:
-        """Add an external file copy operation"""
-        operation = ExternalFileOperation(external_path, target_path)
-        self.operations.append(operation)
-
     def export(
         self, formatter: Formatter, context: TMTContext, create_zip: bool = True
     ) -> None:
         """Export folder format"""
 
         name_length = (
-            max(len(operation.target_name()) for operation in self.operations) + 2
+            max(len(operation.target_name) for operation in self.operations) + 2
         )
 
         formatter.println(f"Exporting {self.output_path}...")
@@ -109,7 +103,7 @@ class FolderFormatExporter:
             # Execute all operations
             for operation in self.operations:
                 formatter.print(" " * 4)
-                formatter.print_fixed_width(operation.target_name(), width=name_length)
+                formatter.print_fixed_width(operation.target_name, width=name_length)
                 operation.execute(formatter, context, output_dir)
 
             # Handle output
