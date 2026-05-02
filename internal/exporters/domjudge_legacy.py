@@ -8,17 +8,18 @@ from typing import TextIO
 
 from internal.context.config import CheckerType
 from internal.compilation.languages import languages, LanguageCpp, LanguagePython3
-from internal.formatting import Formatter
 from internal.context import TMTContext
 from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
 
 from .base import FolderFormatExporter
 from .operations import (
+    CopyFileOperation,
     ExportOperation,
     DumpFileOperation,
     CopyTestcaseOperation,
     ExportResult,
     ExportResultEnum,
+    RegexCopyOperation,
 )
 
 
@@ -102,9 +103,8 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
 class DOMJudgeLegacyExporter(FolderFormatExporter):
     """DOMjudge 8+ exporter implementation, based on ICPC legacy package format."""
 
-    def __init__(self, formatter: Formatter, context: TMTContext, output_path: str):
+    def __init__(self, output_path: str):
         super().__init__(output_path)
-        self.setup_operations(formatter, context)
 
     def yaml_builder(self, context: TMTContext, f: TextIO) -> ExportResult:
 
@@ -147,19 +147,19 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
         yaml.dump(output_yaml, stream=f)
         return ExportResult(ExportResultEnum.SUCCESS)
 
-    def setup_operations(self, formatter: Formatter, context: TMTContext):
-        """Setup conversion operations"""
+    def setup_operations(self, context: TMTContext):
 
         # Metadata -> problem.yaml
-        self.operations.append(DumpFileOperation("problem.yaml", self.yaml_builder))
+        yield DumpFileOperation("problem.yaml", self.yaml_builder)
         # DOMjudge extension: .timelimit works with version 7.0+ (maybe even earlier)
         # problem.yaml:limits.time_limit works only with version 9.0+, so this is always present as a fallback
-        self.operations.append(
-            DumpFileOperation(".timelimit", str(context.config.solution.time_limit_sec))
+
+        yield DumpFileOperation(
+            ".timelimit", str(context.config.solution.time_limit_sec)
         )
 
         # Statements -> problem_statement/
-        self.add_regex_copy_operation(
+        yield RegexCopyOperation(
             "Problem statements",
             r"statement/.*\.pdf",
             "problem_statement",
@@ -172,42 +172,35 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
         # in legacy package, only sample and secret can exist
         # TODO: hint (.hint), description (.desc), illustration (.png, .jpg, .jpeg, .svg)
         # TODO: interaction (.interaction)
-
         samples_testset = context.recipe.testsets.get("samples")
         samples = (
             [] if samples_testset is None else samples_testset.get_all_test_names()
         )
-
         hidden = context.recipe.get_all_test_names()
         for sample in samples:
             hidden.remove(sample)
 
-        self.operations.append(
-            CopyTestcaseOperation(
-                name="Test cases: samples",
-                codenames=samples,
-                target_dir="data/sample",
-                ext_mapping={
-                    context.config.input_extension: ".in",
-                    context.config.output_extension: ".ans",
-                },
-            )
+        yield CopyTestcaseOperation(
+            name="Test cases: samples",
+            codenames=samples,
+            target_dir="data/sample",
+            ext_mapping={
+                context.config.input_extension: ".in",
+                context.config.output_extension: ".ans",
+            },
         )
-        self.operations.append(
-            CopyTestcaseOperation(
-                name="Test cases: hidden",
-                codenames=hidden,
-                target_dir="data/secret",
-                ext_mapping={
-                    context.config.input_extension: ".in",
-                    context.config.output_extension: ".ans",
-                },
-            )
+        yield CopyTestcaseOperation(
+            name="Test cases: hidden",
+            codenames=hidden,
+            target_dir="data/secret",
+            ext_mapping={
+                context.config.input_extension: ".in",
+                context.config.output_extension: ".ans",
+            },
         )
 
         # Submissions -> submissions/
-
-        self.operations.append(DOMJudgeSubmissionsOperation())
+        yield DOMJudgeSubmissionsOperation()
 
         # Validators -> input_validators/
         # For input validators, the standard actually requires an executable,
@@ -217,7 +210,7 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
             (lang(context).source_extensions for lang in languages), start=[]
         )
         all_exts_re = "|".join(re.escape(ext) for ext in all_exts)
-        self.add_regex_copy_operation(
+        yield RegexCopyOperation(
             "Input validators",
             rf"validator/[^/]*(?:{all_exts_re})",
             "input_validators/",
@@ -238,20 +231,20 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
         # Checker & Interactor -> output_validators/
         # export them only if config says so, add header if we do want that
         if context.config.checker and context.config.checker.type is CheckerType.CUSTOM:
-            self.add_copy_operation(
+            yield CopyFileOperation(
                 "Checker",
                 "checker/" + context.config.checker.filename,
                 "output_validators/" + context.config.checker.filename,
             )
-            self.add_regex_copy_operation(
+            yield RegexCopyOperation(
                 "Checker headers", r"include\/.*", "output_validators/", "include/**"
             )
         if context.config.interactor:
-            self.add_copy_operation(
+            yield CopyFileOperation(
                 "Interactor",
                 "interactor/" + context.config.interactor.filename,
                 "output_validators/" + context.config.interactor.filename,
             )
-            self.add_regex_copy_operation(
+            yield RegexCopyOperation(
                 "Interactor headers", r"include\/.*", "output_validators/", "include/**"
             )

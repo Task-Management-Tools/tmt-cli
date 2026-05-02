@@ -23,9 +23,9 @@ def command_export(
 
     match package_format:
         case JudgeConvention.ICPC:
-            exporter = DOMJudgeLegacyExporter(formatter, context, output_path)
+            exporter = DOMJudgeLegacyExporter(output_path)
         case JudgeConvention.CMS:
-            exporter = CMSExporter(formatter, context, output_path)
+            exporter = CMSExporter(output_path)
         case _:
             raise ValueError(
                 "Unsupported package export format: " + str(package_format) + "."
