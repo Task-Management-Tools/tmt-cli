@@ -7,7 +7,7 @@ from typing import Generator
 from internal.formatting import Formatter
 from internal.context import TMTContext
 
-from .operations import ExportOperation, ExportResultEnum
+from .operations import ExportOperation, ExportResult, ExportResultEnum
 
 
 class FolderFormatExporter(ABC):
@@ -24,7 +24,8 @@ class FolderFormatExporter(ABC):
 
     def export(
         self, formatter: Formatter, context: TMTContext, create_zip: bool = True
-    ) -> None:
+    ) -> bool:
+        # TODO: it should generally return the result list, but it currently returns bool for convenicence
         """Export folder format"""
 
         formatter.println(f"Exporting {self.output_path}...")
@@ -39,7 +40,7 @@ class FolderFormatExporter(ABC):
                         f"Error: path {self.output_path} already exists.",
                         formatter.ANSI_RESET,
                     )
-                    return
+                    return False
                 output_dir.mkdir()
             else:
                 if Path(self.output_path).exists():
@@ -48,12 +49,14 @@ class FolderFormatExporter(ABC):
                         f"Error: path {self.output_path} already exists.",
                         formatter.ANSI_RESET,
                     )
-                    return
+                    return False
                 output_dir = Path(temp_dir)
 
             # Execute all operations
             ops = list(self.setup_operations(context))
             name_length = max(len(operation.target_name) for operation in ops) + 2
+
+            res_list: list[ExportResult] = []
             for operation in ops:
                 formatter.print(" " * 4)
                 formatter.print_fixed_width(operation.target_name, width=name_length)
@@ -87,6 +90,10 @@ class FolderFormatExporter(ABC):
                     formatter.print(", ".join(res.target_list))
                 formatter.print(res.msg)
                 formatter.println()
+                res_list.append(res)
+
+            if any(res.result == ExportResultEnum.FAILURE for res in res_list):
+                return False
 
             # Handle output
             if create_zip:
@@ -98,3 +105,5 @@ class FolderFormatExporter(ABC):
                 formatter.println("Export completed.")
             else:
                 formatter.println("Export completed.")
+
+            return True

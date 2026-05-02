@@ -150,12 +150,12 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
     def setup_operations(self, context: TMTContext):
 
         # Metadata -> problem.yaml
-        yield DumpFileOperation("problem.yaml", self.yaml_builder)
+        yield DumpFileOperation(src=self.yaml_builder, dst="problem.yaml")
         # DOMjudge extension: .timelimit works with version 7.0+ (maybe even earlier)
         # problem.yaml:limits.time_limit works only with version 9.0+, so this is always present as a fallback
 
         yield DumpFileOperation(
-            ".timelimit", str(context.config.solution.time_limit_sec)
+            src=str(context.config.solution.time_limit_sec), dst=".timelimit"
         )
 
         # Statements -> problem_statement/
@@ -183,7 +183,7 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
         yield CopyTestcaseOperation(
             name="Test cases: samples",
             codenames=samples,
-            target_dir="data/sample",
+            dst="data/sample",
             ext_mapping={
                 context.config.input_extension: ".in",
                 context.config.output_extension: ".ans",
@@ -192,7 +192,7 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
         yield CopyTestcaseOperation(
             name="Test cases: hidden",
             codenames=hidden,
-            target_dir="data/secret",
+            dst="data/secret",
             ext_mapping={
                 context.config.input_extension: ".in",
                 context.config.output_extension: ".ans",

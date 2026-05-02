@@ -29,7 +29,7 @@ class ExportOperation(ABC):
 
     @property
     @abstractmethod
-    def target_name(self) -> None:
+    def target_name(self) -> str:
         """Execute the conversion operation"""
         pass
 
@@ -39,81 +39,37 @@ class ExportOperation(ABC):
         pass
 
 
+@dataclasses.dataclass
 class CopyFileOperation(ExportOperation):
     """Simple file copy operation"""
 
-    def __init__(self, name: str, source_path: str, target_path: str):
-        self.name = name
-        self.source_path = source_path
-        self.target_path = target_path
+    name: str
+    src: str
+    dst: str
 
     @property
     def target_name(self) -> str:
         return self.name
 
     def execute(self, context: TMTContext, output_folder: Path):
-        source = Path(context.path.problem_dir) / Path(self.source_path)
-        target = output_folder / Path(self.target_path)
+        source = Path(context.path.problem_dir) / Path(self.src)
+        target = output_folder / Path(self.dst)
 
         # Ensure target directory exists
         target.parent.mkdir(parents=True, exist_ok=True)
 
         if source.exists():
             shutil.copy2(source, target)
-            return ExportResult(
-                ExportResultEnum.SUCCESS, target_list=[self.source_path]
-            )
-        else:
-            return ExportResult(ExportResultEnum.WARNING)
-            f"Source {self.source_path} does not exist"
+            return ExportResult(ExportResultEnum.SUCCESS, target_list=[self.src])
 
-
-class CopyFilelistOperation(ExportOperation):
-    def __init__(
-        self,
-        name: str,
-        source_lists: list[str],
-        target_dir: str,
-        rename_func: Callable[[str], str] = lambda x: x,
-    ):
-        self.name = name
-        self.source_lists = source_lists
-        self.target_dir = target_dir
-        self.rename_func = rename_func
-
-    @property
-    def target_name(self) -> str:
-        return self.name
-
-    def execute(self, context: TMTContext, output_folder: Path):
-        missing_srcs: list[str] = []
-        for source_path in self.source_lists:
-            source = Path(context.path.problem_dir) / Path(source_path)
-            target = (
-                output_folder / Path(self.target_dir) / self.rename_func(source_path)
-            )
-            if not source.exists():
-                missing_srcs.append(source)
-                continue
-
-            # Ensure target directory exists
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-
-        if len(missing_srcs):
-            return ExportResult(
-                ExportResultEnum.FAILURE,
-                msg=f"Source {', '.join(missing_srcs)} does not exist",
-            )
-        else:
-            return ExportResult(ExportResultEnum.SUCCESS, target_list=self.source_lists)
+        return ExportResult(ExportResultEnum.FAILURE, msg=f"{self.src} does not exist")
 
 
 @dataclasses.dataclass
-class CopyTestcaseOperation(CopyFilelistOperation):
+class CopyTestcaseOperation(ExportOperation):
     name: str
     codenames: list[str]
-    target_dir: str
+    dst: str
     ext_mapping: dict[str, str]
 
     @property
@@ -121,7 +77,7 @@ class CopyTestcaseOperation(CopyFilelistOperation):
         return self.name
 
     def execute(self, context: TMTContext, output_folder: Path):
-        target_directory = output_folder / Path(self.target_dir)
+        target_directory = output_folder / Path(self.dst)
 
         target_directory.mkdir(parents=True, exist_ok=True)
         missing_srcs: dict[str, list[str]] = {}
@@ -152,12 +108,10 @@ class CopyTestcaseOperation(CopyFilelistOperation):
 class RegexCopyOperation(ExportOperation):
     """Copy files matching regex pattern"""
 
-    def __init__(
-        self, name: str, pattern: str, target_path: str, glob_hint: str | None
-    ):
+    def __init__(self, name: str, pattern: str, dst: str, glob_hint: str | None):
         self.name = name
         self.pattern = re.compile(pattern)
-        self.target_path = target_path
+        self.dst = dst
         self.glob_hint = glob_hint
 
     @property
@@ -165,7 +119,7 @@ class RegexCopyOperation(ExportOperation):
         return self.name
 
     def execute(self, context: TMTContext, output_folder: Path):
-        target_dir = output_folder / Path(self.target_path)
+        target_dir = output_folder / Path(self.dst)
         target_dir.mkdir(parents=True, exist_ok=True)
 
         # Find all matching files recursively
@@ -201,22 +155,25 @@ class DumpFileOperation(ExportOperation):
 
     def __init__(
         self,
-        target_path: str,
-        content: str | Callable[[TMTContext, TextIO], ExportResult],
+        *,
+        name: str | None = None,
+        dst: str,
+        src: str | Callable[[TMTContext, TextIO], ExportResult],
     ):
-        self.target_path = target_path
-        if isinstance(content, str):
-            self.content = content
+        self.dst = dst
+        self.name = name or dst
+        if isinstance(src, str):
+            self.content = src
         else:
-            self.func = content
+            self.func = src
 
     @property
     def target_name(self) -> str:
-        return self.target_path
+        return self.name
 
     def execute(self, context: TMTContext, output_folder: Path):
 
-        target = output_folder / Path(self.target_path)
+        target = output_folder / Path(self.dst)
         target.parent.mkdir(parents=True, exist_ok=True)
 
         if hasattr(self, "content"):

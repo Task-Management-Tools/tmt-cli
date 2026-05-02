@@ -161,8 +161,10 @@ def main():
         return True  # Does not fail without exception
 
     if args.command == "export":
-        command_export(formatter=formatter, context=context, output_path=args.output)
-        return True  # Does not fail without exception
+        res = command_export(
+            formatter=formatter, context=context, output_path=args.output
+        )
+        return res
 
     if args.command == "make-public":
         ret = command_make_public(formatter=formatter, context=context)

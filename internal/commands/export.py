@@ -4,7 +4,7 @@ from internal.formatting import Formatter
 from internal.context import TMTContext
 from internal.context import JudgeConvention
 from internal.exporters.domjudge_legacy import DOMJudgeLegacyExporter
-from internal.exporters.cms import CMSExporter
+from internal.exporters.cms_tps import CMSTPSExporter
 
 
 def command_export(
@@ -25,10 +25,10 @@ def command_export(
         case JudgeConvention.ICPC:
             exporter = DOMJudgeLegacyExporter(output_path)
         case JudgeConvention.CMS:
-            exporter = CMSExporter(output_path)
+            exporter = CMSTPSExporter(output_path)
         case _:
             raise ValueError(
                 "Unsupported package export format: " + str(package_format) + "."
             )
 
-    exporter.export(formatter, context, create_zip)
+    return exporter.export(formatter, context, create_zip)
