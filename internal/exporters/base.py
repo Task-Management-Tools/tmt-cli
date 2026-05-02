@@ -1,6 +1,5 @@
 import shutil
 from pathlib import Path
-from typing import Callable, List, Optional, IO
 import tempfile
 
 from internal.formatting import Formatter
@@ -9,8 +8,8 @@ from internal.context import TMTContext
 from .operations import (
     ExportOperation,
     CopyFileOperation,
-    CustomFileOperation,
     RegexCopyOperation,
+    ExportResultEnum,
 )
 
 
@@ -19,53 +18,22 @@ class FolderFormatExporter:
 
     def __init__(self, output_path: str):
         self.output_path = output_path
-        self.operations: List[ExportOperation] = []
+        self.operations: list[ExportOperation] = []
 
-    def add_copy_operation(self, source_path: str, target_path: str) -> None:
+    def add_copy_operation(self, name: str, source_path: str, target_path: str) -> None:
         """Add a simple file copy operation"""
-        operation = CopyFileOperation(source_path, target_path)
-        self.operations.append(operation)
-
-    def add_custom_operation(
-        self,
-        source_paths: List[str],
-        target_path: str,
-        processor_func: Callable[[Formatter, TMTContext, List[Path], IO], None],
-    ) -> None:
-        """Add a custom file processing operation"""
-        operation = CustomFileOperation(source_paths, target_path, processor_func)
+        operation = CopyFileOperation(name, source_path, target_path)
         self.operations.append(operation)
 
     def add_regex_copy_operation(
-        self,
-        pattern: str,
-        target_folder: str,
-        rename_func: Optional[
-            Callable[[Formatter, TMTContext, Path, List[Path]], str]
-        ] = None,
-        custom_func: Optional[
-            Callable[[Formatter, TMTContext, Path, List[Path], IO], None]
-        ] = None,
-        supplementary_files: Optional[List[str]] = None,
+        self, name: str, pattern: str, target_folder: str, glob_hint: str | None = None
     ) -> None:
         """
         Add a regex-based file copy operation
-
-        Args:
-            pattern: Regex pattern to match files
-            target_folder: Target folder name
-            rename_func: Function that takes (formatter, context, matched_file, supplementary_files) and returns target filename
-            custom_func: Function that takes (formatter, context, matched_file, supplementary_files, output_file)
-            supplementary_files: List of supplementary file paths from problem director to include
         """
-        operation = RegexCopyOperation(
-            pattern,
-            target_folder,
-            rename_func,
-            custom_func,
-            supplementary_files,
+        self.operations.append(
+            RegexCopyOperation(name, pattern, target_folder, glob_hint)
         )
-        self.operations.append(operation)
 
     def export(
         self, formatter: Formatter, context: TMTContext, create_zip: bool = True
@@ -104,7 +72,47 @@ class FolderFormatExporter:
             for operation in self.operations:
                 formatter.print(" " * 4)
                 formatter.print_fixed_width(operation.target_name, width=name_length)
-                operation.execute(formatter, context, output_dir)
+                res = operation.execute(context, output_dir)
+                match res.result:
+                    case ExportResultEnum.SUCCESS:
+                        formatter.print(
+                            "[",
+                            formatter.ANSI_GREEN,
+                            "OK",
+                            formatter.ANSI_RESET,
+                            "]    ",
+                        )
+                    case ExportResultEnum.WARNING:
+                        formatter.print(
+                            "[",
+                            formatter.ANSI_YELLOW,
+                            "WARN",
+                            formatter.ANSI_RESET,
+                            "]  ",
+                        )
+                    case ExportResultEnum.SKIPPED:
+                        formatter.print(
+                            "[",
+                            formatter.ANSI_GREY,
+                            "SKIP",
+                            formatter.ANSI_RESET,
+                            "]  ",
+                        )
+                    case ExportResultEnum.FAILURE:
+                        formatter.print(
+                            "[", formatter.ANSI_RED, "FAIL", formatter.ANSI_RESET, "]  "
+                        )
+
+                # TODO: always expand full if verbose=true
+                if len(res.target_list) > 8:
+                    formatter.print(
+                        ", ".join(res.target_list[:7])
+                        + f", ..., {res.target_list[-1]} (total {len(res.target_list)})"
+                    )
+                else:
+                    formatter.print(", ".join(res.target_list))
+                formatter.print(res.msg)
+                formatter.println()
 
             # Handle output
             if create_zip:
