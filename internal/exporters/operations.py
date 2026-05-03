@@ -22,6 +22,16 @@ class ExportResultEnum(enum.Enum):
 
 @dataclasses.dataclass
 class ExportResult:
+    """
+    Dataclass for holding result of each export operation.
+
+    Attributes:
+        result (ExportResultEnum): Overall outcome of this export operation.
+        target_list (list[str]): A list containing all exported targets.
+        target_compressed (str | None): An optional string representing the compressed list of the targets exported.
+        msg (str): Extra message for export failures and warnings.
+    """
+
     result: ExportResultEnum
     target_list: list[str] = dataclasses.field(default_factory=list)
     target_compressed: str | None = None
@@ -32,7 +42,14 @@ class ExportOperation(ABC):
     """Base class for different types of export operations."""
 
     @classmethod
-    def format_os_errors(cls, err_list: list[OSError], context: TMTContext):
+    def _format_os_errors(cls, err_list: list[OSError], context: TMTContext):
+        """
+        Formats a list of OSErrors into a list, based on their errno.
+
+        Args:
+            err_list (list[OSError]): A list of OSError to be formatted.
+            context: (TMTContext): The current TMTContext for inferring path information.
+        """
         err_dict: dict[int, list[OSError]] = defaultdict(list)
         for err in err_list:
             err_dict[err.errno].append(err)
@@ -57,8 +74,16 @@ class ExportOperation(ABC):
 
     @classmethod
     def result_from_os_errors(cls, err_list: list[OSError], context: TMTContext):
+        """
+        Forms a complete ExportResult indicating failure, with messages formatted from a list of OSErrors.
+        This function calls :meth:`_format_os_errors` to produce the error message.
+
+        Args:
+            err_list (list[OSError]): A list of OSError to be formatted.
+            context: (TMTContext): The current TMTContext for inferring path information.
+        """
         return ExportResult(
-            ExportResultEnum.FAILURE, msg=cls.format_os_errors(err_list, context)
+            ExportResultEnum.FAILURE, msg=cls._format_os_errors(err_list, context)
         )
 
     @property
@@ -75,9 +100,18 @@ class ExportOperation(ABC):
 
 @dataclasses.dataclass
 class CopyFileOperation(ExportOperation):
+    """
+    Simply copy file export operation.
+
+    Attributes:
+        name (str): Display name of this operation.
+        src (str | os.PathLike[str]): Source file. If it is a relative path, it is considered relative to the problem root.
+        dst (str | os.PathLike[str]): Target file. It should always be a relative path.
+    """
+
     name: str
-    src: str
-    dst: str
+    src: str | os.PathLike[str]
+    dst: str | os.PathLike[str]
 
     @property
     def target_name(self) -> str:
@@ -91,14 +125,24 @@ class CopyFileOperation(ExportOperation):
         except OSError as e:
             return self.result_from_os_errors([e], context)
 
-        return ExportResult(ExportResultEnum.SUCCESS, target_list=[self.src])
+        return ExportResult(ExportResultEnum.SUCCESS, target_list=[os.fspath(self.src)])
 
 
 @dataclasses.dataclass
 class CopyTestcaseOperation(ExportOperation):
+    """
+    Copies test cases and remaps file extensions.
+
+    Attributes:
+        name (str): Display name of this operation.
+        codenames (list[str]): A list of codenames of the test cases to be exported.
+        dst (str | os.PathLike[str]): Target directory. It should always be a relative path.
+        ext_mapping (dict[str, str]): A mapping contains all expected extensions and the exported extension.
+    """
+
     name: str
     codenames: list[str]
-    dst: str
+    dst: str | os.PathLike[str]
     ext_mapping: dict[str, str]
 
     @property
@@ -146,7 +190,7 @@ class CopyTestcaseOperation(ExportOperation):
                     testsets[testset].append(index)
             target_compressed = ", ".join(
                 f"{testset}-{{{','.join(indicies)}}}"
-                if indicies
+                if len(indicies) >= 2
                 else f"{testset}-{indicies[0]}"
                 if len(indicies) == 1
                 else testset
@@ -166,7 +210,7 @@ class GlobCopyOperation(ExportOperation):
         self,
         name: str,
         glob_root: str,
-        dst: str,
+        dst: str | os.PathLike[str],
         *,
         recursive: bool = True,
         regex_pattern: str | None = None,
@@ -227,7 +271,7 @@ class DumpFileOperation(ExportOperation):
         self,
         *,
         name: str | None = None,
-        dst: str,
+        dst: str | os.PathLike[str],
         src: str | Callable[[TMTContext, BinaryIO], ExportResult],
     ):
         self.dst = dst
