@@ -40,6 +40,34 @@ class PlainFormatter(Formatter):
             self.cursor = 0
         print(*args, sep="", flush=True, end=("\n" if endl else ""))
 
+    def print_preserve_offset(self, *args, endl=False):
+        if self.terminal_width is None:
+            self.print(*args, endl=endl)
+            return
+
+        # TODO: configurable via TMT config
+        if self.terminal_width - self.cursor >= 32:
+            pad = self.cursor
+            for arg in args:
+                if isinstance(arg, self.AnsiSequence):
+                    print(str(arg))
+                    continue
+                remain = str(arg)
+                idx = 0
+                while idx < len(remain):
+                    batch = min(self.terminal_width - self.cursor, len(remain) - idx)
+
+                    print(remain[idx : idx + batch], end="")
+                    self.advance_cursor(batch)
+                    idx += batch
+
+                    if self.cursor == 0:
+                        print(" " * pad, end="")
+                        self.advance_cursor(pad)
+            self.print(endl=endl)
+        else:
+            self.print(*args, endl=endl)
+
     def print_fixed_width(self, *args, width, endl=False):
         total_length = 0
         for arg in args:
@@ -110,19 +138,6 @@ class PlainFormatter(Formatter):
         else:
             raise ValueError(f"Unexpected ExecutionOutcome {result}")
 
-    def print_checker_reason(self, reason):
-        # TODO: the following terminal width threshold should be configurable via global settings
-        if self.terminal_width is not None and self.terminal_width >= 96:
-            buffer = reason
-            cursor_position = self.cursor
-            while len(buffer):
-                self.print_fixed_width(width=cursor_position - self.cursor)
-                remain_width = self.terminal_width - self.cursor
-                self.print(buffer[:remain_width])
-                buffer = buffer[remain_width:]
-        else:
-            self.print(reason)
-
     def print_checker_status(self, result):
         # TODO: determine the real checker status, since TIOJ new-style checker runs even if the solution fails
 
@@ -183,7 +198,7 @@ class PlainFormatter(Formatter):
 
         self.print_fixed_width(verdict_display, self.ANSI_RESET, " ", width=16)
         if print_reason:
-            self.print_checker_reason(result.reason)
+            self.print_preserve_offset(result.reason)
 
     def format_time_usage(self, time_sec: float, is_timer_triggered: bool):
         if is_timer_triggered:

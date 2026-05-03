@@ -1,9 +1,8 @@
 import glob
 import json
-import os
 from pathlib import Path
-import shutil
 
+from internal.zip_handler import ZipFileHander
 from internal.compilation import languages, recognize_language
 from internal.context.config import (
     CheckerType,
@@ -14,7 +13,7 @@ from internal.context.config import (
 )
 from internal.context import TMTContext
 
-from .base import FolderFormatExporter
+from .base import BaseExporter
 from .operations import (
     CopyFileOperation,
     CopyTestcaseOperation,
@@ -22,7 +21,7 @@ from .operations import (
     ExportOperation,
     ExportResult,
     ExportResultEnum,
-    RegexCopyOperation,
+    GlobCopyOperation,
 )
 
 
@@ -33,34 +32,36 @@ class GraderExportOperation(ExportOperation):
     def target_name(self) -> None:
         return "Graders"
 
-    def execute(self, context: TMTContext, output_folder: Path) -> ExportResult:
+    def execute(self, context: TMTContext, zipfile: ZipFileHander) -> ExportResult:
         if context.config.solution.type is not SolutionType.GRADER:
             return ExportResult(ExportResultEnum.SKIPPED)
 
         graders = []
+        errs: list[OSError] = []
+
         for file_path in glob.iglob(
-            "graders/*",
-            root_dir=context.path.problem_dir,
-            include_hidden=True,
-            recursive=True,
+            "*",
+            root_dir=context.path.graders,
         ):
-            if os.path.splitext(file_path)[0] != context.config.solution.grader_name:
-                continue
+            src = Path(context.path.graders) / file_path
+            dst = Path("graders") / file_path
+            if src.stem == context.config.solution.grader_name and (
+                lang := recognize_language([src], context)
+            ):
+                ext = lang(context).source_extensions[0]
+                dst = Path("graders") / ("grader" + ext)
 
-            lang = recognize_language([file_path], context)
-            if lang is not None:
-                full_path = Path(context.path.problem_dir) / file_path
-                target_file = "graders/grader" + lang(context).source_extensions[0]
-                target_path = output_folder / target_file
-                target_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                zipfile.write_file(dst, src)
+            except OSError as e:
+                errs.append(e)
+            graders.append(str(dst))
 
-                shutil.copy2(full_path, target_path)
-                graders.append(lang(context).source_extensions[0])
-
-        if len(graders) == 0:
+        if errs:
+            return self.result_from_os_errors(errs, context)
+        if not graders:
             return ExportResult(ExportResultEnum.FAILURE, msg="No graders found")
-        else:
-            return ExportResult(ExportResultEnum.SUCCESS, target_list=graders)
+        return ExportResult(ExportResultEnum.SUCCESS, target_list=graders)
 
 
 class SubtaskConfigExportOperation(ExportOperation):
@@ -70,29 +71,40 @@ class SubtaskConfigExportOperation(ExportOperation):
     def target_name(self) -> None:
         return "Subtask configs"
 
-    def execute(self, context: TMTContext, output_folder: Path) -> ExportResult:
+    def execute(self, context: TMTContext, zipfile: ZipFileHander) -> ExportResult:
         subtasks = context.recipe.subtasks.values()
         id_width = len(str(len(subtasks) - 1))
 
         file_list = []
+        json_names = []
+        errs: list[OSError] = []
+
         for id, subtask in enumerate(subtasks, 0):
-            json_name = f"subtasks/{str(id).zfill(id_width)}-{subtask.name}.json"
-            json_full_path = output_folder / json_name
-            json_full_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(json_full_path, "w") as j:
-                json.dump(
-                    {"score": subtask.score, "testcases": subtask.get_all_test_names()},
-                    j,
-                )
-            file_list.append(json_name)
+            json_name = f"{str(id).zfill(id_width)}-{subtask.name}.json"
+            json_path = Path("subtasks") / json_name
+
+            # shouldn't take too much space, fine to do it in memory
+            data = json.dumps(
+                {"score": subtask.score, "testcases": subtask.get_all_test_names()}
+            )
+            try:
+                with zipfile.open(json_path, "w") as f:
+                    f.write(data.encode())
+            except OSError as e:
+                errs.append(e)
+
+            file_list.append(str(json_path))
+            json_names.append(json_name)
+
+        if errs:
+            return self.result_from_os_errors(errs, context)
+
+        # target_compressed=f"subtasks/{{{','.join(json_names)}}}"
         return ExportResult(ExportResultEnum.SUCCESS, target_list=file_list)
 
 
-class CMSTPSExporter(FolderFormatExporter):
+class CMSTPSExporter(BaseExporter):
     """CMS TPS format exporter implementation"""
-
-    def __init__(self, output_path: str):
-        super().__init__(output_path)
 
     def construct_problem_json(self, config: TMTConfig):
         task_type_params = {}
@@ -155,11 +167,12 @@ class CMSTPSExporter(FolderFormatExporter):
             },
         )
 
-        yield RegexCopyOperation(
+        yield GlobCopyOperation(
             "Problem statements",
-            r"statement/.*\.pdf",
+            context.path.statement,
             "statements",
-            "statement/*",
+            regex_pattern=r".*\.pdf",
+            recursive=False,
         )
 
         if config.checker and config.checker.type == CheckerType.CUSTOM:
@@ -175,8 +188,8 @@ class CMSTPSExporter(FolderFormatExporter):
                 f"checker/{config.checker.filename}",
                 "checker/checker.cpp",
             )
-            yield RegexCopyOperation(
-                "Comparator headers", r"include\/.*", "checker/", "include/**"
+            yield GlobCopyOperation(
+                "Comparator headers", context.path.include, "checker/"
             )
 
         if config.manager:
@@ -190,19 +203,9 @@ class CMSTPSExporter(FolderFormatExporter):
             yield CopyFileOperation(
                 "Manager", f"manager/{config.manager.filename}", "graders/manager.cpp"
             )
-            yield RegexCopyOperation(
-                "Manager headers", r"include\/.*", "graders/", "include/**"
-            )
+            yield GlobCopyOperation("Manager headers", context.path.include, "graders/")
 
-        # TODO: report error when graders contain other files called manager.cpp
-        # TODO: report warning/error when graders contain other in nested directory
         yield GraderExportOperation()
-        # if context.config.solution.grader_name:
-        #     self.add_regex_copy_operation(
-        #         r"^graders/[^/]*",
-        #         "graders",
-        #         rename_func=self.filter_graders,
-        #     )
 
         if Path(context.path.public_filelist).exists():
             yield CopyFileOperation(

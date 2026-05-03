@@ -44,6 +44,15 @@ class Formatter(ABC):
         Newline should not be introduced since formatter might track the row/column where the cursor is.
         """
 
+    @abstractmethod
+    def print_preserve_offset(self, *args, endl=False) -> None:
+        """
+        Print everything in the argument lists.
+        Newline should not be introduced since formatter might track the row/column where the cursor is.
+
+        This function hints the formatter to try preserving the horizontal offset, depending on the formatter's support.
+        """
+
     def println(self, *args) -> None:
         """
         Print everything in the argument lists with an extra newline.
@@ -68,12 +77,6 @@ class Formatter(ABC):
     def print_exec_result(self, result: ExecutionOutcome) -> None:
         """
         Formats the execution output.
-        """
-
-    @abstractmethod
-    def print_checker_reason(self, reason: str) -> None:
-        """
-        Formats the checker reason.
         """
 
     @abstractmethod

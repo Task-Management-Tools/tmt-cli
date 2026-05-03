@@ -1,4 +1,4 @@
-from typing import Optional
+import os
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
@@ -12,8 +12,8 @@ def command_export(
     formatter: Formatter,
     context: TMTContext,
     output_path: str,
-    package_format: Optional[JudgeConvention] = None,
-    create_zip: bool = True,
+    package_format: JudgeConvention | None = None,
+    # TODO: create_zip: bool = True,
 ):
     """Export problem package to a sepcific format."""
     context.log_directory = None
@@ -23,12 +23,12 @@ def command_export(
 
     match package_format:
         case JudgeConvention.ICPC:
-            exporter = DOMJudgeLegacyExporter(output_path)
+            exporter = DOMJudgeLegacyExporter()
         case JudgeConvention.CMS:
-            exporter = CMSTPSExporter(output_path)
+            exporter = CMSTPSExporter()
         case _:
             raise ValueError(
                 "Unsupported package export format: " + str(package_format) + "."
             )
-
-    return exporter.export(formatter, context, create_zip)
+    output_path = os.path.normpath(os.path.join(os.getcwd(), output_path))
+    return exporter.export(formatter, context, output_path)

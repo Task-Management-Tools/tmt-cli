@@ -1,17 +1,17 @@
+import errno
 import re
-import shutil
-
 import yaml
 import os
 from pathlib import Path
-from typing import TextIO
+from typing import BinaryIO
 
+from internal.zip_handler import ZipFileHander
 from internal.context.config import CheckerType
 from internal.compilation.languages import languages, LanguageCpp, LanguagePython3
 from internal.context import TMTContext
 from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
 
-from .base import FolderFormatExporter
+from .base import BaseExporter
 from .operations import (
     CopyFileOperation,
     ExportOperation,
@@ -19,7 +19,7 @@ from .operations import (
     CopyTestcaseOperation,
     ExportResult,
     ExportResultEnum,
-    RegexCopyOperation,
+    GlobCopyOperation,
 )
 
 
@@ -42,12 +42,14 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
     def target_name(self) -> str:
         return "Submissions"
 
-    def execute(self, context: TMTContext, output_folder: Path):
+    def execute(self, context: TMTContext, zipfile: ZipFileHander):
         verdicts = parse_verdicts(context)
 
         mappings = []
-        missings = []
+        missing = []
+        errs: list[OSError] = []
         files: set[str] = set()
+
         for entry in verdicts:
             verdicts_folder = "unknown"
             if entry.judge_verdict is not None:
@@ -68,45 +70,46 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
                 if wrong_verdict_count > 1 or use_rejected:
                     verdicts_folder = "rejected"
 
-            # flatten the directory, if it does
-            final_filename = os.path.basename(entry.filename)
-            if final_filename in files:
-                i = 2
-                while f"{final_filename}-{i}" in files:
-                    i += 1
-                final_filename = f"{final_filename}-{i}"
+            # flatten the directory
+            # TODO: for multi-file submissions, it should not flatten all of them;
+            # but it is currently not supported
+            final_filename = base = os.path.basename(entry.filename)
+            i = 2
+            while final_filename in files:
+                final_filename = f"{base}-{i}"
+                i += 1
 
             if final_filename == entry.filename:
                 mappings.append(entry.filename)
             else:
-                mappings.append(f"{entry.filename} -> {verdicts_folder}")
+                mappings.append(f"{entry.filename} -> {final_filename}")
 
             original_path = Path(context.path.solutions) / entry.filename
-            target_path = (
-                output_folder / "submissions" / verdicts_folder / final_filename
-            )
+            target_path = Path("submissions") / verdicts_folder / final_filename
 
             if not original_path.exists():
-                missings.append(entry.filename)
-            else:
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(original_path, target_path)
+                missing.append(entry.filename)
 
-        if len(missings):
+            try:
+                zipfile.write_file(target_path, original_path)
+            except OSError as e:
+                print(errs)
+                errs.append(e)
+
+        if missing and all(err.errno == errno.ENOENT for err in errs):
             return ExportResult(
-                ExportResultEnum.WARNING,
-                msg=f"Solutions {', '.join(missings)} not found",
+                ExportResultEnum.FAILURE,
+                msg=f"Missing solutions: {', '.join(missing)}",
             )
+        if errs:
+            self.result_from_os_errors(errs, context)
         return ExportResult(ExportResultEnum.SUCCESS, msg=", ".join(mappings))
 
 
-class DOMJudgeLegacyExporter(FolderFormatExporter):
+class DOMJudgeLegacyExporter(BaseExporter):
     """DOMjudge 8+ exporter implementation, based on ICPC legacy package format."""
 
-    def __init__(self, output_path: str):
-        super().__init__(output_path)
-
-    def yaml_builder(self, context: TMTContext, f: TextIO) -> ExportResult:
+    def yaml_builder(self, context: TMTContext, f: BinaryIO) -> ExportResult:
 
         config = context.config
         output_yaml = {
@@ -144,7 +147,7 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
             if config.checker.arguments:
                 output_yaml["validator_flags"] = " ".join(config.checker.arguments)
 
-        yaml.dump(output_yaml, stream=f)
+        yaml.dump(output_yaml, stream=f, encoding="utf-8")
         return ExportResult(ExportResultEnum.SUCCESS)
 
     def setup_operations(self, context: TMTContext):
@@ -159,11 +162,11 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
         )
 
         # Statements -> problem_statement/
-        yield RegexCopyOperation(
+        yield GlobCopyOperation(
             "Problem statements",
-            r"statement/.*\.pdf",
+            context.path.statement,
             "problem_statement",
-            "statement/*",
+            regex_pattern=r"statement/.*\.pdf",
         )
 
         # Attachments... TODO
@@ -210,11 +213,11 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
             (lang(context).source_extensions for lang in languages), start=[]
         )
         all_exts_re = "|".join(re.escape(ext) for ext in all_exts)
-        yield RegexCopyOperation(
+        yield GlobCopyOperation(
             "Input validators",
-            rf"validator/[^/]*(?:{all_exts_re})",
+            context.path.validator,
             "input_validators/",
-            "validator/*",
+            regex_pattern=rf".*(?:{all_exts_re})",
         )
 
         # For output validators, the standard actually requires an executable,
@@ -236,8 +239,8 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
                 "checker/" + context.config.checker.filename,
                 "output_validators/" + context.config.checker.filename,
             )
-            yield RegexCopyOperation(
-                "Checker headers", r"include\/.*", "output_validators/", "include/**"
+            yield GlobCopyOperation(
+                "Checker headers", context.path.include, "output_validators/"
             )
         if context.config.interactor:
             yield CopyFileOperation(
@@ -245,6 +248,6 @@ class DOMJudgeLegacyExporter(FolderFormatExporter):
                 "interactor/" + context.config.interactor.filename,
                 "output_validators/" + context.config.interactor.filename,
             )
-            yield RegexCopyOperation(
-                "Interactor headers", r"include\/.*", "output_validators/", "include/**"
+            yield GlobCopyOperation(
+                "Interactor headers", context.path.include, "output_validators/"
             )
