@@ -74,6 +74,12 @@ def main():
         "export", help="Export packages", parents=[shared]
     )
     parser_export.add_argument("output", help="The filename of the exported zip file.")
+    parser_export.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force overwrite the output file even if it exists.",
+    )
 
     # tmt make-public
     subparsers.add_parser(
@@ -162,7 +168,10 @@ def main():
 
     if args.command == "export":
         res = command_export(
-            formatter=formatter, context=context, output_path=args.output
+            formatter=formatter,
+            context=context,
+            output_path=args.output,
+            force_output=args.force,
         )
         return bool(res)
 

@@ -24,6 +24,11 @@ from .operations import (
 
 
 class DOMJudgeSubmissionsOperation(ExportOperation):
+    """
+    Recognizes submission verdicts and remaps submission to appropriate subdirectory.
+    This class is based on ICPC legacy format with DOMjudge extensions.
+    """
+
     verdict_mapping = {
         ExpectedVerdict.ACCEPTED: "accepted",
         ExpectedVerdict.WRONG_ANSWER: "wrong_answer",
@@ -126,6 +131,7 @@ class DOMJudgeLegacyExporter(BaseExporter):
     """DOMjudge 8+ exporter implementation, based on ICPC legacy package format."""
 
     def yaml_builder(self, context: TMTContext, f: BinaryIO) -> ExportResult:
+        """Builds ICPC legacy format problem.yaml"""
 
         config = context.config
         output_yaml = {

@@ -13,6 +13,7 @@ def command_export(
     context: TMTContext,
     output_path: str,
     package_format: JudgeConvention | None = None,
+    force_output: bool,
 ):
     """Export problem package to a sepcific format."""
     context.log_directory = None
@@ -30,4 +31,4 @@ def command_export(
                 "Unsupported package export format: " + str(package_format) + "."
             )
     output_path = os.path.normpath(os.path.join(os.getcwd(), output_path))
-    return exporter.export(formatter, context, output_path)
+    return exporter.export(formatter, context, output_path, force_output)

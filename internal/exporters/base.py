@@ -1,4 +1,5 @@
 import os
+import secrets
 import dataclasses
 from pathlib import Path
 from typing import Generator
@@ -34,40 +35,53 @@ class BaseExporter(ABC):
     def setup_operations(
         self, context: TMTContext
     ) -> Generator[ExportOperation, None, None]:
+        """
+        A generator which gives all export operations required.
+        """
         pass
 
     def export(
-        self, formatter: Formatter, context: TMTContext, output_path: str
+        self,
+        formatter: Formatter,
+        context: TMTContext,
+        output_path: str,
+        force_output: bool,
     ) -> CommandExportSummary:
 
-        # We export to [archive_name].part first, so if it fails we don't override the original one;
-        # also this prevents multiple export running at the same time
         export_path = Path(output_path)
-        export_path_tmp = export_path.with_name(export_path.name + ".part")
         assert export_path.is_absolute()
-
-        # TODO: maybe if the path is a directory, we export a zip into that directory?
-        if export_path == export_path.anchor:
-            formatter.println(
-                formatter.ANSI_RED,
-                "Error: why are you trying to make this problem package your entire file system?",
-                formatter.ANSI_RESET,
-            )
-            return CommandExportSummary(invalid_path=True)
+        if export_path.is_dir():
+            export_path = export_path / (context.config.short_name + ".zip")
 
         formatter.println(f"Exporting to {export_path.relative_to(Path.cwd())}...")
 
         if export_path.exists():
-            formatter.println(
-                formatter.ANSI_RED,
-                f"Error: {export_path.relative_to(Path.cwd())} already exists.",
-                formatter.ANSI_RESET,
+            if not force_output:
+                formatter.println(
+                    formatter.ANSI_RED,
+                    f"Error: {export_path.relative_to(Path.cwd())} already exists.",
+                    formatter.ANSI_RESET,
+                )
+                return CommandExportSummary(invalid_path=True)
+            if not export_path.is_file():
+                formatter.println(
+                    formatter.ANSI_RED,
+                    f"Error: {export_path.relative_to(Path.cwd())} is not a file; cannot overwrite.",
+                    formatter.ANSI_RESET,
+                )
+                return CommandExportSummary(invalid_path=True)
+
+        # We export to [archive_name].[8-digit base64].part first, so if it fails we won't override the original one;
+        for _ in range(3):
+            export_path_tmp = export_path.with_name(
+                f"{export_path.name}.{secrets.token_urlsafe(6)}.part"
             )
-            return CommandExportSummary(invalid_path=True)
-        if export_path_tmp.exists():
+            if export_path_tmp.exists():
+                export_path_tmp = None
+        if not export_path_tmp:  # how is this possible?
             formatter.println(
                 formatter.ANSI_RED,
-                f"Error: {export_path_tmp.relative_to(Path.cwd())} already exists.",
+                "Error: cannot write to partial file.",
                 formatter.ANSI_RESET,
             )
             return CommandExportSummary(invalid_path_part=True)

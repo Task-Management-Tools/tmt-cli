@@ -204,7 +204,16 @@ class CopyTestcaseOperation(ExportOperation):
 
 
 class GlobCopyOperation(ExportOperation):
-    """Copy files with a glob pattern; optionally filters by regex."""
+    """
+    Copy files with a glob pattern; optionally filters by regex.
+
+    Attributes:
+        name (str): Display name of this operation.
+        glob_root (str): An absolute path serve as the glob root.
+        dst (str | os.PathLike[str]): Target directory. It should always be a relative path.
+        recursive (str): Whether the glob should be recursive. Default True.
+        regex_pattern (str | None): If provided, the globbed filename must match this regex to be exported.
+    """
 
     def __init__(
         self,
@@ -265,7 +274,17 @@ class GlobCopyOperation(ExportOperation):
 
 
 class DumpFileOperation(ExportOperation):
-    """Custom file processing operation"""
+    """
+    Dump a file into the exported archive.
+
+    Attributes:
+        name (str | None): Display name of this operation; if None, default to the filename.
+        dst (str | os.PathLike[str]): Target file. It should always be a relative path.
+        src (str | Callable[[TMTContext, BinaryIO], ExportResult]):
+            If `src` is a string, it is dumped to the file.
+            Otherwise, src must be a function taking tuple[TMTContext, BinaryIO] and returns a ExportResult.
+            The operation will call this function to dump into the file, useful for lazily construct file contents and/or extra error handling.
+    """
 
     def __init__(
         self,
@@ -299,3 +318,25 @@ class DumpFileOperation(ExportOperation):
                     return self.func(context, f)
             except OSError as e:
                 return self.result_from_os_errors([e], context)
+
+
+@dataclasses.dataclass
+class ExportErrorOperation(ExportOperation):
+    """
+    Produce an error when executed.
+    Useful for precondition failure, unabling to produce a meaningful export operation.
+
+    Attributes:
+        name (str): Display name of this operation.
+        msg (str): The error message of the failure to be produced.
+    """
+
+    name: str
+    msg: str
+
+    @property
+    def target_name(self) -> str:
+        return self.name
+
+    def execute(self, *args, **kwargs):
+        return ExportResult(ExportResultEnum.FAILURE, msg=self.msg)

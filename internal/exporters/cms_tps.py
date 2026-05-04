@@ -18,6 +18,7 @@ from .operations import (
     CopyFileOperation,
     CopyTestcaseOperation,
     DumpFileOperation,
+    ExportErrorOperation,
     ExportOperation,
     ExportResult,
     ExportResultEnum,
@@ -26,7 +27,7 @@ from .operations import (
 
 
 class GraderExportOperation(ExportOperation):
-    """Base class for different types of conversion operations"""
+    """Exports grader and headers for TPS format."""
 
     @property
     def target_name(self) -> None:
@@ -65,7 +66,7 @@ class GraderExportOperation(ExportOperation):
 
 
 class SubtaskConfigExportOperation(ExportOperation):
-    """Base class for different types of conversion operations"""
+    """Export subtask configs for TPS format."""
 
     @property
     def target_name(self) -> None:
@@ -176,34 +177,38 @@ class CMSTPSExporter(BaseExporter):
         )
 
         if config.checker and config.checker.type == CheckerType.CUSTOM:
-            if (
-                recognize_language([config.checker.filename], context)
-                != languages.LanguageCpp
-            ):
-                raise ValueError(
-                    "Checker must be written in C++ to accomodate the TPS importer."
+            checker_lang = recognize_language([config.checker.filename], context)
+            if checker_lang is not languages.LanguageCpp:
+                yield ExportErrorOperation(
+                    "Comparator",
+                    "Checker must be written in C++ to accomodate the TPS importer.",
                 )
-            yield CopyFileOperation(
-                "Comparator",
-                f"checker/{config.checker.filename}",
-                "checker/checker.cpp",
-            )
-            yield GlobCopyOperation(
-                "Comparator headers", context.path.include, "checker/"
-            )
+            else:
+                yield CopyFileOperation(
+                    "Comparator",
+                    f"checker/{config.checker.filename}",
+                    "checker/checker.cpp",
+                )
+                yield GlobCopyOperation(
+                    "Comparator headers", context.path.include, "checker/"
+                )
 
         if config.manager:
-            if (
-                recognize_language([config.manager.filename], context)
-                != languages.LanguageCpp
-            ):
-                raise ValueError(
-                    "Manager must be written in C++ to accomodate the TPS importer."
+            manager_lang = recognize_language([config.manager.filename], context)
+            if manager_lang is not languages.LanguageCpp:
+                yield ExportErrorOperation(
+                    "Manager",
+                    "Manager must be written in C++ to accomodate the TPS importer.",
                 )
-            yield CopyFileOperation(
-                "Manager", f"manager/{config.manager.filename}", "graders/manager.cpp"
-            )
-            yield GlobCopyOperation("Manager headers", context.path.include, "graders/")
+            else:
+                yield CopyFileOperation(
+                    "Manager",
+                    f"manager/{config.manager.filename}",
+                    "graders/manager.cpp",
+                )
+                yield GlobCopyOperation(
+                    "Manager headers", context.path.include, "graders/"
+                )
 
         yield GraderExportOperation()
 
