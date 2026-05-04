@@ -1,13 +1,30 @@
 import os
+import dataclasses
 from pathlib import Path
-from abc import ABC, abstractmethod
 from typing import Generator
+from abc import ABC, abstractmethod
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
 from internal.zip_handler import ZipFileHander
 
 from .operations import ExportOperation, ExportResult, ExportResultEnum
+
+
+@dataclasses.dataclass
+class CommandExportSummary:
+    invalid_path: bool = False
+    invalid_path_part: bool = False
+    export_results: list[ExportResult] = dataclasses.field(default_factory=list)
+
+    def __bool__(self):
+        return (
+            not self.invalid_path
+            and not self.invalid_path_part
+            and not any(
+                r.result is ExportResultEnum.FAILURE for r in self.export_results
+            )
+        )
 
 
 class BaseExporter(ABC):
@@ -21,38 +38,41 @@ class BaseExporter(ABC):
 
     def export(
         self, formatter: Formatter, context: TMTContext, output_path: str
-    ) -> bool:
-        assert os.path.isabs(output_path)
+    ) -> CommandExportSummary:
+
+        # We export to [archive_name].part first, so if it fails we don't override the original one;
+        # also this prevents multiple export running at the same time
+        export_path = Path(output_path)
+        export_path_tmp = export_path.with_name(export_path.name + ".part")
+        assert export_path.is_absolute()
 
         # TODO: maybe if the path is a directory, we export a zip into that directory?
-        if output_path.endswith("/"):
+        if export_path == export_path.anchor:
             formatter.println(
                 formatter.ANSI_RED,
                 "Error: why are you trying to make this problem package your entire file system?",
                 formatter.ANSI_RESET,
             )
-            return False
+            return CommandExportSummary(invalid_path=True)
 
-        # TODO: it should generally return the result list, but it currently returns bool for convenicence
+        formatter.println(f"Exporting to {export_path.relative_to(Path.cwd())}...")
 
-        formatter.println(f"Exporting to {output_path}...")
-
-        if Path(output_path).exists():
+        if export_path.exists():
             formatter.println(
                 formatter.ANSI_RED,
-                f"Error: path {output_path} already exists.",
+                f"Error: {export_path.relative_to(Path.cwd())} already exists.",
                 formatter.ANSI_RESET,
             )
-            return False
-        if Path(output_path + ".part").exists():
+            return CommandExportSummary(invalid_path=True)
+        if export_path_tmp.exists():
             formatter.println(
                 formatter.ANSI_RED,
-                f"Error: path {output_path}.part already exists.",
+                f"Error: {export_path_tmp.relative_to(Path.cwd())} already exists.",
                 formatter.ANSI_RESET,
             )
-            return False
+            return CommandExportSummary(invalid_path_part=True)
 
-        zipfile = ZipFileHander(output_path + ".part")
+        zipfile = ZipFileHander(export_path_tmp)
 
         # Execute all operations
         ops = list(self.setup_operations(context))
@@ -90,9 +110,22 @@ class BaseExporter(ABC):
             res_list.append(res)
 
         zipfile.close()
-        if any(res.result == ExportResultEnum.FAILURE for res in res_list):
-            os.remove(output_path + ".part")
-            return False
-
-        os.rename(output_path + ".part", output_path)
-        return True
+        summary = CommandExportSummary(export_results=res_list)
+        if not summary:
+            os.remove(export_path_tmp)
+            formatter.println(
+                formatter.ANSI_RED, "Export failed.", formatter.ANSI_RESET
+            )
+        else:
+            os.rename(export_path_tmp, export_path)
+            if any(
+                r.result is ExportResultEnum.WARNING for r in summary.export_results
+            ):
+                formatter.println(
+                    formatter.ANSI_YELLOW,
+                    "Export completed with warnings.",
+                    formatter.ANSI_RESET,
+                )
+            else:
+                formatter.println("Export completed.")
+        return summary

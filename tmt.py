@@ -164,7 +164,7 @@ def main():
         res = command_export(
             formatter=formatter, context=context, output_path=args.output
         )
-        return res
+        return bool(res)
 
     if args.command == "make-public":
         ret = command_make_public(formatter=formatter, context=context)

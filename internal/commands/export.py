@@ -13,7 +13,6 @@ def command_export(
     context: TMTContext,
     output_path: str,
     package_format: JudgeConvention | None = None,
-    # TODO: create_zip: bool = True,
 ):
     """Export problem package to a sepcific format."""
     context.log_directory = None

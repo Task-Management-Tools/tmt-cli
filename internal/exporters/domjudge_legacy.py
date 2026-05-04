@@ -25,13 +25,14 @@ from .operations import (
 
 class DOMJudgeSubmissionsOperation(ExportOperation):
     verdict_mapping = {
-        ExpectedVerdict.RUNTIME_ERROR: "run_time_error",
-        ExpectedVerdict.TIME_LIMIT_EXCEEDED: "time_limit_exceeded",
-        ExpectedVerdict.WRONG_ANSWER: "wrong_answer",
         ExpectedVerdict.ACCEPTED: "accepted",
+        ExpectedVerdict.WRONG_ANSWER: "wrong_answer",
+        ExpectedVerdict.TIME_LIMIT_EXCEEDED: "time_limit_exceeded",
+        ExpectedVerdict.RUNTIME_ERROR: "run_time_error",
         # in legacy format, there is no other possibilties;
         # however, DOMjudge 8.2 supports additional verdicts, so we use this extra one
         # all other wrong submissions falls to rejected as in ICPC 2025-09 format.
+        # TODO: when no-output is in expected verdict, add it here
         ExpectedVerdict.OUTPUT_LIMIT: "output_limit",
     }
 
@@ -43,18 +44,28 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
         return "Submissions"
 
     def execute(self, context: TMTContext, zipfile: ZipFileHander):
-        verdicts = parse_verdicts(context)
+        try:
+            verdicts = parse_verdicts(context)
+        except (
+            Exception
+        ) as e:  # TODO: fix parse_verdicts so it raises predictable exceptions
+            return ExportResult(
+                ExportResultEnum.FAILURE,
+                msg=f"Error when parsing verdicts.yaml: {e}",
+            )
 
         mappings = []
         missing = []
+        unknown_judge_verdict = []
         errs: list[OSError] = []
         files: set[str] = set()
 
         for entry in verdicts:
             verdicts_folder = "unknown"
             if entry.judge_verdict is not None:
-                # TODO: add warning for unknown judge verdict
                 verdicts_folder = entry.judge_verdict
+                if entry.judge_verdict not in self.verdict_mapping:
+                    unknown_judge_verdict.append(entry.filename)
             else:
                 wrong_verdict_count = 0
                 use_rejected = False
@@ -103,6 +114,11 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
             )
         if errs:
             self.result_from_os_errors(errs, context)
+        if unknown_judge_verdict:
+            return ExportResult(
+                ExportResultEnum.WARNING,
+                msg="Unknown judge verdict: " + ", ".join(unknown_judge_verdict),
+            )
         return ExportResult(ExportResultEnum.SUCCESS, msg=", ".join(mappings))
 
 

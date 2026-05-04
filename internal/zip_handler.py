@@ -7,8 +7,8 @@ from contextlib import contextmanager
 
 
 class ZipFileHander:
-    def __init__(self, filename: str):
-        # TODO: assert abs path?
+    def __init__(self, filename: str | os.PathLike[str]):
+        assert os.path.isabs(filename)
         self.zipfile = ZipFile(filename, "w")
         self._dir_lists: set[str] = set()
         self._file_lists: set[str] = set()
