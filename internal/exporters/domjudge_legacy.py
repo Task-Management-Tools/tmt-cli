@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from internal.zip_handler import ZipFileHander
-from internal.context.config import CheckerType
+from internal.context.config import CheckerType, JudgeConvention
 from internal.compilation.languages import languages, LanguageCpp, LanguagePython3
 from internal.context import TMTContext
 from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
@@ -14,6 +14,7 @@ from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
 from .base import BaseExporter
 from .operations import (
     CopyFileOperation,
+    ExportErrorOperation,
     ExportOperation,
     DumpFileOperation,
     CopyTestcaseOperation,
@@ -128,7 +129,7 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
 
 
 class DOMJudgeLegacyExporter(BaseExporter):
-    """DOMjudge 8+ exporter implementation, based on ICPC legacy package format."""
+    description = "DOMjudge 8+ package format, based on ICPC legacy format"
 
     def yaml_builder(self, context: TMTContext, f: BinaryIO) -> ExportResult:
         """Builds ICPC legacy format problem.yaml"""
@@ -173,6 +174,14 @@ class DOMJudgeLegacyExporter(BaseExporter):
         return ExportResult(ExportResultEnum.SUCCESS)
 
     def setup_operations(self, context: TMTContext):
+        if context.config.judge_convention is not JudgeConvention.ICPC:
+            # TODO: DOMjudge's design actually makes it possible to export CMS package format with build and run script
+            # implement this when it is relevant
+            yield ExportErrorOperation(
+                name="Judge convention check",
+                msg="DOMjudge legacy exporter only supports ICPC judge convention",
+            )
+            return
 
         # Metadata -> problem.yaml
         yield DumpFileOperation(src=self.yaml_builder, dst="problem.yaml")

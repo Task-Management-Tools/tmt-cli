@@ -1,10 +1,13 @@
 import os
 
 from internal.formatting import Formatter
-from internal.context import TMTContext
-from internal.context import JudgeConvention
-from internal.exporters.domjudge_legacy import DOMJudgeLegacyExporter
-from internal.exporters.cms_tps import CMSTPSExporter
+from internal.context import TMTContext, JudgeConvention
+from internal.exporters import (
+    BaseExporter,
+    DOMJudgeLegacyExporter,
+    CMSTPSExporter,
+    CommandExportSummary,
+)
 
 
 def command_export(
@@ -12,23 +15,25 @@ def command_export(
     formatter: Formatter,
     context: TMTContext,
     output_path: str,
-    package_format: JudgeConvention | None = None,
+    package_format: type[BaseExporter] | None = None,
     force_output: bool,
 ):
     """Export problem package to a sepcific format."""
     context.log_directory = None
 
     if package_format is None:
-        package_format = context.config.judge_convention
+        match context.config.judge_convention:
+            case JudgeConvention.ICPC:
+                package_format = DOMJudgeLegacyExporter
+            case JudgeConvention.CMS:
+                package_format = CMSTPSExporter
+            case _:
+                formatter.println(
+                    formatter.ANSI_RED,
+                    f"Error: judge convention {context.config.judge_convention} has no default exporter.",
+                    formatter.ANSI_RESET,
+                )
+                return CommandExportSummary(invalid_format=True)
 
-    match package_format:
-        case JudgeConvention.ICPC:
-            exporter = DOMJudgeLegacyExporter()
-        case JudgeConvention.CMS:
-            exporter = CMSTPSExporter()
-        case _:
-            raise ValueError(
-                "Unsupported package export format: " + str(package_format) + "."
-            )
     output_path = os.path.normpath(os.path.join(os.getcwd(), output_path))
-    return exporter.export(formatter, context, output_path, force_output)
+    return package_format().export(formatter, context, output_path, force_output)

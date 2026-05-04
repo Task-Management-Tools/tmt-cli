@@ -105,7 +105,7 @@ class SubtaskConfigExportOperation(ExportOperation):
 
 
 class CMSTPSExporter(BaseExporter):
-    """CMS TPS format exporter implementation"""
+    description = "TPS export format for CMS"
 
     def construct_problem_json(self, config: TMTConfig):
         task_type_params = {}
@@ -152,7 +152,12 @@ class CMSTPSExporter(BaseExporter):
 
     def setup_operations(self, context: TMTContext):
         config = context.config
-        assert config.judge_convention == JudgeConvention.CMS
+        if config.judge_convention is not JudgeConvention.CMS:
+            yield ExportErrorOperation(
+                name="Judge convention check",
+                msg="CMS-TPS exporter only supports CMS judge convention",
+            )
+            return
 
         yield DumpFileOperation(
             src=self.construct_problem_json(config), dst="problem.json"

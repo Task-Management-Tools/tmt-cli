@@ -14,13 +14,15 @@ from .operations import ExportOperation, ExportResult, ExportResultEnum
 
 @dataclasses.dataclass
 class CommandExportSummary:
+    invalid_format: bool = False
     invalid_path: bool = False
     invalid_path_part: bool = False
     export_results: list[ExportResult] = dataclasses.field(default_factory=list)
 
     def __bool__(self):
         return (
-            not self.invalid_path
+            not self.invalid_format
+            and not self.invalid_path
             and not self.invalid_path_part
             and not any(
                 r.result is ExportResultEnum.FAILURE for r in self.export_results
@@ -29,7 +31,7 @@ class CommandExportSummary:
 
 
 class BaseExporter(ABC):
-    """Base class for exporters"""
+    description = "base exporter class"
 
     @abstractmethod
     def setup_operations(
