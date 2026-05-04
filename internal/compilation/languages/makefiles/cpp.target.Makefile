@@ -6,7 +6,7 @@
 # - INCLUDE_PATHS: include paths (absolute path preferred)
 
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 # This can be overridden by environment variables
 CXX ?= g++
