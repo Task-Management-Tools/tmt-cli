@@ -1,0 +1,37 @@
+services:
+  mariadb:
+    image: mariadb
+    container_name: domjudge-mariadb
+    command: >
+      --max-connections=1000
+      --innodb-snapshot-isolation=OFF
+      --innodb-log-file-size=1073741824
+      --max-allowed-packet=134217728
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: domjudge
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: domjudge
+      CONTAINER_TIMEZONE: Asia/Taipei
+    networks:
+      - domjudge
+
+  server:
+    image: domjudge/domserver:${DOMJUDGE_VERSION}
+    container_name: domjudge-server
+    depends_on:
+      - mariadb
+    environment:
+      MYSQL_HOST: mariadb
+      MYSQL_USER: domjudge
+      MYSQL_DATABASE: domjudge
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      CONTAINER_TIMEZONE: Asia/Taipei
+    ports:
+      - "8888:80"
+    networks:
+      - domjudge
+
+networks:
+  domjudge:

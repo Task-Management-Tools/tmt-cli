@@ -17,6 +17,7 @@ class CommandExportSummary:
     invalid_format: bool = False
     invalid_path: bool = False
     invalid_path_part: bool = False
+    exported_path: Path | None = None
     export_results: list[ExportResult] = dataclasses.field(default_factory=list)
 
     def __bool__(self):
@@ -144,4 +145,5 @@ class BaseExporter(ABC):
                 )
             else:
                 formatter.println("Export completed.")
+        summary.exported_path = export_path
         return summary
