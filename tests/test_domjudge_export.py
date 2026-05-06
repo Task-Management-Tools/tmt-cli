@@ -7,7 +7,6 @@ import time
 import textwrap
 
 import pytest
-import requests
 
 from internal.commands import command_clean, command_export, command_gen
 from internal.context import TMTContext
@@ -144,6 +143,8 @@ icpc_default_floatcmp = ExpectedProblemData(
 def test_domjudge_export(
     prepare_domjudge: str | BaseException, problem: ExpectedProblemData
 ):
+    import requests
+
     script_dir = Path(__file__).parent.parent.resolve()
     vagrant_path = Path(__file__).parent.resolve() / "domjudge"
     problem_path = Path(__file__).parent.resolve() / "problems" / problem.problem_path
