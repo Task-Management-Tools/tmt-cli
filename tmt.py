@@ -4,6 +4,7 @@ import pathlib
 from internal.commands.verify import command_verify_config, command_verify_verdicts
 from internal.context import TMTContext, find_problem_dir
 from internal.commands import (
+    command_compile,
     command_gen,
     command_invoke,
     command_clean,
@@ -28,6 +29,9 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
+
+    parser_compile = subparsers.add_parser("compile", help="Compile source codes.")
+    parser_compile.add_argument("source", nargs="?", help="Specify file to compile")
 
     parser_gen = subparsers.add_parser("gen", help="Generate testcases.")
     parser_gen.add_argument(
@@ -92,6 +96,14 @@ def main():
             "Warning: In problem.yaml, tmt_version is set to 'latest' in this problem. You should never use 'latest' in non-unit-test problem repositories.",
             formatter.ANSI_RESET,
         )
+
+    if args.command == "compile":
+        cmd_ret = command_compile(
+            formatter=formatter,
+            context=context,
+            source=args.source,
+        )
+        return bool(cmd_ret)
 
     if args.command == "gen":
         cmd_ret = command_gen(
