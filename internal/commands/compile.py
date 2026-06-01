@@ -18,7 +18,7 @@ from internal.compilation.makefile import make_compile_target
 from internal.steps.generation import GenerationStep
 from internal.steps.utils import CompilationJob, CompilationSlot
 from internal.steps.validation import ValidationStep
-from internal.steps.solution import get_solution_step_type
+from internal.steps.solution import SolutionStep, get_solution_step_type
 from internal.steps.checker import CheckerStep, get_checker_step_type
 
 
@@ -88,10 +88,7 @@ def compile_single(
     summary.source = source_name
     formatter.print_compile_result(result, name=source_name)
 
-    if (
-        result.verdict is CompilationOutcome.SUCCESS
-        and result.produced_file is None
-    ):
+    if result.verdict is CompilationOutcome.SUCCESS and result.produced_file is None:
         raise FileNotFoundError("Compilation did not produce source executable")
 
     result.dump_to_logs(context.log_directory, source_path.stem)
@@ -171,6 +168,45 @@ def compile_all(
     return summary
 
 
+def compile_solution_source(
+    *,
+    formatter: Formatter,
+    context: TMTContext,
+    source_path: pathlib.Path,
+) -> CommandCompileSingleSummary:
+    summary = CommandCompileSingleSummary()
+    context.set_log_directory(context.path.logs)
+
+    sandbox = SandboxDirectory(context.path.default_sandbox)
+    sandbox.create()
+
+    solution_step_type = get_solution_step_type(
+        problem_type=context.config.problem_type,
+        judge_convention=context.config.judge_convention,
+    )
+    solution_step: SolutionStep = solution_step_type(
+        context=context,
+        sandbox=sandbox,
+        is_generation=False,
+        submission_files=[str(source_path)],
+    )
+
+    for job in solution_step.compilation_jobs():
+        formatter.print(f"{job.slot.value.ljust(10)}  compile ")
+        result = job.compile_fn()
+        summary.compilation_result = result
+        summary.source = source_path.name
+        formatter.print_compile_result(result, name=job.display_file)
+        if not result:
+            return summary
+
+    return summary
+
+
+def _is_under(path: pathlib.Path, root: str) -> bool:
+    return path.is_relative_to(pathlib.Path(root))
+
+
 def command_compile(
     *,
     formatter: Formatter,
@@ -180,4 +216,30 @@ def command_compile(
     if source is None:
         return compile_all(formatter=formatter, context=context)
 
-    return compile_single(formatter=formatter, context=context, source=source)
+    source_path = pathlib.Path(source).expanduser().resolve()
+    if _is_under(source_path, context.path.solutions):
+        return compile_solution_source(
+            formatter=formatter,
+            context=context,
+            source_path=source_path,
+        )
+    if _is_under(source_path, context.path.validator):
+        return compile_single(formatter=formatter, context=context, source=source)
+    if _is_under(source_path, context.path.generator):
+        return compile_single(formatter=formatter, context=context, source=source)
+    if _is_under(source_path, context.path.checker):
+        return compile_single(formatter=formatter, context=context, source=source)
+
+    result = CompilationResult(
+        verdict=CompilationOutcome.FAILED,
+        exit_status=-1,
+        standard_error=(
+            f"Source file {source_path.name} is not found under solutions, "
+            "validator, generator, or checker."
+        ),
+    )
+    formatter.print_compile_result(result, name=source_path.name)
+    return CommandCompileSingleSummary(
+        compilation_result=result,
+        source=source_path.name,
+    )
