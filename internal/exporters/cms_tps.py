@@ -1,6 +1,7 @@
 import glob
 import json
 from pathlib import Path
+from typing import Any
 
 from internal.zip_handler import ZipFileHander
 from internal.compilation import languages, recognize_language
@@ -30,7 +31,7 @@ class GraderExportOperation(ExportOperation):
     """Exports grader and headers for TPS format."""
 
     @property
-    def target_name(self) -> None:
+    def target_name(self) -> str:
         return "Graders"
 
     def execute(self, context: TMTContext, zipfile: ZipFileHander) -> ExportResult:
@@ -47,7 +48,7 @@ class GraderExportOperation(ExportOperation):
             src = Path(context.path.graders) / file_path
             dst = Path("graders") / file_path
             if src.stem == context.config.solution.grader_name and (
-                lang := recognize_language([src], context)
+                lang := recognize_language([str(src)], context)
             ):
                 ext = lang(context).source_extensions[0]
                 dst = Path("graders") / ("grader" + ext)
@@ -69,7 +70,7 @@ class SubtaskConfigExportOperation(ExportOperation):
     """Export subtask configs for TPS format."""
 
     @property
-    def target_name(self) -> None:
+    def target_name(self) -> str:
         return "Subtask configs"
 
     def execute(self, context: TMTContext, zipfile: ZipFileHander) -> ExportResult:
@@ -108,7 +109,7 @@ class CMSTPSExporter(BaseExporter):
     description = "TPS export format for CMS"
 
     def construct_problem_json(self, config: TMTConfig):
-        task_type_params = {}
+        task_type_params: dict[str, Any] = {}
         match config.problem_type:
             case ProblemType.BATCH:
                 if config.solution.type == SolutionType.GRADER:
@@ -132,7 +133,7 @@ class CMSTPSExporter(BaseExporter):
             "task_type_parameters_" + k: v for k, v in task_type_params.items()
         }
 
-        problem_json = {}
+        problem_json: dict[str, Any] = {}
         problem_json["code"] = config.short_name
         problem_json["name"] = config.title
         problem_json["feedback_level"] = "oi_restricted"
@@ -182,6 +183,7 @@ class CMSTPSExporter(BaseExporter):
         )
 
         if config.checker and config.checker.type == CheckerType.CUSTOM:
+            assert config.checker.filename is not None
             checker_lang = recognize_language([config.checker.filename], context)
             if checker_lang is not languages.LanguageCpp:
                 yield ExportErrorOperation(

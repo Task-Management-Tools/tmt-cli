@@ -38,14 +38,14 @@ class ZipFileHander:
         Construct a zip info for a filename.
         If any path duplicate is found in the zip archive, raises FileExistsError.
         """
-        filename, parents = self._list_file_parents(filename)
-        if filename in self._dir_lists:
+        file, parents = self._list_file_parents(filename)
+        if file in self._dir_lists:
             raise FileExistsError(
-                errno.EEXIST, os.strerror(errno.EEXIST), "[zip]/" + filename
+                errno.EEXIST, os.strerror(errno.EEXIST), "[zip]/" + file
             )
-        if filename in self._file_lists:
+        if file in self._file_lists:
             raise FileExistsError(
-                errno.EEXIST, os.strerror(errno.EEXIST), "[zip]/" + filename
+                errno.EEXIST, os.strerror(errno.EEXIST), "[zip]/" + file
             )
         common = self._file_lists.intersection(parents)
         if common:
@@ -53,10 +53,10 @@ class ZipFileHander:
             raise FileExistsError(
                 errno.EEXIST, os.strerror(errno.EEXIST), "[zip]/" + longest
             )
-        self._file_lists.add(filename)
+        self._file_lists.add(file)
         self._dir_lists.update(parents)
 
-        info = ZipInfo(filename)
+        info = ZipInfo(file)
         info.external_attr = (mode & 0xFFFF) << 16
         return info
 

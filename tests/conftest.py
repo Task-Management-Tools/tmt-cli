@@ -14,7 +14,7 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
-        "integration: mark test as integration. Will not run by default, usually requiring vagrant/docker environment",
+        "integration: mark test as integration. Will not run by default, usually requiring external environment setup.",
     )
 
 

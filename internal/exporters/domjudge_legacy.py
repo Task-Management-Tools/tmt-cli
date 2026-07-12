@@ -140,15 +140,15 @@ class DOMJudgeLegacyExporter(BaseExporter):
             "name": config.title,
             "author": "anonymous",  # TODO if we support author and licensing
             "license": "unknown",  # TODO
-            "limits": {},
+            # Limits
+            # we include this time_limit because DOMjudge 9.0+ parses this,
+            # but it is not reliable in this format. DOMjudge 8.0+ uses .time_limit file.
+            "limits": {
+                "time_limit": config.solution.time_limit_sec,
+                "memory": config.solution.memory_limit_mib,
+                "output": config.solution.output_limit_mib,
+            },
         }
-
-        # Limits
-        # we include this time_limit because DOMjudge 9.0+ parses this,
-        # but it is not reliable in this format. DOMjudge 8.0+ uses .time_limit file.
-        output_yaml["limits"]["time_limit"] = config.solution.time_limit_sec
-        output_yaml["limits"]["memory"] = config.solution.memory_limit_mib
-        output_yaml["limits"]["output"] = config.solution.output_limit_mib
 
         # Checker/Interactor
         # ICPC legacy format only allows:
@@ -265,10 +265,12 @@ class DOMJudgeLegacyExporter(BaseExporter):
         # Checker & Interactor -> output_validators/
         # export them only if config says so, add header if we do want that
         if context.config.checker and context.config.checker.type is CheckerType.CUSTOM:
+            checker_filename = context.config.checker.filename
+            assert checker_filename is not None
             yield CopyFileOperation(
                 "Checker",
-                "checker/" + context.config.checker.filename,
-                "output_validators/" + context.config.checker.filename,
+                "checker/" + checker_filename,
+                "output_validators/" + checker_filename,
             )
             yield GlobCopyOperation(
                 "Checker headers", context.path.include, "output_validators/"

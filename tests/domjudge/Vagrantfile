@@ -9,12 +9,17 @@ Vagrant.configure("2") do |config|
     lv.cpus = 2
   end
 
-  # First provision: enable cgroup v1
+  config.vm.provision "shell", privileged: true, inline: <<-SHELL
+    sudo apt-get update
+    sudo apt-get install -y docker.io docker-compose
+    sudo usermod -aG docker vagrant
+  SHELL
+
+  # cgroup: need manual reboot
   config.vm.provision "shell", name: "cgroupv1", inline: <<-SHELL
     if ! grep -q "systemd.unified_cgroup_hierarchy=0" /etc/default/grub; then
       sudo sed -i 's/GRUB_CMDLINE_LINUX="/GRUB_CMDLINE_LINUX="systemd.unified_cgroup_hierarchy=0 /' /etc/default/grub
       sudo update-grub
-      sudo reboot
     fi
   SHELL
 
@@ -22,14 +27,6 @@ Vagrant.configure("2") do |config|
     if grep -q "systemd.unified_cgroup_hierarchy=0" /etc/default/grub; then
       sudo sed -i 's/systemd.unified_cgroup_hierarchy=0 //' /etc/default/grub
       sudo update-grub
-      sudo reboot
     fi
-  SHELL
-
-  # Second provision: install Docker (runs after reboot)
-  config.vm.provision "shell", privileged: true, inline: <<-SHELL
-    sudo apt-get update
-    sudo apt-get install -y docker.io docker-compose
-    sudo usermod -aG docker vagrant
   SHELL
 end

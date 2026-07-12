@@ -151,7 +151,7 @@ class CopyTestcaseOperation(ExportOperation):
 
     def execute(self, context: TMTContext, zipfile: ZipFileHander):
         errs: list[OSError] = []
-        missing = []
+        missing: list[str] = []
 
         for codename in self.codenames:
             for orig_ext, target_ext in self.ext_mapping.items():
@@ -181,7 +181,7 @@ class CopyTestcaseOperation(ExportOperation):
         else:
             # This assumption is based on the testcase naming...
             self.codenames.sort()
-            testsets = defaultdict(list)
+            testsets: dict[str, list[str]] = defaultdict(list)
             for codename in self.codenames:
                 if "-" not in codename:
                     testsets[codename] = []
@@ -302,7 +302,7 @@ class DumpFileOperation(ExportOperation):
 
     @property
     def target_name(self) -> str:
-        return self.name
+        return str(self.name)
 
     def execute(self, context: TMTContext, zipfile: ZipFileHander):
 
@@ -311,7 +311,7 @@ class DumpFileOperation(ExportOperation):
                 zipfile.write_str(self.dst, self.content)
             except OSError as e:
                 return self.result_from_os_errors([e], context)
-            return ExportResult(ExportResultEnum.SUCCESS, target_list=[self.dst])
+            return ExportResult(ExportResultEnum.SUCCESS, target_list=[str(self.dst)])
         else:
             try:
                 with zipfile.open(self.dst, "w") as f:

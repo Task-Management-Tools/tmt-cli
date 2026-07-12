@@ -78,6 +78,7 @@ def prepare_vagrant_box():
 def prepare_domjudge(request, prepare_vagrant_box: None | BaseException):
     if isinstance(prepare_vagrant_box, BaseException):
         yield prepare_vagrant_box
+        return
     assert shutil.which("vagrant") is not None
 
     domjudge_version = request.param

@@ -20,8 +20,8 @@ until [[ $(docker inspect -f {{.State.Health.Status}} domjudge-server) == "healt
 done
 '
 
-ADMIN_PASSWORD=$(docker exec -it domjudge-server cat /opt/domjudge/domserver/etc/initial_admin_password.secret | tr -d '\r')
-JUDGEDAEMON_PASSWORD=$(docker exec -it domjudge-server cat /opt/domjudge/domserver/etc/restapi.secret | awk '!/^#/ {print $4}')
+ADMIN_PASSWORD=$(docker exec domjudge-server cat /opt/domjudge/domserver/etc/initial_admin_password.secret | tr -d '\r')
+JUDGEDAEMON_PASSWORD=$(docker exec domjudge-server cat /opt/domjudge/domserver/etc/restapi.secret | awk '!/^#/ {print $4}')
 echo Admin password is $ADMIN_PASSWORD
 echo Judgedaemon password is $JUDGEDAEMON_PASSWORD
 

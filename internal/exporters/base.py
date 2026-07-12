@@ -76,12 +76,12 @@ class BaseExporter(ABC):
 
         # We export to [archive_name].[8-digit base64].part first, so if it fails we won't override the original one;
         for _ in range(3):
-            export_path_tmp = export_path.with_name(
+            export_path_tmp: Path = export_path.with_name(
                 f"{export_path.name}.{secrets.token_urlsafe(6)}.part"
             )
-            if export_path_tmp.exists():
-                export_path_tmp = None
-        if not export_path_tmp:  # how is this possible?
+            if not export_path_tmp.exists():
+                break
+        else:  # how is this possible?
             formatter.println(
                 formatter.ANSI_RED,
                 "Error: cannot write to partial file.",
