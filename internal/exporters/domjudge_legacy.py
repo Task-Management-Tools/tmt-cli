@@ -197,7 +197,7 @@ class DOMJudgeLegacyExporter(BaseExporter):
             "Problem statements",
             context.path.statement,
             "problem_statement",
-            regex_pattern=r"statement/.*\.pdf",
+            regex_pattern=r".*\.pdf",
         )
 
         # Attachments... TODO

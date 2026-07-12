@@ -212,7 +212,7 @@ class GlobCopyOperation(ExportOperation):
         glob_root (str): An absolute path serve as the glob root.
         dst (str | os.PathLike[str]): Target directory. It should always be a relative path.
         recursive (str): Whether the glob should be recursive. Default True.
-        regex_pattern (str | None): If provided, the globbed filename must match this regex to be exported.
+        regex_pattern (str | None): If provided, the globbed filename (everything after the glob_root) must match this regex to be exported.
     """
 
     def __init__(
