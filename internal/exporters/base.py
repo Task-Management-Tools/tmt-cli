@@ -56,20 +56,25 @@ class BaseExporter(ABC):
         if export_path.is_dir():
             export_path = export_path / (context.config.short_name + ".zip")
 
-        formatter.println(f"Exporting to {export_path.relative_to(Path.cwd())}...")
+        display_path = (
+            export_path.relative_to(Path.cwd())
+            if export_path.is_relative_to(Path.cwd())
+            else export_path
+        )
+        formatter.println(f"Exporting to {display_path}...")
 
         if export_path.exists():
             if not force_output:
                 formatter.println(
                     formatter.ANSI_RED,
-                    f"Error: {export_path.relative_to(Path.cwd())} already exists.",
+                    f"Error: {display_path} already exists.",
                     formatter.ANSI_RESET,
                 )
                 return CommandExportSummary(invalid_path=True)
             if not export_path.is_file():
                 formatter.println(
                     formatter.ANSI_RED,
-                    f"Error: {export_path.relative_to(Path.cwd())} is not a file; cannot overwrite.",
+                    f"Error: {display_path} is not a file; cannot overwrite.",
                     formatter.ANSI_RESET,
                 )
                 return CommandExportSummary(invalid_path=True)

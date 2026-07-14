@@ -50,7 +50,7 @@ class ExportOperation(ABC):
             err_list (list[OSError]): A list of OSError to be formatted.
             context: (TMTContext): The current TMTContext for inferring path information.
         """
-        err_dict: dict[int, list[OSError]] = defaultdict(list)
+        err_dict: dict[int | None, list[OSError]] = defaultdict(list)
         for err in err_list:
             err_dict[err.errno].append(err)
 
@@ -68,7 +68,10 @@ class ExportOperation(ABC):
             files = list(dict.fromkeys(files))
 
             suffix = f": {', '.join(files)}" if files else ""
-            err_strs.append(os.strerror(err_no) + suffix)
+            err_strs.append(
+                (os.strerror(err_no) if err_no is not None else "Unknown error")
+                + suffix
+            )
 
         return "; ".join(err_strs)
 

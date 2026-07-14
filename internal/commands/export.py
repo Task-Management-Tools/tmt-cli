@@ -35,5 +35,8 @@ def command_export(
                 )
                 return CommandExportSummary(invalid_format=True)
 
+    end_with_slash = output_path.endswith("/")
     output_path = os.path.normpath(os.path.join(os.getcwd(), output_path))
+    if end_with_slash and not output_path.endswith("/"):
+        output_path += "/"
     return package_format().export(formatter, context, output_path, force_output)

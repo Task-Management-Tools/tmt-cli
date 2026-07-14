@@ -98,7 +98,7 @@ class Formatter(ABC):
 
     @abstractmethod
     def print_exec_details(
-        self, result: ExecutionOutcome, context: "TMTContext"
+        self, result: EvaluationResult, context: "TMTContext"
     ) -> None:
         """
         Formats the detail statistics of the execution output.

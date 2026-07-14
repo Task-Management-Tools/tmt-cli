@@ -257,9 +257,10 @@ class PlainFormatter(Formatter):
                 )
 
         score_width = max(score_width, len(self.format_points(overall.score)))
-        full_score_width = max(
-            full_score_width, len(self.format_points(overall.max_score))
-        )
+        if overall.max_score is not None:
+            full_score_width = max(
+                full_score_width, len(self.format_points(overall.max_score))
+            )
 
         sol_config = context.config.solution
 

@@ -119,7 +119,7 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
                 msg=f"Missing solutions: {', '.join(missing)}",
             )
         if errs:
-            self.result_from_os_errors(errs, context)
+            return self.result_from_os_errors(errs, context)
         if unknown_judge_verdict:
             return ExportResult(
                 ExportResultEnum.WARNING,
