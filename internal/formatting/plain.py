@@ -257,10 +257,10 @@ class PlainFormatter(Formatter):
                 )
 
         score_width = max(score_width, len(self.format_points(overall.score)))
-        if overall.max_score is not None:
-            full_score_width = max(
-                full_score_width, len(self.format_points(overall.max_score))
-            )
+        assert overall.max_score is not None
+        full_score_width = max(
+            full_score_width, len(self.format_points(overall.max_score))
+        )
 
         sol_config = context.config.solution
 
@@ -303,6 +303,7 @@ class PlainFormatter(Formatter):
                 else:
                     score_color = self.ANSI_RESET
 
+                assert ts.max_score is not None
                 self.print(
                     score_color,
                     self.format_points(ts.score).rjust(score_width),
