@@ -213,6 +213,13 @@ def command_compile(
     context: TMTContext,
     source: str | None,
 ) -> CommandCompileAllSummary | CommandCompileSingleSummary:
+    """Compile all problem components or a single source file.
+
+    With no source, compile all components required by the problem. When a
+    source is provided, compile it using the appropriate pipeline for its
+    location: solutions use the solution pipeline, while generators,
+    validators, and checkers are compiled directly.
+    """
     if source is None:
         return compile_all(formatter=formatter, context=context)
 
