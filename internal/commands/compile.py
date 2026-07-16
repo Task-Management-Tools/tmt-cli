@@ -89,7 +89,7 @@ def compile_single(
     formatter.print_compile_result(result, name=source_name)
 
     if result.verdict is CompilationOutcome.SUCCESS and result.produced_file is None:
-        raise FileNotFoundError("Compilation did not produce source executable")
+        raise FileNotFoundError("Compilation did not produce executable")
 
     result.dump_to_logs(context.log_directory, source_path.stem)
     return summary
