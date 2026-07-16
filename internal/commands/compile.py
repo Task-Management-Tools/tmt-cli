@@ -50,7 +50,7 @@ def compile_single(
 ) -> CommandCompileSingleSummary:
 
     summary = CommandCompileSingleSummary()
-    context.set_log_directory(context.path.logs)
+    context.set_log_directory(context.path.logs_compile_single)
 
     source_path = pathlib.Path(source).expanduser().resolve()
     source_name = source_path.name
@@ -175,7 +175,7 @@ def compile_solution_source(
     source_path: pathlib.Path,
 ) -> CommandCompileSingleSummary:
     summary = CommandCompileSingleSummary()
-    context.set_log_directory(context.path.logs)
+    context.set_log_directory(context.path.logs_compile_single)
 
     sandbox = SandboxDirectory(context.path.default_sandbox)
     sandbox.create()
