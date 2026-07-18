@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+    DOCKER_COMPOSE=(docker-compose)
+else
+    echo "No docker compose found"
+    exit 1
+fi
+
 if [ -z ${DOMJUDGE_VERSION:+ok} ]; then
     echo "Environment variable DOMJUDGE_VERSION is not provided, quitting."
     exit 1
@@ -10,7 +19,7 @@ export MYSQL_ROOT_PASSWORD=root
 export MYSQL_PASSWORD=pass
 
 echo Starting database and DOMjudge server...
-docker-compose up -d
+"${DOCKER_COMPOSE[@]}" up -d
 docker pull domjudge/judgehost:$DOMJUDGE_VERSION
 
 echo Waiting until the DOMjudge server is healthy...
@@ -30,7 +39,7 @@ docker run -itd \
     --cgroupns=host \
     --hostname judgedaemon-0 \
     --name domjudge-judgehost-0 \
-    --network vagrant_domjudge \
+    --network tmt-domjudge-test \
     -v /sys/fs/cgroup:/sys/fs/cgroup \
     -e DAEMON_ID=0 \
     -e JUDGEDAEMON_PASSWORD=$JUDGEDAEMON_PASSWORD \

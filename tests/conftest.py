@@ -9,6 +9,7 @@ def pytest_addoption(parser):
         default=False,
         help="Run integration tests; requires vagrant environment",
     )
+    parser.addoption("--integration-backend", default="vagrant")
 
 
 def pytest_configure(config):

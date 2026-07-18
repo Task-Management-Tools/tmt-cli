@@ -1,5 +1,6 @@
 from pathlib import Path
 from dataclasses import dataclass
+import os
 import shutil
 import subprocess
 import itertools
@@ -16,95 +17,155 @@ from internal.formatting import TerminalFormatter
 _counter = itertools.count()
 _AUTH = ("robot", "titanium")
 _JUDGE_TIME_LIMIT_PER_TASK = 30
-_VAGRANTFILE_PATH = Path(__file__).parent.resolve() / "domjudge"
+
+_DOMJUDGE_SCRIPT_PATH = Path(__file__).parent.resolve() / "domjudge"
 
 
-def subprocess_vagrant(cmd: list[str]):
-    return subprocess.check_call(["vagrant"] + cmd, cwd=_VAGRANTFILE_PATH)
+class VagrantEnvironment:
+    def __init__(self):
+        assert shutil.which("vagrant") is not None
 
+    def environment(self):
+        result = self._get_output(["status", "--machine-readable"])
+        state = None
+        for line in result.stdout.splitlines():
+            row = line.split(",")
+            if len(row) >= 3 and row[2] == "state":
+                state = row[3]
 
-def subprocess_vagrant_output(cmd: list[str]):
-    return subprocess.run(
-        ["vagrant"] + cmd,
-        cwd=_VAGRANTFILE_PATH,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+        try:
+            # launch the VM
+            match state:
+                case "not_created" | "shutoff":
+                    self._run(["up"])
+                case "paused":
+                    self._run(["resume"])
+                case "running":
+                    pass
+                case _:
+                    raise ValueError(f"Unknown vagrant state {state}")
 
+            yield self
 
-@pytest.fixture(scope="module")
-def prepare_vagrant_box():
-    assert shutil.which("vagrant") is not None
+            # restore the VM to the previous state
+            match state:
+                case "not_created":
+                    self._run(["destroy", "-f"])
+                case "shutoff":
+                    self._run(["halt"])
+                case "paused":
+                    self._run(["suspend"])
+                case "running":
+                    pass
+                case _:
+                    raise ValueError(f"Unknown vagrant state {state}")
+        except Exception as e:
+            yield e
 
-    result = subprocess_vagrant_output(["status", "--machine-readable"])
-    state = None
-    for line in result.stdout.splitlines():
-        row = line.split(",")
-        if len(row) >= 3 and row[2] == "state":
-            state = row[3]
+    def _run(self, cmd: list[str]):
+        return subprocess.check_call(["vagrant"] + cmd, cwd=_DOMJUDGE_SCRIPT_PATH)
 
-    try:
-        # launch the VM
-        match state:
-            case "not_created" | "shutoff":
-                subprocess_vagrant(["up"])
-            case "paused":
-                subprocess_vagrant(["resume"])
-            case "running":
-                pass
-            case _:
-                raise ValueError(f"Unknown vagrant state {state}")
+    def _get_output(self, cmd: list[str]):
+        return subprocess.run(
+            ["vagrant"] + cmd,
+            cwd=_DOMJUDGE_SCRIPT_PATH,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
-        yield None
+    def configure_cgroup(self, version: int):
+        self._run(["provision", "--provision-with", f"cgroupv{version}"])
+        self._run(["reload"])
 
-        # restore the VM to the previous state
-        match state:
-            case "not_created":
-                subprocess_vagrant(["destroy", "-f"])
-            case "shutoff":
-                subprocess_vagrant(["halt"])
-            case "paused":
-                subprocess_vagrant(["suspend"])
-            case "running":
-                pass
-            case _:
-                raise ValueError(f"Unknown vagrant state {state}")
-    except BaseException as e:
-        yield e
-
-
-@pytest.fixture(scope="module", params=[(8, 1, 3), (8, 2, 2), (8, 3, 1), (9, 0, 0)])
-def prepare_domjudge(request, prepare_vagrant_box: None | BaseException):
-    if isinstance(prepare_vagrant_box, BaseException):
-        yield prepare_vagrant_box
-        return
-    assert shutil.which("vagrant") is not None
-
-    domjudge_version = request.param
-    domjudge_version_string = ".".join(map(str, domjudge_version))
-    cgroup_version = "cgroupv1" if domjudge_version < (9, 0) else "cgroupv2"
-    try:
-        subprocess_vagrant(["provision", "--provision-with", cgroup_version])
-        subprocess_vagrant(["reload"])
-        subprocess_vagrant(
+    def cleanup_domjudge(self, domjudge_version_string: str):
+        self._run(
             [
                 "ssh",
                 "-c",
                 f"cd /vagrant && DOMJUDGE_VERSION={domjudge_version_string} ./clean.sh",
             ]
         )
-        subprocess_vagrant(
+
+    def startup_domjudge(self, domjudge_version_string: str):
+        self._run(
             [
                 "ssh",
                 "-c",
                 f"cd /vagrant && DOMJUDGE_VERSION={domjudge_version_string} ./run.sh",
             ]
         )
-        vm_hostname = subprocess_vagrant_output(["ssh", "-c", "hostname -I"])
+
+    def get_ip(self):
+        vm_hostname = self._get_output(["ssh", "-c", "hostname -I"])
         vm_ip = vm_hostname.stdout.strip().split()[0]
-        yield vm_ip
-    except BaseException as e:
+        return vm_ip
+
+
+class HostEnvironment:
+    def __init__(self):
+        if "GITHUB_RUN_ID" not in os.environ:
+            pytest.skip("quitting: not running on GitHub CI")
+
+    def environment(self):
+        yield self
+
+    def configure_cgroup(self, version: int):
+        output = subprocess.run(
+            ["grep", "cgroup", "/proc/filesystems"], capture_output=True, text=True
+        ).stdout
+        found_version = 2 if "cgroup2" in output else (1 if "cgroup" in output else 0)
+        if found_version != version:
+            pytest.skip("cgroup version not supported on host")
+
+    def cleanup_domjudge(self, domjudge_version_string: str):
+        return subprocess.check_call(
+            "./clean.sh",
+            cwd=_DOMJUDGE_SCRIPT_PATH / "scripts",
+            env=os.environ | {"DOMJUDGE_VERSION": domjudge_version_string},
+        )
+
+    def startup_domjudge(self, domjudge_version_string: str):
+        return subprocess.check_call(
+            "./run.sh",
+            cwd=_DOMJUDGE_SCRIPT_PATH / "scripts",
+            env=os.environ | {"DOMJUDGE_VERSION": domjudge_version_string},
+        )
+
+    def get_ip(self):
+        return "127.0.0.1"
+
+
+@pytest.fixture(scope="module")
+def prepare_env(request):
+    match request.config.getoption("--integration-backend"):
+        case "vagrant":
+            env = VagrantEnvironment()
+        case "host":
+            env = HostEnvironment()
+        case _:
+            assert False, "Unknown integration backend"
+
+    yield from env.environment()
+
+
+@pytest.fixture(scope="module", params=[(8, 1, 3), (8, 2, 2), (8, 3, 1), (9, 0, 0)])
+def prepare_domjudge(
+    request, prepare_env: VagrantEnvironment | HostEnvironment | Exception
+):
+    if isinstance(prepare_env, Exception):
+        yield prepare_env
+        return
+
+    domjudge_version = request.param
+    domjudge_version_string = ".".join(map(str, domjudge_version))
+
+    try:
+        prepare_env.configure_cgroup(1 if domjudge_version < (9, 0) else 2)
+        prepare_env.cleanup_domjudge(domjudge_version_string)
+        prepare_env.startup_domjudge(domjudge_version_string)
+        yield prepare_env.get_ip()
+    except Exception as e:
         yield e
 
 
@@ -142,12 +203,12 @@ icpc_default_floatcmp = ExpectedProblemData(
 @pytest.mark.integration
 @pytest.mark.parametrize("problem", [icpc_default_floatcmp])
 def test_domjudge_export(
-    prepare_domjudge: str | BaseException, problem: ExpectedProblemData
+    prepare_domjudge: str | Exception, problem: ExpectedProblemData
 ):
     import requests
 
     script_dir = Path(__file__).parent.parent.resolve()
-    vagrant_path = Path(__file__).parent.resolve() / "domjudge"
+    _DOMJUDGE_SCRIPT_PATH = Path(__file__).parent.resolve() / "domjudge"
     problem_path = Path(__file__).parent.resolve() / "problems" / problem.problem_path
     formatter = TerminalFormatter()
     context = TMTContext(str(problem_path), str(script_dir))
@@ -161,7 +222,7 @@ def test_domjudge_export(
     export_result = command_export(
         formatter=formatter,
         context=context,
-        output_path=vagrant_path,
+        output_path=str(_DOMJUDGE_SCRIPT_PATH / f"{context.config.short_name}.zip"),
         package_format=DOMJudgeLegacyExporter,
         force_output=True,
     )
@@ -169,8 +230,8 @@ def test_domjudge_export(
     package_path = export_result.exported_path
 
     try:
-        if isinstance(prepare_domjudge, BaseException):
-            raise AssertionError("Vagrant box is not on") from prepare_domjudge
+        if isinstance(prepare_domjudge, Exception):
+            raise AssertionError("Environment is not on") from prepare_domjudge
         vm_ip = prepare_domjudge
         # input("Is DOMjudge on? [y/n]")
 
@@ -221,8 +282,6 @@ def test_domjudge_export(
                 "judgement_type_id"
             ]
         assert submission_meta == problem.submissions
-
-        # assert input(f"Optional check on judge (url: http://{vm_ip}:8888, login with {_AUTH[0]}:{_AUTH[1]}) [y/n] ").strip().lower() == 'y'
 
         # Does not work on DOMjudge 8.3.1, probably related to issue #2210
         # request("DELETE", f"contests/{contest_id}/problems/{problem_id}")

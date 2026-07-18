@@ -35,3 +35,4 @@ services:
 
 networks:
   domjudge:
+    name: tmt-domjudge-test

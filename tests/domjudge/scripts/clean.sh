@@ -7,7 +7,7 @@ if [ -z ${DOMJUDGE_VERSION:+ok} ]; then
 fi
 
 echo "Cleaning up Docker containers..."
-containers=$(docker ps -aq)
+containers=$(docker ps -aq --filter network=tmt-domjudge-test)
 if [ -n "$containers" ]; then
   docker stop $containers
   docker rm $containers
