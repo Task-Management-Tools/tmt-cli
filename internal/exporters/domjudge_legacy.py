@@ -103,6 +103,7 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
 
             original_path = Path(context.path.solutions) / entry.filename
             target_path = Path("submissions") / verdicts_folder / final_filename
+            files.add(final_filename)
 
             if not original_path.exists():
                 missing.append(entry.filename)
@@ -110,7 +111,6 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
             try:
                 zipfile.write_file(target_path, original_path)
             except OSError as e:
-                print(errs)
                 errs.append(e)
 
         if missing and all(err.errno == errno.ENOENT for err in errs):

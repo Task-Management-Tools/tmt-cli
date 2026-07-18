@@ -53,33 +53,30 @@ class BaseExporter(ABC):
 
         export_path = Path(output_path)
         assert export_path.is_absolute()
-        if export_path.is_dir():
-            export_path = export_path / (context.config.short_name + ".zip")
 
-        display_path = (
+        display_path = str(
             export_path.relative_to(Path.cwd())
             if export_path.is_relative_to(Path.cwd())
             else export_path
-        )
+        ) + ("/" if output_path.endswith("/") else "")
         formatter.println(f"Exporting to {display_path}...")
 
+        def print_err(err: str):
+            formatter.println(formatter.ANSI_RED, err, formatter.ANSI_RESET)
+
+        if output_path.endswith("/"):
+            print_err(f"Error: path '{output_path}' refers to a directory.")
+            return CommandExportSummary(invalid_path=True)
         if export_path.exists():
             if not force_output:
-                formatter.println(
-                    formatter.ANSI_RED,
-                    f"Error: {display_path} already exists.",
-                    formatter.ANSI_RESET,
-                )
+                print_err(f"Error: path '{output_path}' already exists.")
                 return CommandExportSummary(invalid_path=True)
             if not export_path.is_file():
-                formatter.println(
-                    formatter.ANSI_RED,
-                    f"Error: {display_path} is not a file; cannot overwrite.",
-                    formatter.ANSI_RESET,
-                )
+                print_err(f"Error: '{output_path}' is not a file; cannot overwrite.")
                 return CommandExportSummary(invalid_path=True)
 
-        # We export to [archive_name].[8-digit base64].part first, so if it fails we won't override the original one;
+        # We export to [archive_name].[8-digit base64].part first, so if it fails we won't override the original one
+        # Does not clean up for unexpected failure
         for _ in range(3):
             export_path_tmp: Path = export_path.with_name(
                 f"{export_path.name}.{secrets.token_urlsafe(6)}.part"

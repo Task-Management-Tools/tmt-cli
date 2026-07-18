@@ -17,6 +17,7 @@ from internal.commands import (
 )
 from internal.exporters import exporters
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
+from internal.exporters.base import BaseExporter
 from internal.formatting import TerminalFormatter, PlainFormatter
 from internal.verify.verifier import TMTVerifyIssueType
 
@@ -78,27 +79,20 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser_export.add_argument(
-        "export_args",
-        nargs="*",
-        metavar="FORMAT OUTPUT",
-        help="If none of the --package and --output flags are given, "
-        "automatically infers the export operation if possible. "
-        "If only one of them is given, FORMAT must match a package format and OUTPUT must end with .zip (for file) or a slash (for directory)",
+        "output_path",
+        help="Output path of the archive. "
+        "If it is a directory, it will be exported to <short_name>.zip."
+        "This behavior can be turned off via -l/--literal-path.",
+        default=".",
     )
     parser_export.add_argument(
         "-p",
         "--package",
-        help="Specifies package format. If not set, use default exporter of the judge convention. "
+        help="Specifies package format. "
+        "If not set, use default exporter of the judge convention. "
         "Otherwise, must be one of: \n"
         + "".join(f" - {k}: {v.description}\n" for k, v in exporters.items()),
         choices=list(exporters.keys()),
-        metavar="FORMAT",
-        default=None,
-    )
-    parser_export.add_argument(
-        "-o",
-        "--output",
-        help="Output file or directory for the exported zip archive.",
         default=None,
     )
     parser_export.add_argument(
@@ -106,6 +100,12 @@ def main():
         "--force",
         action="store_true",
         help="Force overwriting the output file even if it exists.",
+    )
+    parser_export.add_argument(
+        "-l",
+        "--literal-path",
+        action="store_true",
+        help="Prevent output into the directory if the path specified is a directory.",
     )
 
     # tmt make-public
@@ -194,58 +194,24 @@ def main():
         return True  # Does not fail without exception
 
     if args.command == "export":
-        if len(args.export_args) > 2:
-            parser_export.error(
-                "too many arguments: too many positional provided for tmt-export"
-            )
-        if (args.output is not None) + (args.package is not None) + len(
-            args.export_args
-        ) > 2:
-            parser_export.error(
-                "ambiguous arguments: mixed positional argument and flags for package and output"
-            )
+        output_path: str = args.output_path
 
-        package_format = args.package
-        output_path = args.output
+        package_format: type[BaseExporter] | None = None
+        if args.package is not None:
+            package_format = exporters.get(args.package)
+            if package_format is None:
+                parser_export.error(
+                    f"invalid package format: must be one of {', '.join(exporters.keys())}"
+                )
 
-        # both missing
-        if package_format is None and output_path is None:
-            if len(args.export_args) == 1:
-                if args.export_args[0] in exporters.keys():
-                    package_format = args.export_args[0]
-                elif args.export_args[0].endswith("/") or args.export_args[0].endswith(
-                    ".zip"
-                ):
-                    output_path = args.export_args[0]
-                else:
-                    parser_export.error(
-                        f"ambiguous argument: '{args.export_args[0]}' is not a valid format ({', '.join(exporters.keys())}) "
-                        "and doesn't look like an archive name (expected .zip or trailing /). "
-                        "Use explicit flags if you want to use it for output path."
-                    )
-            elif len(args.export_args) == 2:
-                package_format, output_path = args.export_args
-        # one missing; must be another
-        elif package_format is None:
-            package_format = args.export_args[0] if args.export_args else None
-        elif output_path is None:
-            output_path = args.export_args[0] if args.export_args else None
-
-        if package_format is not None and package_format not in exporters.keys():
-            parser_export.error(
-                f"invalid package format: must be one of {', '.join(exporters.keys())}"
-            )
-
-        if output_path is None:
-            output_path = "."
+        if not args.literal_path and (pathlib.Path.cwd() / output_path).is_dir():
+            output_path += os.sep + context.config.short_name + ".zip"
 
         res = command_export(
             formatter=formatter,
             context=context,
             output_path=output_path,
-            package_format=exporters[package_format]
-            if package_format is not None
-            else None,
+            package_format=package_format,
             force_output=args.force,
         )
         return bool(res)
