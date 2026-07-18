@@ -1,4 +1,3 @@
-import glob
 import json
 from pathlib import Path
 from typing import Any
@@ -41,12 +40,8 @@ class GraderExportOperation(ExportOperation):
         graders = []
         errs: list[OSError] = []
 
-        for file_path in glob.iglob(
-            "*",
-            root_dir=context.path.graders,
-        ):
-            src = Path(context.path.graders) / file_path
-            dst = Path("graders") / file_path
+        for src in Path(context.path.graders).glob("**"):
+            dst = Path("graders") / (src.relative_to(Path(context.path.graders)))
             if src.stem == context.config.solution.grader_name and (
                 lang := recognize_language([str(src)], context)
             ):

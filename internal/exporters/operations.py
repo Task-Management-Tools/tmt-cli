@@ -2,7 +2,6 @@ import errno
 import os
 import re
 import enum
-import glob
 import dataclasses
 from pathlib import Path
 from collections import defaultdict
@@ -241,16 +240,10 @@ class GlobCopyOperation(ExportOperation):
         return self.name
 
     def execute(self, context: TMTContext, zipfile: ZipFileHander):
-        # Find all matching files recursively
         matching_files: list[str] = []
 
-        for file_path in glob.iglob(
-            "**",
-            root_dir=self.glob_root,
-            include_hidden=True,
-            recursive=self.recursive,
-        ):
-            full_path = self.glob_root / file_path
+        for full_path in Path(self.glob_root).glob("**" if self.recursive else "*"):
+            file_path = str(full_path.relative_to(self.glob_root))
             if not full_path.is_file():
                 continue
             if self.regex_pat is None or self.regex_pat.fullmatch(file_path):
