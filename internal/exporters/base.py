@@ -58,14 +58,19 @@ class BaseExporter(ABC):
             export_path.relative_to(Path.cwd())
             if export_path.is_relative_to(Path.cwd())
             else export_path
-        ) + ("/" if output_path.endswith("/") else "")
+        ) + (os.sep if output_path.endswith(os.sep) else "")
         formatter.println(f"Exporting to {display_path}...")
 
         def print_err(err: str):
             formatter.println(formatter.ANSI_RED, err, formatter.ANSI_RESET)
 
-        if output_path.endswith("/"):
+        if output_path.endswith(os.sep):
             print_err(f"Error: path '{output_path}' refers to a directory.")
+            return CommandExportSummary(invalid_path=True)
+        if not export_path.parent.exists():
+            print_err(
+                f"Error: parent of the specified path '{output_path}' is not a directory."
+            )
             return CommandExportSummary(invalid_path=True)
         if export_path.exists():
             if not force_output:
@@ -84,14 +89,17 @@ class BaseExporter(ABC):
             if not export_path_tmp.exists():
                 break
         else:  # how is this possible?
-            formatter.println(
-                formatter.ANSI_RED,
-                "Error: cannot write to partial file.",
-                formatter.ANSI_RESET,
-            )
+            print_err("Error: cannot write to partial file.")
             return CommandExportSummary(invalid_path_part=True)
 
-        zipfile = ZipFileHander(export_path_tmp)
+        try:
+            zipfile = ZipFileHander(export_path_tmp)
+        except OSError as e:
+            reason = os.strerror(e.errno) if e.errno is not None else "Unknown error"
+            print_err(
+                f"Error: cannot create temporary archive {export_path_tmp}: {reason}."
+            )
+            return CommandExportSummary(invalid_path=True)
 
         # Execute all operations
         ops = list(self.setup_operations(context))

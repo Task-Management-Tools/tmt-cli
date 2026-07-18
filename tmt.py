@@ -81,8 +81,9 @@ def main():
     parser_export.add_argument(
         "output_path",
         help="Output path of the archive. "
-        "If it is a directory, it will be exported to <short_name>.zip."
-        "This behavior can be turned off via -l/--literal-path.",
+        "If the path is considered a directory, it will be exported to <short_name>.zip inside the directory. "
+        "By default, a path ending with a trailing slash and a path that is a directory are considered a directory. "
+        "Specifying --explicit-path disables the second case and the path will always be treated as a file if it has no trailing slash.",
         default=".",
     )
     parser_export.add_argument(
@@ -102,10 +103,10 @@ def main():
         help="Force overwriting the output file even if it exists.",
     )
     parser_export.add_argument(
-        "-l",
-        "--literal-path",
+        "-e",
+        "--explicit-directory",
         action="store_true",
-        help="Prevent output into the directory if the path specified is a directory.",
+        help="Prevent outputing into the directory if the path specified is a directory but not specified with trailing slash.",
     )
 
     # tmt make-public
@@ -204,7 +205,10 @@ def main():
                     f"invalid package format: must be one of {', '.join(exporters.keys())}"
                 )
 
-        if not args.literal_path and (pathlib.Path.cwd() / output_path).is_dir():
+        # UNIX directory
+        if output_path.endswith(os.sep):
+            output_path += context.config.short_name + ".zip"
+        if not args.explicit_directory and (pathlib.Path.cwd() / output_path).is_dir():
             output_path += os.sep + context.config.short_name + ".zip"
 
         res = command_export(
