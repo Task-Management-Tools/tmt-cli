@@ -23,17 +23,18 @@ from internal.verify.verifier import TMTVerifyIssueType
 
 
 def main():
-    shared = argparse.ArgumentParser(add_help=False)
-    shared.add_argument("--color", choices=["always", "auto", "never"], default="auto")
-
-    parser = argparse.ArgumentParser(
-        description="TMT - Task Management Tools", parents=[shared]
-    )
+    parser = argparse.ArgumentParser(description="TMT - Task Management Tools")
+    parser.add_argument("--color", choices=["always", "auto", "never"], default="auto")
     parser.add_argument(
         "--version",
         action="version",
         version=f"TMT {__version__}",
         help="Show the version of TMT.",
+    )
+
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument(
+        "--color", choices=["always", "auto", "never"], default=argparse.SUPPRESS
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
