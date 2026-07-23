@@ -1,7 +1,5 @@
 from typing import TYPE_CHECKING
 
-import sys
-
 from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
@@ -21,10 +19,7 @@ class Formatter(ABC):
             self.text = text
 
         def __str__(self):
-            if sys.stdout.isatty():
-                return self.text
-            else:
-                return ""
+            return self.text
 
     def __init__(self):
         self.ANSI_RESET = ""

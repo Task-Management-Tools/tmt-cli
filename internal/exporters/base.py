@@ -50,6 +50,19 @@ class BaseExporter(ABC):
         output_path: str,
         force_output: bool,
     ) -> CommandExportSummary:
+        """
+        Export a zip archive of the problem described by the context to output_path.
+
+        Args:
+            formatter:
+                Output formatter of the error messages and export summaries.
+            context:
+                The current TMT Context.
+            output_path:
+                The path of the archive. Must be an absolute path.
+            force_output:
+                Overwrite even if path exists as a file.
+        """
 
         export_path = Path(output_path)
         assert export_path.is_absolute()
@@ -155,5 +168,5 @@ class BaseExporter(ABC):
                 )
             else:
                 formatter.println("Export completed.")
-        summary.exported_path = export_path
+            summary.exported_path = export_path
         return summary

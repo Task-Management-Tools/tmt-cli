@@ -41,6 +41,8 @@ class GraderExportOperation(ExportOperation):
         errs: list[OSError] = []
 
         for src in Path(context.path.graders).glob("**"):
+            if not src.is_file():
+                continue
             dst = Path("graders") / (src.relative_to(Path(context.path.graders)))
             if src.stem == context.config.solution.grader_name and (
                 lang := recognize_language([str(src)], context)

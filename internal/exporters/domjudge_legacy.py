@@ -240,7 +240,7 @@ class DOMJudgeLegacyExporter(BaseExporter):
         # For input validators, the standard actually requires an executable,
         # but DOMjudge don't care, so we simply include the sources
         # TODO emit error when validators for specific testset presents; it is impossible under this format
-        all_exts = sum(
+        all_exts: list[str] = sum(
             (lang(context).source_extensions for lang in languages), start=[]
         )
         all_exts_re = "|".join(re.escape(ext) for ext in all_exts)

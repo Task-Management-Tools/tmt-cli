@@ -20,6 +20,7 @@ class PlainFormatter(Formatter):
     def __init__(self):
         super().__init__()
 
+        self.terminal_width: int | None
         try:
             self.terminal_width = os.get_terminal_size().columns
         except OSError:  # If stdout is not a terminal

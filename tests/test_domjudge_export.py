@@ -33,34 +33,35 @@ class VagrantEnvironment:
             if len(row) >= 3 and row[2] == "state":
                 state = row[3]
 
-        try:
-            # launch the VM
-            match state:
-                case "not_created" | "shutoff":
-                    self._run(["up"])
-                case "paused":
-                    self._run(["resume"])
-                case "running":
-                    pass
-                case _:
-                    raise ValueError(f"Unknown vagrant state {state}")
+        # launch the VM
+        match state:
+            case "not_created" | "shutoff":
+                self._run(["up"])
+            case "paused":
+                self._run(["resume"])
+            case "running":
+                pass
+            case _:
+                raise ValueError(
+                    f"Error starting up Vagrant VM: unknown vagrant state {state}"
+                )
 
-            yield self
+        yield self
 
-            # restore the VM to the previous state
-            match state:
-                case "not_created":
-                    self._run(["destroy", "-f"])
-                case "shutoff":
-                    self._run(["halt"])
-                case "paused":
-                    self._run(["suspend"])
-                case "running":
-                    pass
-                case _:
-                    raise ValueError(f"Unknown vagrant state {state}")
-        except Exception as e:
-            yield e
+        # restore the VM to the previous state
+        match state:
+            case "not_created":
+                self._run(["destroy", "-f"])
+            case "shutoff":
+                self._run(["halt"])
+            case "paused":
+                self._run(["suspend"])
+            case "running":
+                pass
+            case _:
+                raise ValueError(
+                    f"Error restoring Vagrant VM: Unknown vagrant state {state}"
+                )
 
     def _run(self, cmd: list[str]):
         return subprocess.check_call(["vagrant"] + cmd, cwd=_DOMJUDGE_SCRIPT_PATH)
@@ -150,23 +151,16 @@ def prepare_env(request):
 
 
 @pytest.fixture(scope="module", params=[(8, 1, 3), (8, 2, 2), (8, 3, 1), (9, 0, 0)])
-def prepare_domjudge(
-    request, prepare_env: VagrantEnvironment | HostEnvironment | Exception
-):
-    if isinstance(prepare_env, Exception):
-        yield prepare_env
-        return
+def prepare_domjudge(request, prepare_env: VagrantEnvironment | HostEnvironment):
+    """Returns the IP address of the configured DOMjudge."""
 
     domjudge_version = request.param
     domjudge_version_string = ".".join(map(str, domjudge_version))
 
-    try:
-        prepare_env.configure_cgroup(1 if domjudge_version < (9, 0) else 2)
-        prepare_env.cleanup_domjudge(domjudge_version_string)
-        prepare_env.startup_domjudge(domjudge_version_string)
-        yield prepare_env.get_ip()
-    except Exception as e:
-        yield e
+    prepare_env.configure_cgroup(1 if domjudge_version < (9, 0) else 2)
+    prepare_env.cleanup_domjudge(domjudge_version_string)
+    prepare_env.startup_domjudge(domjudge_version_string)
+    yield prepare_env.get_ip()
 
 
 def generate_contest_yaml():
@@ -202,13 +196,10 @@ icpc_default_floatcmp = ExpectedProblemData(
 
 @pytest.mark.integration
 @pytest.mark.parametrize("problem", [icpc_default_floatcmp])
-def test_domjudge_export(
-    prepare_domjudge: str | Exception, problem: ExpectedProblemData
-):
+def test_domjudge_export(prepare_domjudge: str, problem: ExpectedProblemData):
     import requests
 
     script_dir = Path(__file__).parent.parent.resolve()
-    _DOMJUDGE_SCRIPT_PATH = Path(__file__).parent.resolve() / "domjudge"
     problem_path = Path(__file__).parent.resolve() / "problems" / problem.problem_path
     formatter = TerminalFormatter()
     context = TMTContext(str(problem_path), str(script_dir))
@@ -230,8 +221,6 @@ def test_domjudge_export(
     package_path = export_result.exported_path
 
     try:
-        if isinstance(prepare_domjudge, Exception):
-            raise AssertionError("Environment is not on") from prepare_domjudge
         vm_ip = prepare_domjudge
         # input("Is DOMjudge on? [y/n]")
 

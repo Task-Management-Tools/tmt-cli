@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from logging import Formatter
 import os
 import sys
 import pathlib
@@ -84,8 +85,7 @@ def main():
         help="Output path of the archive. "
         "If the path is considered a directory, it will be exported to <short_name>.zip inside the directory. "
         "By default, a path ending with a trailing slash and a path that is a directory are considered a directory. "
-        "Specifying --explicit-path disables the second case and the path will always be treated as a file if it has no trailing slash.",
-        default=".",
+        "Specifying --explicit-directory disables the second case and the path will always be treated as a file if it has no trailing slash.",
     )
     parser_export.add_argument(
         "-p",
@@ -139,6 +139,7 @@ def main():
     args = parser.parse_args()
 
     # forced by args
+    formatter: Formatter
     if args.color == "always":
         formatter = TerminalFormatter()
     elif args.color == "never":
