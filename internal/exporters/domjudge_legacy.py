@@ -1,5 +1,6 @@
 import errno
 import re
+import resource
 import yaml
 import os
 from pathlib import Path
@@ -149,6 +150,11 @@ class DOMJudgeLegacyExporter(BaseExporter):
                 "output": config.solution.output_limit_mib,
             },
         }
+        if config.solution.output_limit_mib == resource.RLIM_INFINITY:
+            return ExportResult(
+                ExportResultEnum.FAILURE,
+                msg="Output limit is unlimited. Please set an explicit value.",
+            )
 
         # Checker/Interactor
         # ICPC legacy format only allows:
