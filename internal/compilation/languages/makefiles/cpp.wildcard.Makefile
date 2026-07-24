@@ -4,10 +4,11 @@
 # - INCLUDE_PATHS: include paths (absolute path preferred)
 
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 CXX ?= g++
-CXXFLAGS := $(foreach dir, $(INCLUDE_PATHS), -I $(dir)) $(CXXFLAGS)
+INCPATHS := $(foreach dir, $(INCLUDE_PATHS), -I $(dir))
+CXXFLAGS := $(CXXFLAGS)
 
 # Find all C++ source files with different extensions
 # TODO should we search for **/*.cpp ?
@@ -22,18 +23,18 @@ LOGS = $(CPP_SOURCES:%.cpp=build/%.compile.log) $(CC_SOURCES:%.cc=build/%.compil
 all: build $(EXES)
 
 build/%.d: %.cpp build
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $< -MT $* -MF $@
+	$(CXX) $(INCPATHS) -fdiagnostics-color=never -MM $< $(CXXFLAGS) -MT $* -MF $@
 
 build/%.d: %.cc build
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never -MM $< -MT $* -MF $@
+	$(CXX) $(INCPATHS) -fdiagnostics-color=never -MM $< $(CXXFLAGS) -MT $* -MF $@
 
 include $(DEPS)
 
 build/%: %.cpp
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> build/$*.compile.log
+	$(CXX) $(INCPATHS) -fdiagnostics-color=never $< $(CXXFLAGS) -o $@ 2> build/$*.compile.log
 
 build/%: %.cc
-	$(CXX) $(CXXFLAGS) -fdiagnostics-color=never $< -o $@ 2> build/$*.compile.log
+	$(CXX) $(INCPATHS) -fdiagnostics-color=never $< $(CXXFLAGS) -o $@ 2> build/$*.compile.log
 
 build:
 	[ -d build ] || mkdir build

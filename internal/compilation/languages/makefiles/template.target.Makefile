@@ -3,7 +3,7 @@
 # - TARGET_NAME: target executable file (basename, add extension if appropriate)
 
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 # All work should be done in the build directory
 EXE = build/$(TARGET_NAME) # add extension if necessary

@@ -1,0 +1,32 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/debian12"
+  config.vm.synced_folder "./scripts", "/vagrant"
+
+  config.vm.network "private_network", type: "dhcp"
+
+  config.vm.provider :libvirt do |lv|
+    lv.memory = 2048
+    lv.cpus = 2
+  end
+
+  config.vm.provision "shell", privileged: true, inline: <<-SHELL
+    sudo apt-get update
+    sudo apt-get install -y docker.io docker-compose
+    sudo usermod -aG docker vagrant
+  SHELL
+
+  # cgroup: need manual reboot
+  config.vm.provision "shell", name: "cgroupv1", inline: <<-SHELL
+    if ! grep -q "systemd.unified_cgroup_hierarchy=0" /etc/default/grub; then
+      sudo sed -i 's/GRUB_CMDLINE_LINUX="/GRUB_CMDLINE_LINUX="systemd.unified_cgroup_hierarchy=0 /' /etc/default/grub
+      sudo update-grub
+    fi
+  SHELL
+
+  config.vm.provision "shell", name: "cgroupv2", run: "never", inline: <<-SHELL
+    if grep -q "systemd.unified_cgroup_hierarchy=0" /etc/default/grub; then
+      sudo sed -i 's/systemd.unified_cgroup_hierarchy=0 //' /etc/default/grub
+      sudo update-grub
+    fi
+  SHELL
+end

@@ -1,7 +1,5 @@
 from typing import TYPE_CHECKING
 
-import sys
-
 from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
@@ -21,10 +19,7 @@ class Formatter(ABC):
             self.text = text
 
         def __str__(self):
-            if sys.stdout.isatty():
-                return self.text
-            else:
-                return ""
+            return self.text
 
     def __init__(self):
         self.ANSI_RESET = ""
@@ -42,6 +37,15 @@ class Formatter(ABC):
         """
         Print everything in the argument lists.
         Newline should not be introduced since formatter might track the row/column where the cursor is.
+        """
+
+    @abstractmethod
+    def print_preserve_offset(self, *args, endl=False) -> None:
+        """
+        Print everything in the argument lists.
+        Newline should not be introduced since formatter might track the row/column where the cursor is.
+
+        This function hints the formatter to try preserving the horizontal offset, depending on the formatter's support.
         """
 
     def println(self, *args) -> None:
@@ -71,12 +75,6 @@ class Formatter(ABC):
         """
 
     @abstractmethod
-    def print_checker_reason(self, reason: str) -> None:
-        """
-        Formats the checker reason.
-        """
-
-    @abstractmethod
     def print_checker_status(self, result: EvaluationResult) -> None:
         """
         Formats the execution short status (the one with surrounded by square brackets).
@@ -95,7 +93,7 @@ class Formatter(ABC):
 
     @abstractmethod
     def print_exec_details(
-        self, result: ExecutionOutcome, context: "TMTContext"
+        self, result: EvaluationResult, context: "TMTContext"
     ) -> None:
         """
         Formats the detail statistics of the execution output.

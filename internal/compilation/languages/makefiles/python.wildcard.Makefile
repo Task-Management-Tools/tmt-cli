@@ -2,7 +2,7 @@
 # - PYTHON: real Python3 compiler name, default to python3
 
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 PYTHON ?= python3
 

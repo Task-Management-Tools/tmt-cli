@@ -1,0 +1,6 @@
+# Vagrant machine
+.vagrant
+
+# tmt-export leftovers
+*.zip
+*.part

@@ -1,0 +1,5 @@
+- id: robot
+  username: robot
+  password: titanium
+  type: admin
+  team_id: 1
