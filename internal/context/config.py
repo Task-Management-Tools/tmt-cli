@@ -1,9 +1,17 @@
 import dataclasses
 import enum
-import functools
 import resource
 import re
-import typing
+from typing import Any, TypeVar, Protocol, runtime_checkable
+
+
+T = TypeVar("T")
+
+
+@runtime_checkable
+class DictParserSupported(Protocol):
+    @classmethod
+    def from_raw(cls: type[T], data: dict) -> "T | list[TMTConfigError]": ...
 
 
 @dataclasses.dataclass
@@ -11,7 +19,7 @@ class TMTConfigError:
     what: str
 
     @classmethod
-    def typename(cls, t: type):
+    def _typename(cls, t: type):
         if t is int:
             return "integer"
         if t is str:
@@ -22,103 +30,123 @@ class TMTConfigError:
             return "boolean"
         if t is type(None):
             return "none"
-
+        if issubclass(t, DictParserSupported):
+            return "(config)"
         return t.__name__
 
     @classmethod
-    def invalid_field(cls, expected: str, found):
+    def invalid_field(cls, name: str, expected_type: type, found: Any):
         return TMTConfigError(
-            f"Invalid config field: {expected}, found {found} ({cls.typename(type(found))})."
+            f"Invalid config field: {name} ({cls._typename(expected_type)}), "
+            f"found {found} ({cls._typename(type(found))})."
         )
 
 
-T = typing.TypeVar("T")
+@dataclasses.dataclass
+class DictParser:
+    raw: dict[str, Any]
+    parent: str
+    errors: list[TMTConfigError] = dataclasses.field(default_factory=list)
 
+    def add_err(self, what: str):
+        self.errors.append(TMTConfigError(what))
 
-@typing.overload
-def pop_from_raw(
-    data: dict,
-    key: str,
-    type: typing.Type[T],
-    errors: list[TMTConfigError],
-    config_root: str = ...,
-    *,
-    optional: typing.Literal[True],
-) -> T | None: ...
+    def _invalid_field(self, name: str, expected_type: type, found: Any):
+        self.errors.append(TMTConfigError.invalid_field(name, expected_type, found))
 
+    def full_config_name(self, key: str):
+        return f"{self.parent}.{key}" if self.parent else key
 
-@typing.overload
-def pop_from_raw(
-    data: dict,
-    key: str,
-    type: typing.Type[T],
-    errors: list[TMTConfigError],
-    config_root: str = ...,
-    *,
-    optional: typing.Literal[False],
-) -> T: ...
+    def pop(self, key: str, type: type[T], optional: bool = False) -> T | None:
+        val = self.raw.pop(key, None)
+        if val is None and optional:
+            return None
 
+        # Primitives
+        if type in (int, str, bool, float):
+            if not isinstance(val, type):
+                self._invalid_field(self.full_config_name(key), type, val)
+                return None
+            return val
 
-def pop_from_raw(
-    data: dict,
-    key: str,
-    type: type,
-    errors: list[TMTConfigError],
-    config_root: str = "",
-    optional: bool = False,
-):
-    if config_root:
-        config_root += "."
-
-    val = data.pop(key, None)
-    if val is None and optional:
-        return None
-
-    # Primitives
-    if type in [int, str, bool, float]:
-        if not isinstance(val, type):
-            errors.append(
-                TMTConfigError.invalid_field(
-                    f"{config_root}{key} ({type.__name__})", val
+        if issubclass(type, enum.Enum):
+            try:
+                return type(val)
+            except ValueError:
+                self.errors.append(
+                    TMTConfigError(
+                        f"Config {self.full_config_name(key)} is not a valid value "
+                        f"(found: {val}, expected: one of [{', '.join(str(j.value) for j in type)}])"
+                    )
                 )
+                return None
+
+        if issubclass(type, DictParserSupported):
+            if val is None:
+                self._invalid_field(self.full_config_name(key), type, val)
+                return None
+            res = type.from_raw(val)
+            if isinstance(res, list):
+                self.errors.extend(res)
+                return None
+            return res
+
+        raise ValueError(f"Type {type} does not support config data parser interface")
+
+    def pop_default(self, key: str, type: type[T], default: T) -> T | None:
+        res = self.pop(key, type, optional=True)
+        return default if res is None else res
+
+    def reject_remaining(self) -> None:
+        for key in self.raw.keys():
+            self.add_err(
+                f"Extra config remaining in {self.parent}: {key}. Please move them under config 'extra'."
+            )
+
+    # TODO: document time limit format and memory limit format
+    def parse_time_to_second(self, input: str | None, key: str) -> float | None:
+        if input is None:
+            return None
+        match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", input)
+        if match is None:
+            self.add_err(
+                f"Invalid config {self.full_config_name(key)} (found {input}, expected number s/ms)"
             )
             return None
-        return val
+        match match.group(2):
+            case "ms":
+                return float(match.group(1)) / 1000.0
+            case "s":
+                return float(match.group(1))
+            case _:
+                assert False, "Unreachable code"
 
-    if issubclass(type, enum.Enum):
-        try:
-            return type(val)
-        except ValueError:
-            errors.append(
-                TMTConfigError(
-                    f"Config {config_root}{key} is not a valid value "
-                    f"(found: {val}, expected: one of [{', '.join(str(j.value) for j in type)}])"
-                )
+    def parse_bytes_to_mib(
+        self, input: str | None, key: str, *, allow_unlimited: bool = False
+    ) -> int | None:
+        if input is None:
+            return None
+        if allow_unlimited and input == "unlimited":
+            return resource.RLIM_INFINITY
+        match = re.fullmatch(r"(\d+)\s*(G|GiB|M|MiB)", input)
+        if match is None:
+            expected = (
+                "number M/MiB/G/GiB or unlimited"
+                if allow_unlimited
+                else "number M/MiB/G/GiB"
+            )
+            self.add_err(
+                f"Invalid config {self.full_config_name(key)} (found {input}, expected {expected})"
             )
             return None
 
-    if hasattr(type, "from_raw"):
-        if val is None:
-            errors.append(
-                TMTConfigError.invalid_field(f"{config_root}{key} (object)", val)
-            )
-            return None
-        res = type.from_raw(val)
-        if not isinstance(res, type):
-            errors.extend(res)
-            return None
-        return res
-
-    raise ValueError("Invalid class:", type)
-
-
-def reject_remaining_keys(data: dict, errors: list, config_root: str = "") -> None:
-    for key in data.keys():
-        errors.append(
-            TMTConfigError(
-                f"Extra config remaining in {config_root}: {key}. Please move them under config 'extra'."
-            )
-        )
+        match match.group(2):
+            case "G" | "GiB":
+                return int(match.group(1)) * 1024
+            case "M" | "MiB":
+                return int(match.group(1))
+            case _:
+                assert False, "Unreachable code"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -159,6 +187,7 @@ class JudgeConvention(enum.Enum):
 class ProblemType(enum.Enum):
     BATCH = "batch"
     INTERACTIVE = "interactive"
+    MULTI_PASS = "multi-pass"
     COMMUNICATION = "communication"
     OUTPUT_ONLY = "output-only"
 
@@ -177,48 +206,41 @@ class Checker:
     check_generated_output: bool = True
 
     @classmethod
-    def from_raw(cls, data: dict) -> "Checker | list[TMTConfigError]":
+    def from_raw(cls, data: dict | str) -> "Checker | list[TMTConfigError]":
         # TODO: document this
         if isinstance(data, str):
+            # Fall through for default args
             data = {"type": "custom", "filename": data}
 
         if not isinstance(data, dict):
-            return [TMTConfigError.invalid_field("checker (object)", data)]
+            return [TMTConfigError.invalid_field("checker (config)", data)]
 
-        errors: list[TMTConfigError] = []
-        pop = functools.partial(
-            pop_from_raw, data, errors=errors, config_root="checker"
+        parser = DictParser(data, "checker")
+        type = parser.pop("type", CheckerType)
+        filename = parser.pop("filename", str, optional=True)
+        arguments = parser.pop_default("arguments", str, "")
+        check_forced_output = parser.pop_default("check_forced_output", bool, True)
+        check_generated_output = parser.pop_default(
+            "check_generated_output", bool, True
         )
 
-        type = pop("type", CheckerType)
-        filename = pop("filename", str, optional=True)
-        arguments = pop("arguments", str, optional=True)
-        check_forced_output = pop("check_forced_output", bool, optional=True)
-        check_generated_output = pop("check_generated_output", bool, optional=True)
-
-        if arguments is not None:
-            arguments = arguments.split()
-
         if type is CheckerType.CUSTOM and filename is None:
-            errors.append(
-                TMTConfigError(
-                    "Config checker.filename must be present when checker.type is set to custom."
-                )
+            parser.add_err(
+                "Config checker.filename must be present when checker.type is set to custom."
             )
 
-        reject_remaining_keys(data, errors, "checker")
-        if errors:
-            return errors
+        parser.reject_remaining()
+        if parser.errors:
+            return parser.errors
 
-        if check_forced_output is None:
-            check_forced_output = True
-        if check_generated_output is None:
-            check_generated_output = True
-
+        assert type is not None
+        assert arguments is not None
+        assert check_forced_output is not None
+        assert check_generated_output is not None
         return Checker(
             type=type,
             filename=filename,
-            arguments=arguments,
+            arguments=arguments.split(),
             check_forced_output=check_forced_output,
             check_generated_output=check_generated_output,
         )
@@ -234,29 +256,23 @@ class Validator:
     type: ValidatorType
 
     @classmethod
-    def from_raw(cls, data: dict) -> "Validator | list[TMTConfigError]":
+    def from_raw(cls, data: dict | str) -> "Validator | list[TMTConfigError]":
         if isinstance(data, str):
+            # Fall through for enum check
             data = {"type": data}
 
         if not isinstance(data, dict):
-            return [TMTConfigError.invalid_field("validator (object)", data)]
+            return [TMTConfigError.invalid_field("validator (config)", data)]
 
-        errors: list[TMTConfigError] = []
-        pop = functools.partial(
-            pop_from_raw, data, errors=errors, config_root="validator"
-        )
+        parser = DictParser(data, "validator")
 
-        type = pop("type", ValidatorType)
-
+        type = parser.pop("type", ValidatorType)
         if type is not ValidatorType.DEFAULT:
-            errors.append(
-                TMTConfigError(f"Validator type {type} is not supported yet.")
-            )
+            parser.add_err(f"Validator type {type} is not supported yet.")
 
-        reject_remaining_keys(data, errors, "validator")
-        if errors:
-            return errors
-        return Validator(type=type)
+        parser.reject_remaining()
+        assert type is not None
+        return parser.errors or Validator(type=type)
 
 
 @dataclasses.dataclass
@@ -265,27 +281,25 @@ class Interactor:
     arguments: list[str]
 
     @classmethod
-    def from_raw(cls, data: dict) -> "Interactor | list[TMTConfigError]":
+    def from_raw(cls, data: dict | str) -> "Interactor | list[TMTConfigError]":
         if isinstance(data, str):
-            data = {"filename": data}
+            return Interactor(filename=data, arguments=[])
 
         if not isinstance(data, dict):
-            return [TMTConfigError.invalid_field("interactor (object)", data)]
+            return [TMTConfigError.invalid_field("interactor (config)", data)]
 
-        errors: list[TMTConfigError] = []
-        pop = functools.partial(
-            pop_from_raw, data, errors=errors, config_root="interactor"
-        )
+        parser = DictParser(data, "interactor")
 
-        filename = pop("filename", str)
-        arguments = pop("arguments", str, optional=True)
+        filename = parser.pop("filename", str)
+        arguments = parser.pop("arguments", str, optional=True)
 
-        arguments = [] if not arguments else arguments.split()
+        arg_list = [] if not arguments else arguments.split()
+        parser.reject_remaining()
 
-        reject_remaining_keys(data, errors, "interactor")
-        if errors:
-            return errors
-        return Interactor(filename=filename, arguments=arguments)
+        if parser.errors:
+            return parser.errors
+        assert filename is not None
+        return Interactor(filename=filename, arguments=arg_list)
 
 
 @dataclasses.dataclass
@@ -295,65 +309,19 @@ class Manager:
     @classmethod
     def from_raw(cls, data: dict) -> "Manager | list[TMTConfigError]":
         if isinstance(data, str):
-            data = {"filename": data}
+            return Manager(filename=data)
+
         if not isinstance(data, dict):
-            return [TMTConfigError.invalid_field("manager (object)", data)]
+            return [TMTConfigError.invalid_field("manager (config)", data)]
 
-        errors: list[TMTConfigError] = []
-        pop = functools.partial(
-            pop_from_raw, data, errors=errors, config_root="manager"
-        )
+        parser = DictParser(data, "manager")
+        filename = parser.pop("filename", str)
+        parser.reject_remaining()
 
-        filename = pop("filename", str)
-
-        reject_remaining_keys(data, errors, "manager")
-        if errors:
-            return errors
+        if parser.errors:
+            return parser.errors
+        assert filename is not None
         return Manager(filename=filename)
-
-
-# TODO: document time limit format and memory limit format
-def parse_time_to_second(
-    input_str: str, errors: list, config_name: str
-) -> float | None:
-    match = re.fullmatch(r"(\d+|\d+\.\d+)\s*(ms|s)", input_str)
-    if match is None:
-        errors.append(
-            TMTConfigError(
-                f"Invalid config {config_name} (found {input_str}, expected numbers s/ms)"
-            )
-        )
-        return None
-    if match.group(2) == "ms":
-        return float(match.group(1)) / 1000.0
-    else:
-        return float(match.group(1))
-
-
-def parse_bytes_to_mib(
-    input_str: str, errors: list, config_name: str, *, allow_unlimited: bool = False
-) -> int | None:
-    if input_str == "unlimited" and allow_unlimited:
-        return resource.RLIM_INFINITY
-    match = re.fullmatch(r"(\d+)\s*(G|GiB|M|MiB)", input_str)
-    if match is None:
-        if allow_unlimited:
-            errors.append(
-                TMTConfigError(
-                    f"Invalid config {config_name} (found {input_str}, expected numbers M/MiB/G/GiB or unlimited)"
-                )
-            )
-        else:
-            errors.append(
-                TMTConfigError(
-                    f"Invalid config {config_name} (found {input_str}, expected numbers M/MiB/G/GiB)"
-                )
-            )
-        return None
-    if match.group(2).startswith("G"):
-        return int(match.group(1)) * 1024
-    else:
-        return int(match.group(1))
 
 
 class SolutionType(enum.Enum):
@@ -364,7 +332,7 @@ class SolutionType(enum.Enum):
 @dataclasses.dataclass(kw_only=True)
 class Solution:
     type: SolutionType
-    grader_name: str
+    grader_name: str | None
     time_limit_sec: float
     memory_limit_mib: int
     output_limit_mib: int
@@ -372,6 +340,9 @@ class Solution:
     # Communication only attributes
     num_procs: int | None
     use_fifo: bool
+
+    # Multipass only attributes
+    num_passes: int | None
 
     @property
     def memory_limit_bytes(self) -> float:
@@ -388,61 +359,57 @@ class Solution:
     @classmethod
     def from_raw(cls, data: dict) -> "Solution | list[TMTConfigError]":
         if not isinstance(data, dict):
-            return [TMTConfigError.invalid_field("solution (object)", data)]
+            return [TMTConfigError.invalid_field("solution (config)", data)]
 
-        errors: list[TMTConfigError] = []
-        pop = functools.partial(
-            pop_from_raw, data, errors=errors, config_root="solution"
+        parser = DictParser(data, "solution")
+
+        type = parser.pop("type", SolutionType)
+        grader_name = parser.pop("grader_name", str, optional=True)
+        time_limit = parser.pop("time_limit", str)
+        memory_limit = parser.pop("memory_limit", str)
+        output_limit = parser.pop("output_limit", str)
+        num_procs = parser.pop("num_procs", int, optional=True)
+        use_fifo = parser.pop("use_fifo", bool, optional=True)
+        num_passes = parser.pop("num_passes", int, optional=True)
+
+        # Fine because valid time/memory is nevery empty
+        time_limit_sec = parser.parse_time_to_second(time_limit, "time_limit")
+        memory_limit_mib = parser.parse_bytes_to_mib(memory_limit, "memory_limit")
+        output_limit_mib = parser.parse_bytes_to_mib(
+            output_limit, "output_limit", allow_unlimited=True
         )
 
-        type = pop("type", SolutionType)
-        grader_name = pop("grader_name", str, optional=True)
-        time_limit = pop("time_limit", str)
-        memory_limit = pop("memory_limit", str)
-        output_limit = pop("output_limit", str)
-        num_procs = pop("num_procs", int, optional=True)
-        use_fifo = pop("use_fifo", bool, optional=True)
-
-        if isinstance(time_limit, str):
-            time_limit_sec = parse_time_to_second(
-                time_limit, errors, "solution.time_limit"
-            )
-        if isinstance(memory_limit, str):
-            memory_limit_mib = parse_bytes_to_mib(
-                memory_limit, errors, "solution.memory_limit"
-            )
-        if isinstance(output_limit, str):
-            output_limit_mib = parse_bytes_to_mib(
-                output_limit, errors, "solution.output_limit", allow_unlimited=True
-            )
-
-        if isinstance(num_procs, int):
+        if num_procs is not None:
             if num_procs <= 0:
-                errors.append(
-                    TMTConfigError("Config option solution.num_procs must be positive.")
-                )
+                parser.add_err("Config option solution.num_procs must be positive.")
             elif num_procs > 10:
-                errors.append(
-                    TMTConfigError(
-                        "Config option solution.num_procs must be at most 10. "
-                        "CMS does not support Communication task with more than 10 solution processes. "
-                        "See https://github.com/cms-dev/cms/issues/1207."
-                    )
+                parser.add_err(
+                    "Config option solution.num_procs must be at most 10. "
+                    "CMS does not support Communication task with more than 10 solution processes. "
+                    "See https://github.com/cms-dev/cms/issues/1207."
                 )
+
+        if num_passes is not None:
+            if num_passes <= 1:
+                parser.add_err("Config option solution.num_passes must be at least 2.")
 
         if use_fifo is None:
             use_fifo = False
 
-        if type == SolutionType.GRADER and grader_name is None:
-            errors.append(
-                TMTConfigError(
-                    "Invalid config solution.grader_name: Tasks with grader must supply solution.grader_name."
-                )
+        if type is SolutionType.GRADER and grader_name is None:
+            parser.add_err(
+                "Invalid config solution.grader_name: Tasks with grader must supply solution.grader_name."
             )
 
-        reject_remaining_keys(data, errors, "solution")
-        if len(errors):
-            return errors
+        parser.reject_remaining()
+        if parser.errors:
+            return parser.errors
+
+        assert type is not None
+        assert time_limit_sec is not None
+        assert memory_limit_mib is not None
+        assert output_limit_mib is not None
+
         return Solution(
             type=type,
             grader_name=grader_name,
@@ -451,6 +418,7 @@ class Solution:
             output_limit_mib=output_limit_mib,
             num_procs=num_procs,
             use_fifo=use_fifo,
+            num_passes=num_passes,
         )
 
 
@@ -467,28 +435,25 @@ class AnswerGeneration:
     @classmethod
     def from_raw(cls, data: dict) -> "AnswerGeneration | list[TMTConfigError]":
         if isinstance(data, str):
-            data = {"type": "solution", "filename": data}
+            return AnswerGeneration(type=AnswerGenerationType.SOLUTION, filename=data)
+
         if not isinstance(data, dict):
-            return [TMTConfigError.invalid_field("answer_generation (object)", data)]
+            return [TMTConfigError.invalid_field("answer_generation (config)", data)]
 
-        errors: list[TMTConfigError] = []
-        pop = functools.partial(
-            pop_from_raw, data, errors=errors, config_root="answer_generation"
-        )
+        parser = DictParser(data, "answer_generation")
 
-        type = pop("type", AnswerGenerationType)
-        filename = pop("filename", str, optional=True)
+        type = parser.pop("type", AnswerGenerationType)
+        filename = parser.pop("filename", str, optional=True)
 
         if type == AnswerGenerationType.SOLUTION and filename is None:
-            errors.append(
-                TMTConfigError(
-                    "Config answer_generation.filename must be specified when type is 'solution'."
-                )
+            parser.add_err(
+                "Config answer_generation.filename must be specified when type is 'solution'."
             )
 
-        reject_remaining_keys(data, errors, "answer_generation")
-        if len(errors):
-            return errors
+        parser.reject_remaining()
+        if parser.errors:
+            return parser.errors
+        assert type is not None
         return AnswerGeneration(type=type, filename=filename)
 
 
@@ -522,99 +487,94 @@ class TMTConfig:
 
     @classmethod
     def from_raw(cls, data: dict) -> "TMTConfig | list[TMTConfigError]":
-        errors: list[TMTConfigError] = []
-        pop = functools.partial(pop_from_raw, data, errors=errors)
+        parser = DictParser(data, "")
 
         # fmt: off
-        title                = pop("title",                str)
-        short_name           = pop("short_name",           str)
-        description          = pop("description",          str, optional=True)
-        tmt_version          = pop("tmt_version",          str)
-        input_extension      = pop("input_extension",      str)
-        output_extension     = pop("output_extension",     str)
-        judge_convention     = pop("judge_convention",     JudgeConvention)
-        problem_type         = pop("problem_type",         ProblemType)
-        validator            = pop("validator",            Validator)
-        solution             = pop("solution",             Solution)
-        answer_generation    = pop("answer_generation",    AnswerGeneration)
-        checker              = pop("checker",              Checker, optional=True)
-        interactor           = pop("interactor",           Interactor, optional=True)
-        manager              = pop("manager",              Manager, optional=True)
-        compile_time_limit   = pop("compile_time_limit",   str, optional=True)
-        compile_memory_limit = pop("compile_memory_limit", str, optional=True)
+        title                = parser.pop("title",                str)
+        short_name           = parser.pop("short_name",           str)
+        description          = parser.pop("description",          str, optional=True)
+        tmt_version          = parser.pop("tmt_version",          str)
+        input_extension      = parser.pop("input_extension",      str)
+        output_extension     = parser.pop("output_extension",     str)
+        judge_convention     = parser.pop("judge_convention",     JudgeConvention)
+        problem_type         = parser.pop("problem_type",         ProblemType)
+        validator            = parser.pop("validator",            Validator)
+        solution             = parser.pop("solution",             Solution)
+        answer_generation    = parser.pop("answer_generation",    AnswerGeneration)
+        checker              = parser.pop("checker",              Checker, optional=True)
+        interactor           = parser.pop("interactor",           Interactor, optional=True)
+        manager              = parser.pop("manager",              Manager, optional=True)
+        compile_time_limit   = parser.pop_default("compile_time_limit",   str, "60 s")
+        compile_memory_limit = parser.pop_default("compile_memory_limit", str, "unlimited")
         # fmt: on
 
         # TODO warn for tmt_version
         if isinstance(input_extension, str) and not input_extension.startswith("."):
-            errors.append(
-                TMTConfigError("Config input_extension should start with a dot.")
-            )
+            parser.add_err("Config input_extension should start with a dot.")
         if isinstance(output_extension, str) and not output_extension.startswith("."):
-            errors.append(
-                TMTConfigError("Config output_extension should start with a dot.")
-            )
+            parser.add_err("Config output_extension should start with a dot.")
         if input_extension is not None and input_extension == output_extension:
-            errors.append(
-                TMTConfigError(
-                    "Config input_extension and output_extension must not be the same."
-                )
+            parser.add_err(
+                "Config input_extension and output_extension must not be the same."
             )
 
-        compile_time_limit_sec = None
-        if compile_time_limit is not None:
-            compile_time_limit_sec = parse_time_to_second(
-                compile_time_limit, errors, "compile_time_limit"
-            )
-
-        compile_memory_limit_mib = None
-        if compile_memory_limit is not None:
-            compile_memory_limit_mib = parse_bytes_to_mib(
-                compile_memory_limit,
-                errors,
-                "compile_memory_limit",
-                allow_unlimited=True,
-            )
+        compile_time_limit_sec = parser.parse_time_to_second(
+            compile_time_limit, "compile_time_limit"
+        )
+        compile_memory_limit_mib = parser.parse_bytes_to_mib(
+            compile_memory_limit, "compile_memory_limit", allow_unlimited=True
+        )
 
         if problem_type is ProblemType.BATCH:
             pass
             # TODO warn about extra interactor/manager
         if problem_type is ProblemType.INTERACTIVE:
             if not isinstance(interactor, Interactor):
-                errors.append(
-                    TMTConfigError(
-                        "Config interactor must be present when problem_type is interactive."
-                    )
+                parser.add_err(
+                    "Config interactor must be present when problem_type is interactive."
                 )
+
         if problem_type is ProblemType.COMMUNICATION:
             if not isinstance(manager, Manager):
-                errors.append(
-                    TMTConfigError(
-                        "Config manager must be present when problem_type is communication."
-                    )
+                parser.add_err(
+                    "Config manager must be present when problem_type is communication."
                 )
             if isinstance(checker, Checker):
-                errors.append(
-                    TMTConfigError(
-                        "Config checker must not be present when problem_type is communication."
-                    )
+                parser.add_err(
+                    "Config checker must not be present when problem_type is communication."
                 )
             if isinstance(solution, Solution) and solution.num_procs is None:
-                errors.append(
-                    TMTConfigError(
-                        "Config solution.num_procs must be present when problem_type is communication."
-                    )
+                parser.add_err(
+                    "Config solution.num_procs must be present when problem_type is communication."
                 )
 
-        data.pop("extra", None)
-        reject_remaining_keys(data, errors)
-        if len(errors):
-            return errors
+        if problem_type is ProblemType.MULTI_PASS:
+            if not isinstance(interactor, Interactor):
+                parser.add_err(
+                    "Config interactor must be present when problem_type is multi-pass."
+                )
+            if not isinstance(solution, Solution) or solution.num_passes is None:
+                parser.add_err(
+                    "Config solution.num_passes must be present when problem_type is multi-pass."
+                )
 
-        if compile_time_limit_sec is None:
-            compile_time_limit_sec = 60.0  # default one minute
-        if compile_memory_limit_mib is None:
-            compile_memory_limit_mib = resource.RLIM_INFINITY  # default unlimited
+        parser.raw.pop("extra", None)
+        parser.reject_remaining()
+        if parser.errors:
+            return parser.errors
 
+        assert title is not None
+        assert short_name is not None
+        assert tmt_version is not None
+        assert input_extension is not None
+        assert output_extension is not None
+        assert judge_convention is not None
+        assert problem_type is not None
+        assert validator is not None
+        assert solution is not None
+        assert answer_generation is not None
+        assert compile_time_limit_sec is not None
+        assert compile_memory_limit_mib is not None
         return TMTConfig(
             title=title,
             short_name=short_name,
