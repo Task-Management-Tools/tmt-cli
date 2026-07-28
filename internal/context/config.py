@@ -342,7 +342,7 @@ class Solution:
     use_fifo: bool
 
     # Multipass only attributes
-    num_passes: int | None
+    max_passes: int | None
 
     @property
     def memory_limit_bytes(self) -> float:
@@ -370,7 +370,7 @@ class Solution:
         output_limit = parser.pop("output_limit", str)
         num_procs = parser.pop("num_procs", int, optional=True)
         use_fifo = parser.pop("use_fifo", bool, optional=True)
-        num_passes = parser.pop("num_passes", int, optional=True)
+        max_passes = parser.pop("max_passes", int, optional=True)
 
         # Fine because valid time/memory is nevery empty
         time_limit_sec = parser.parse_time_to_second(time_limit, "time_limit")
@@ -389,8 +389,8 @@ class Solution:
                     "See https://github.com/cms-dev/cms/issues/1207."
                 )
 
-        if num_passes is not None:
-            if num_passes <= 1:
+        if max_passes is not None:
+            if max_passes <= 1:
                 parser.add_err("Config option solution.num_passes must be at least 2.")
 
         if use_fifo is None:
@@ -418,7 +418,7 @@ class Solution:
             output_limit_mib=output_limit_mib,
             num_procs=num_procs,
             use_fifo=use_fifo,
-            num_passes=num_passes,
+            max_passes=max_passes,
         )
 
 
@@ -553,7 +553,7 @@ class TMTConfig:
                 parser.add_err(
                     "Config interactor must be present when problem_type is multi-pass."
                 )
-            if not isinstance(solution, Solution) or solution.num_passes is None:
+            if not isinstance(solution, Solution) or solution.max_passes is None:
                 parser.add_err(
                     "Config solution.num_passes must be present when problem_type is multi-pass."
                 )

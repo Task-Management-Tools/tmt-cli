@@ -238,7 +238,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
         elif manager.is_signaled_exit or manager.exit_code:
             result.verdict = EvaluationOutcome.MANAGER_CRASHED
         # else, we check if solution executed successfully
-        elif self.is_solution_abormal_exit(result):
+        elif self.is_solution_abormal_exit(result, solution):
             pass
         # We read the standard manager output to determine the result:
         else:

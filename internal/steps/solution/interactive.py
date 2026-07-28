@@ -207,7 +207,7 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         elif interactor.is_signaled_exit:
             result.verdict = EvaluationOutcome.CHECKER_CRASHED
         # else, we check if solution executed successfully
-        elif self.is_solution_abormal_exit(result):
+        elif self.is_solution_abormal_exit(result, solution):
             pass
         # Now, we can check if the solution is actually correct
         elif interactor.exit_code == 42:
