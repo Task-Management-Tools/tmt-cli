@@ -201,7 +201,7 @@ class CheckerType(enum.Enum):
 class Checker:
     type: CheckerType
     filename: str | None
-    arguments: list[str] | None
+    arguments: list[str]
     check_forced_output: bool = True
     check_generated_output: bool = True
 
