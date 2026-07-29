@@ -114,15 +114,15 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
         interact_workdir.clean()
 
         input_file_name = self.context.construct_input_filename(codename)
-        input_file_name_fmt = self.context.construct_input_filename(codename) + ".{0}"
-        output_file_name = self.context.construct_output_filename(codename)
-        output_file_name_fmt = self.context.construct_output_filename(codename) + ".{0}"
+        input_file_name_fmt = f"{codename}.sol.in." + "{0}"
+        answer_file_name = self.context.construct_output_filename(codename)
+        output_file_name_fmt = f"{codename}.sol.out." + "{0}"
         solution_err_name_fmt = f"{codename}.sol.err." + "{0}"
         interact_out_name_fmt = f"{codename}.interactor.out." + "{0}"
         interact_err_name_fmt = f"{codename}.interactor.err." + "{0}"
 
         testcase_input = os.path.join(self.context.path.testcases, input_file_name)
-        testcase_answer = os.path.join(self.context.path.testcases, output_file_name)
+        testcase_answer = os.path.join(self.context.path.testcases, answer_file_name)
 
         solution_exec_command = get_run_single_command(
             context=self.context,
@@ -209,7 +209,7 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
             interact_err_name = interact_err_name_fmt.format(i)
             # The name here is relative to the solution, not interactor
             interactor_testcase_input_file = interact_workdir.file(solution_in_name)
-            interactor_testcase_answer_file = interact_workdir.file(output_file_name)
+            interactor_testcase_answer_file = interact_workdir.file(answer_file_name)
             interactor_sol_input_file = interact_workdir.file(solution_out_name)
             interactor_output_file = interact_workdir.file(interact_out_name)
             interactor_error_file = interact_workdir.file(interact_err_name)
@@ -270,7 +270,7 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
 
             if has_next_input:
                 next_input_source = interactor_next_input_tmp
-                copy_log(interactor_next_input_path, solution_in_name.format(i + 1))
+                copy_log(interactor_next_input_path, input_file_name_fmt.format(i + 1))
                 shutil.move(interactor_next_input_path, next_input_source)
             else:
                 agg_result.verdict = EvaluationOutcome.ACCEPTED
