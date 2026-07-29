@@ -114,6 +114,7 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
         interact_workdir.clean()
 
         input_file_name = self.context.construct_input_filename(codename)
+        input_file_name_fmt = self.context.construct_input_filename(codename) + ".{0}"
         output_file_name = self.context.construct_output_filename(codename)
         output_file_name_fmt = self.context.construct_output_filename(codename) + ".{0}"
         solution_err_name_fmt = f"{codename}.sol.err." + "{0}"
@@ -143,9 +144,9 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
         interactor_feedback_dir = interact_workdir.subdir("feedback_dir")
         interactor_feedback_dir.create()
         interactor_feedback_dir.clean()
+        interactor_next_input_tmp = interact_workdir.file("nextpass.in")
 
         next_input_source = testcase_input
-        next_input_movable = False
 
         solution_runs: list[Process] = []
         interactor_runs: list[Process] = []
@@ -159,20 +160,30 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
                 with open(interactor_feedback_file, "r") as f:
                     agg_result.reason = f.readline().strip()
 
+        def remove(src: str):
+            if (p := Path(src)).exists():
+                p.unlink()
+
+        def copy_log(src: str, dst: str):
+            Path(src).touch()
+            shutil.copy(src, self.context.log_file(dst))
+
+        def move_log(src: str, dst: str):
+            Path(src).touch()
+            shutil.move(src, self.context.log_file(dst))
+
         for i in range(self.max_passes):
             # Run solution
+            solution_in_name = input_file_name_fmt.format(i)
             solution_out_name = output_file_name_fmt.format(i)
             solution_err_name = solution_err_name_fmt.format(i)
 
-            sandbox_input_file = solution_workdir.file(input_file_name)
+            sandbox_input_file = solution_workdir.file(solution_in_name)
             sandbox_output_file = solution_workdir.file(solution_out_name)
             sandbox_error_file = solution_workdir.file(solution_err_name)
 
             solution_workdir.clean()
-            if next_input_movable:
-                shutil.move(next_input_source, sandbox_input_file)
-            else:
-                shutil.copy(next_input_source, sandbox_input_file)
+            shutil.copy(next_input_source, sandbox_input_file)
 
             solution = Process(
                 solution_exec_command,
@@ -190,24 +201,20 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
             if self.is_solution_abormal_exit(agg_result, solution):
                 break
 
-            Path(sandbox_output_file).touch()
-            shutil.copy(sandbox_output_file, self.context.log_file(solution_out_name))
-            Path(sandbox_error_file).touch()
-            shutil.move(sandbox_error_file, self.context.log_file(solution_err_name))
+            copy_log(sandbox_output_file, solution_out_name)
+            move_log(sandbox_error_file, solution_err_name)
 
             # Run interactor
             interact_out_name = interact_out_name_fmt.format(i)
             interact_err_name = interact_err_name_fmt.format(i)
             # The name here is relative to the solution, not interactor
-            interactor_testcase_input_file = interact_workdir.file(input_file_name)
+            interactor_testcase_input_file = interact_workdir.file(solution_in_name)
             interactor_testcase_answer_file = interact_workdir.file(output_file_name)
             interactor_sol_input_file = interact_workdir.file(solution_out_name)
             interactor_output_file = interact_workdir.file(interact_out_name)
             interactor_error_file = interact_workdir.file(interact_err_name)
 
-            # TODO if output limit exceeded?
-
-            shutil.copy(testcase_input, interactor_testcase_input_file)
+            shutil.copy(next_input_source, interactor_testcase_input_file)
             shutil.copy(testcase_answer, interactor_testcase_answer_file)
             shutil.copy(sandbox_output_file, interactor_sol_input_file)
             interactor_next_input_path = interactor_feedback_dir.file("nextpass.in")
@@ -235,18 +242,11 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
             wait_procs([interactor])
             interactor_runs.append(interactor)
 
-            interactor_output_file = interact_workdir.file(
-                interact_out_name_fmt.format(i)
-            )
-            interactor_error_file = interact_workdir.file(
-                interact_err_name_fmt.format(i)
-            )
-            Path(interactor_output_file).touch()
-            shutil.copy(
-                interactor_output_file, self.context.log_file(interact_out_name)
-            )
-            Path(interactor_error_file).touch()
-            shutil.move(interactor_error_file, self.context.log_file(interact_err_name))
+            remove(interactor_testcase_input_file)
+            remove(interactor_testcase_answer_file)
+            remove(interactor_sol_input_file)
+            move_log(interactor_output_file, interact_out_name)
+            move_log(interactor_error_file, interact_err_name)
 
             if interactor.is_timedout:
                 agg_result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
@@ -269,8 +269,9 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
                 break
 
             if has_next_input:
-                next_input_source = interactor_next_input_path
-                next_input_movable = True
+                next_input_source = interactor_next_input_tmp
+                copy_log(interactor_next_input_path, solution_in_name.format(i + 1))
+                shutil.move(interactor_next_input_path, next_input_source)
             else:
                 agg_result.verdict = EvaluationOutcome.ACCEPTED
                 set_interactor_feedback()
@@ -280,7 +281,11 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
             agg_result.verdict = EvaluationOutcome.CHECKER_FAILED
             agg_result.reason = "Interactor must not produce next input when maximum pass number is reached"
 
-        # Move logs
+        # Cleanup temporary next input
+        if os.path.exists(interactor_next_input_tmp):
+            os.unlink(interactor_next_input_tmp)
+
+        # Move summary logs
         interactor_feedback_logs = self.context.log_file(
             f"{codename}.interactor.feedback"
         )
