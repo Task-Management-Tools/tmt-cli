@@ -26,4 +26,4 @@ jobs:
 
     - name: Run pytest
       run: |
-        python -m pytest tests/test_domjudge_export.py --run-integration --integration-backend=host
+        python -m pytest tests/test_domjudge_import.py --run-integration --integration-backend=host

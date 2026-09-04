@@ -12,27 +12,14 @@
         }                                                          \
     } while (false);
 
-std::string read_string()
-{
-    char buf[256] = {};
-    if (std::scanf("%255[^ \n\r\t\v\f]", buf) != 1)
-    {
-        std::fputs("Failed to read string", stderr);
-        std::abort();
-    }
-
-    return std::string(buf);
-}
-
 int read_char()
 {
-    int c = fgetc(stdin);
-    return c;
+    return fgetc(stdin);
 }
 
 int read_int()
 {
-    int c = std::fgetc(stdin);
+    int c = read_char();
     if (!std::isdigit(c))
     {
         std::fputs("Expecting a digit", stderr);
@@ -50,15 +37,9 @@ int read_int()
 
 int main()
 {
-    std::string strat = read_string();
-    ensure(strat == "fixed" || strat == "adaptive");
-    if (strat == "fixed")
-    {
-        ensure(read_char() == ' ');
-        int n = read_int();
-        ensure(1 <= n && n <= 1024);
-    }
+    int n = read_int();
+    ensure(1 <= n && n <= 1024);
     ensure(read_char() == '\n');
     ensure(read_char() == EOF);
-    exit(42);
+    return 42;
 }

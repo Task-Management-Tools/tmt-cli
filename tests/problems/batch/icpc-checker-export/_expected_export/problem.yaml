@@ -1,0 +1,9 @@
+author: anonymous
+license: unknown
+limits:
+  memory: 1024
+  output: 8
+  time_limit: 1.0
+name: ICPC Checker Test
+problem_format_version: legacy
+validation: custom

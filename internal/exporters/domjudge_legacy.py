@@ -28,7 +28,7 @@ from .operations import (
 
 class DOMJudgeStatementOperation(ExportOperation):
     # Copies statement PDFs for DOMjudge
-    # DOMjudge only recognizes problem.pdf for PDF files
+    # DOMjudge only recognizes problem.pdf for PDF files; we skip HTML and TXT as not supported for now
     def __init__(self, src: str, dst: str | os.PathLike[str]):
         self.src = Path(src)
         self.dst = Path(dst)
@@ -66,9 +66,9 @@ class DOMJudgeStatementOperation(ExportOperation):
         # Check for misnamed dir names
         for subdir in self.src.parent.iterdir():
             if (
-                subdir != self.src
-                and FuzzyMatcher.edit_distance(subdir.name, self.src.name, 2) <= 2
-            ):
+                subdir != self.src and
+                FuzzyMatcher.edit_distance_at_most(subdir.name, self.src.name, 2)
+            ):  # fmt: skip
                 return ExportResult(
                     ExportResultEnum.WARNING,
                     msg=f"No statement exported (must be under {self.src.relative_to(context.path.problem_dir)}), "
@@ -246,8 +246,9 @@ class DOMJudgeLegacyExporter(BaseExporter):
         # DOMjudge extension: .timelimit works with version 7.0+ (maybe even earlier)
         # problem.yaml:limits.time_limit works only with version 9.0+, so this is always present as a fallback
 
+        # 3 decimal place since we only support precision up to milliseconds
         yield DumpFileOperation(
-            src=str(context.config.solution.time_limit_sec), dst=".timelimit"
+            src=f"{context.config.solution.time_limit_sec:.3f}\n", dst=".timelimit"
         )
 
         # Statements -> problem_statement/problem.{pdf,html,txt}

@@ -1,0 +1,5 @@
+@testset samples
+manual sample.in
+
+@testset full
+manual hidden.in

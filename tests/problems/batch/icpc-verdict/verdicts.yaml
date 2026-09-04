@@ -1,0 +1,12 @@
+- {filename: ok.py,         verdict: accepted}
+# TODO no.cpp is no-output, but we do not (and older DOMjudge version also do not) support it yet
+- {filename: no.cpp,        verdict: wrong-answer}
+- {filename: ok-cpu.cpp,    verdict: accepted}
+- {filename: ok-wall.cpp,   verdict: accepted}
+- {filename: tle-cpu.cpp,   verdict: time-limit}
+- {filename: tle-wall.cpp,  verdict: time-limit}
+- {filename: ok-memory.cpp, verdict: accepted}
+- {filename: mle.cpp,       verdict: runtime-error}
+- {filename: rte.cpp,       verdict: runtime-error}
+- {filename: ok-output.cpp, verdict: accepted}
+- {filename: ole.cpp,       verdict: output-limit}

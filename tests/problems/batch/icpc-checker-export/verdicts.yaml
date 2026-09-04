@@ -1,0 +1,8 @@
+- filename: model-solution.cpp
+  verdict: accepted
+
+- filename: alt.py
+  verdict: accepted
+
+- filename: wrong.cpp
+  verdict: wrong-answer

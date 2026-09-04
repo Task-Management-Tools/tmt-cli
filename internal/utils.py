@@ -24,7 +24,7 @@ class FuzzyMatcher:
 
     @classmethod
     @functools.lru_cache
-    def edit_distance(cls, a: str, b: str, threshold: int):
+    def edit_distance_at_most(cls, a: str, b: str, threshold: int) -> bool:
         dp = list(range(len(b) + 1))
         for i in range(len(a)):
             dp[0] = i
@@ -33,8 +33,8 @@ class FuzzyMatcher:
             for j in range(len(b)):
                 dp[j + 1] = min(dp[j + 1], dp[j] + 1)
             if min(dp) > threshold:
-                return threshold + 1
-        return dp[-1]
+                return False
+        return dp[-1] <= threshold
 
     def match(self, s: str, threshold: int):
 
@@ -44,7 +44,7 @@ class FuzzyMatcher:
             if subtext.count(self.bad) > threshold:
                 continue
 
-            if self.edit_distance(subtext, self.target, threshold) <= threshold:
+            if self.edit_distance_at_most(subtext, self.target, threshold):
                 index_mapping = [
                     i for i, ch in enumerate(s) if ch not in string.whitespace
                 ]
