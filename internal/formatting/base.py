@@ -4,12 +4,12 @@ from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
     from internal.context import TMTContext
-    from internal import commands
 
 from internal.outcomes import (
     CompilationResult,
     ExecutionOutcome,
     EvaluationResult,
+    TestsetResult,
 )
 
 
@@ -102,8 +102,8 @@ class Formatter(ABC):
     @abstractmethod
     def print_testset_summary(
         self,
-        results: "list[commands.invoke.TestsetResult]",
-        overall: "commands.invoke.TestsetResult",
+        results: list[TestsetResult],
+        overall: TestsetResult,
         context: "TMTContext",
     ):
         """

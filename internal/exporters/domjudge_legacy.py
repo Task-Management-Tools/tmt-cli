@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import BinaryIO
 
+from internal.utils import FuzzyMatcher
 from internal.zip_handler import ZipFileHander
 from internal.context.config import CheckerType, JudgeConvention
 from internal.compilation.languages import languages, LanguageCpp, LanguagePython3
@@ -23,6 +24,57 @@ from .operations import (
     ExportResultEnum,
     GlobCopyOperation,
 )
+
+
+class DOMJudgeStatementOperation(ExportOperation):
+    # Copies statement PDFs for DOMjudge
+    # DOMjudge only recognizes problem.pdf for PDF files
+    def __init__(self, src: str, dst: str | os.PathLike[str]):
+        self.src = Path(src)
+        self.dst = Path(dst)
+
+    @property
+    def target_name(self) -> str:
+        return "Problem statements"
+
+    def execute(self, context: TMTContext, zipfile: ZipFileHander):
+        other_files: list[str] = []
+
+        for full_path in self.src.glob("**/*"):
+            if not full_path.is_file():
+                continue
+            file_path = str(full_path.relative_to(self.src))
+
+            # Only problem.pdf is exported
+            if file_path == "problem.pdf":
+                target_file = self.dst / "problem.pdf"
+                zipfile.write_file(target_file, full_path)
+                return ExportResult(
+                    ExportResultEnum.SUCCESS, target_list=[str(target_file)]
+                )
+
+            other_files.append(file_path)
+
+        # Warn if other files exist, very likely the problem statement is not compiled or misnamed
+        if other_files:
+            other_files_str = ", ".join(other_files)
+            return ExportResult(
+                ExportResultEnum.WARNING,
+                msg=f"No statement exported (must be named problem.pdf), but file(s) {other_files_str} exist",
+            )
+
+        # Check for misnamed dir names
+        for subdir in self.src.parent.iterdir():
+            if (
+                subdir != self.src and
+                FuzzyMatcher.edit_distance_at_most(subdir.name, self.src.name, 2)
+            ):  # fmt: skip
+                return ExportResult(
+                    ExportResultEnum.WARNING,
+                    msg=f"No statement exported (must be under {self.src.relative_to(context.path.problem_dir)}), "
+                    f"but directory '{subdir.relative_to(context.path.problem_dir)}' exists",
+                )
+        return ExportResult(ExportResultEnum.SKIPPED)
 
 
 class DOMJudgeSubmissionsOperation(ExportOperation):
@@ -198,13 +250,8 @@ class DOMJudgeLegacyExporter(BaseExporter):
             src=str(context.config.solution.time_limit_sec), dst=".timelimit"
         )
 
-        # Statements -> problem_statement/
-        yield GlobCopyOperation(
-            "Problem statements",
-            context.path.statement,
-            "problem_statement",
-            regex_pattern=r".*\.pdf",
-        )
+        # Statements -> problem_statement/problem.{pdf,html,txt}
+        yield DOMJudgeStatementOperation(context.path.statement, "problem_statement")
 
         # Attachments... TODO
 

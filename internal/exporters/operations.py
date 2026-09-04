@@ -242,7 +242,7 @@ class GlobCopyOperation(ExportOperation):
     def execute(self, context: TMTContext, zipfile: ZipFileHander):
         matching_files: list[str] = []
 
-        for full_path in Path(self.glob_root).glob("**" if self.recursive else "*"):
+        for full_path in Path(self.glob_root).glob("**/*" if self.recursive else "*"):
             file_path = str(full_path.relative_to(self.glob_root))
             if not full_path.is_file():
                 continue
