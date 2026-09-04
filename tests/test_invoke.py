@@ -3,16 +3,15 @@ import pathlib
 from typing import Callable
 import pytest
 
+from internal.commands.clean import command_clean
 from internal.commands.invoke import command_invoke
+from internal.commands.gen import command_gen
 from internal.context import TMTContext
 from internal.formatting.terminal import TerminalFormatter
-
 from internal.outcomes import (
     EvaluationOutcome,
     EvaluationResult,
 )
-from internal.commands import command_clean
-from internal.commands.gen import command_gen
 
 # fmt: off
 

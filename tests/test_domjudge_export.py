@@ -9,7 +9,9 @@ import textwrap
 
 import pytest
 
-from internal.commands import command_clean, command_export, command_gen
+from internal.commands.clean import command_clean
+from internal.commands.export import command_export
+from internal.commands.gen import command_gen
 from internal.context import TMTContext
 from internal.exporters import DOMJudgeLegacyExporter
 from internal.formatting import TerminalFormatter
