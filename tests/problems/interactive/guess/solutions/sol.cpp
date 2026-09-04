@@ -14,9 +14,9 @@ int main()
         if (c == '=')
             break;
         else if (c == '<')
-            l = mid + 1;
-        else if (c == '>')
             r = mid - 1;
+        else if (c == '>')
+            l = mid + 1;
         else
             break; // guess exceeded
     }

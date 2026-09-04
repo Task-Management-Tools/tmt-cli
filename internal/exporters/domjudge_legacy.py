@@ -66,9 +66,9 @@ class DOMJudgeStatementOperation(ExportOperation):
         # Check for misnamed dir names
         for subdir in self.src.parent.iterdir():
             if (
-                subdir != self.src
-                and FuzzyMatcher.edit_distance(subdir.name, self.src.name, 2) <= 2
-            ):
+                subdir != self.src and
+                FuzzyMatcher.edit_distance_at_most(subdir.name, self.src.name, 2)
+            ):  # fmt: skip
                 return ExportResult(
                     ExportResultEnum.WARNING,
                     msg=f"No statement exported (must be under {self.src.relative_to(context.path.problem_dir)}), "
