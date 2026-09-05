@@ -9,6 +9,7 @@ from internal.outcomes import (
     EvaluationResult,
     EvaluationOutcome,
 )
+from internal.process import Process
 from internal.steps.utils import CompilationJob
 
 
@@ -87,14 +88,20 @@ class SolutionStep(ABC):
         """
         raise NotImplementedError
 
-    def is_solution_abormal_exit(self, eval_res: EvaluationResult) -> bool:
+    def is_solution_abormal_exit(
+        self, eval_res: EvaluationResult, solution: Process
+    ) -> bool:
         """
         Determine whether the solution terminates normally.
         Returns True if not, and fills respective EvaluationOutcome eval_res.
 
         Args:
             eval_res (EvaluationResult): The EvaluationResult to be filled.
+            solution (Process): The relevant solution process result.
         """
+        # By default we consider the aggregate of all solutions.
+        # This is useful for most of the scenarios, but ICPC multi-pass applies per-solution,
+        # so the second argument is used for checking per-solution run and set the relevant verdicts.
 
         if eval_res.max_memory_kib > self.memory_limit_mib * 1024:
             eval_res.verdict = EvaluationOutcome.RUNERROR_MEMORY
