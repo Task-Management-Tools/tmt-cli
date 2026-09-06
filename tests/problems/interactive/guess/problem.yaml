@@ -15,7 +15,7 @@ solution:
   type: default
   time_limit: 1000 ms
   memory_limit: 1 G
-  output_limit: unlimited
+  output_limit: 8 M
 
 answer_generation:
   type: solution

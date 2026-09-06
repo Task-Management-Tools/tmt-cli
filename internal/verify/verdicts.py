@@ -4,7 +4,7 @@ from enum import Enum
 import os
 from pathlib import Path
 
-from internal.commands.invoke import CommandInvokeSummary
+from internal.commands.invoke import command_invoke, CommandInvokeSummary
 from internal.compilation import languages
 from internal.exceptions import TMTInvalidConfigError, TMTMissingFileError
 from internal.formatting import Formatter
@@ -16,7 +16,6 @@ from internal.verify.verdicts_parser import (
     VerdictRule,
     parse_verdicts,
 )
-from internal.commands import command_invoke
 from internal.outcomes import EvaluationResult
 from . import TMTVerifyIssueType, Verifier
 

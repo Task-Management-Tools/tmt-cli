@@ -1,0 +1,10 @@
+author: anonymous
+license: unknown
+limits:
+  memory: 1024
+  output: 8
+  time_limit: 1.0
+name: ICPC Floating Point Comparison Test
+problem_format_version: legacy
+validation: default
+validator_flags: float_tolerance 1e-6

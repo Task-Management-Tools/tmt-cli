@@ -6,15 +6,16 @@ import sys
 import pathlib
 
 from internal import __version__
-from internal.commands.verify import command_verify_config, command_verify_verdicts
 from internal.context import TMTContext, find_problem_dir
-from internal.commands import (
-    command_gen,
-    command_invoke,
-    command_clean,
-    command_export,
-    command_make_public,
+from internal.commands.gen import command_gen
+from internal.commands.invoke import command_invoke
+from internal.commands.clean import command_clean
+from internal.commands.export import command_export
+from internal.commands.make_public import command_make_public
+from internal.commands.verify import (
     command_verify,
+    command_verify_config,
+    command_verify_verdicts,
 )
 from internal.exporters import exporters
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError

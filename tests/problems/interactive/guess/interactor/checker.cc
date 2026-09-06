@@ -1,15 +1,11 @@
+// not adaptive, make it simple
 #include <fstream>
 #include <iostream>
-#include <string>
-#include <cstdio>
 #include <cstdlib>
-#include <cstring>
-#include <cassert>
 
-const int EXIT_AC = 42;
-const int EXIT_WA = 43;
-
-static const int MAX_QUERIES = 11;
+constexpr int EXIT_AC = 42;
+constexpr int EXIT_WA = 43;
+constexpr int MAX_QUERIES = 11;
 
 int main(int argc, char **argv)
 {
@@ -26,77 +22,35 @@ int main(int argc, char **argv)
     if (judgein.fail() || judgeans.fail() || judgemessage.fail())
         std::abort();
 
-    auto wrong_answer = [&judgemessage](const char *err)
-    {
-        judgemessage << err << '\n';
-        exit(EXIT_WA);
-    };
-
-    std::string mode;
-    judgein >> mode;
-
     int queries = 0;
-    if (mode == "fixed")
-    {
-        int answer;
-        judgein >> answer;
+    int answer;
+    judgein >> answer;
 
-        int guess;
-        while (++queries <= MAX_QUERIES && std::cin >> guess)
-        {
-            if (guess == answer)
-            {
-                std::cout << "=" << std::endl;
-                break;
-            }
-            else if (answer < guess)
-                std::cout << "<" << std::endl;
-            else
-                std::cout << ">" << std::endl;
-            std::cerr << "received guess " << guess << '\n';
-        }
-    }
-    else if (mode == "adaptive")
+    int guess;
+    while (++queries <= MAX_QUERIES && std::cin >> guess)
     {
-        int l = 1, r = 1024;
-        int guess;
-        while (++queries <= MAX_QUERIES && std::cin >> guess)
+        if (guess == answer)
         {
-            if (guess == l && guess == r)
-            {
-                std::cout << "=" << std::endl;
-                break;
-            }
-            else if (l > guess)
-                std::cout << ">" << std::endl;
-            else if (r < guess)
-                std::cout << "<" << std::endl;
-            else
-            {
-                int small = guess - l, large = r - guess;
-                if (small < large)
-                    l = guess + 1;
-                else
-                    r = guess - 1;
-                if (l > guess)
-                    std::cout << ">" << std::endl;
-                else if (r < guess)
-                    std::cout << "<" << std::endl;
-                else
-                    std::abort(); // should be impossible
-            }
+            std::cout << "=" << std::endl;
+            break;
         }
+        else if (answer < guess)
+            std::cout << "<" << std::endl;
+        else
+            std::cout << ">" << std::endl;
+        std::cerr << "received guess " << guess << '\n';
     }
-    else
-        std::abort(); // should be impossible
 
     if (queries > MAX_QUERIES)
     {
         std::cout << "-" << std::endl;
-        wrong_answer(("Participant exceeded maximum queries count " + std::to_string(MAX_QUERIES)).c_str());
+        judgemessage << "Participant exceeded maximum queries count " << MAX_QUERIES << '\n';
+        return EXIT_WA;
     }
     if (std::cin.fail())
-        wrong_answer("Failed to read integer from the participant");
-
-    exit(EXIT_AC);
+    {
+        judgemessage << "Failed to read integer from the participant";
+        return EXIT_WA;
+    }
+    return EXIT_AC;
 }

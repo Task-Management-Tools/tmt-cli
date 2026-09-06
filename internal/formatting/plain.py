@@ -1,6 +1,5 @@
 import os
 
-from internal import commands
 from internal.context import TMTContext
 from internal.outcomes import (
     CompilationOutcome,
@@ -8,6 +7,7 @@ from internal.outcomes import (
     EvaluationOutcomeGroup,
     EvaluationResult,
     ExecutionOutcome,
+    TestsetResult,
 )
 from .base import Formatter
 
@@ -237,8 +237,8 @@ class PlainFormatter(Formatter):
 
     def print_testset_summary(
         self,
-        results: "list[commands.invoke.TestsetResult]",
-        overall: "commands.invoke.TestsetResult",
+        results: list[TestsetResult],
+        overall: TestsetResult,
         context: "TMTContext",
     ):
 
@@ -265,7 +265,7 @@ class PlainFormatter(Formatter):
 
         sol_config = context.config.solution
 
-        def print_testset(ts: "commands.invoke.TestsetResult"):
+        def print_testset(ts: TestsetResult):
             # Name
             self.print(" " * 4, ts.testset_name.ljust(name_width), " " * 4)
 
