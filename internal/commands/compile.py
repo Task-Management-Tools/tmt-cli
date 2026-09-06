@@ -100,7 +100,7 @@ def compile_all(
     formatter: Formatter,
     context: TMTContext,
 ) -> CommandCompileAllSummary:
-    """Generate test cases in the given directory."""
+    """Compile binaries required when generating testcases."""
     context.set_log_directory(context.path.logs_generation)
     summary = CommandCompileAllSummary(compilation_result={})
 
