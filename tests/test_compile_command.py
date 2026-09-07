@@ -7,7 +7,7 @@ from internal.commands.compile import (
 )
 from internal.commands.clean import command_clean
 from internal.context import TMTContext
-from internal.formatting.empty import EmptyFormatter
+from internal.formatting.empty import TerminalFormatter
 from internal.outcomes import CompilationOutcome
 from internal.steps.utils import CompilationSlot
 
@@ -24,7 +24,7 @@ def test_compile_single_uses_source_directory():
 
     try:
         summary = command_compile(
-            formatter=EmptyFormatter(),
+            formatter=TerminalFormatter(),
             context=context,
             source=str(source_file),
         )
@@ -39,7 +39,7 @@ def test_compile_single_uses_source_directory():
             str(source_file.parent)
         )
     finally:
-        command_clean(formatter=EmptyFormatter(), context=context, skip_confirm=True)
+        command_clean(formatter=TerminalFormatter(), context=context, skip_confirm=True)
 
 
 def test_compile_without_source_uses_compile_all():
@@ -47,7 +47,7 @@ def test_compile_without_source_uses_compile_all():
 
     try:
         result = command_compile(
-            formatter=EmptyFormatter(),
+            formatter=TerminalFormatter(),
             context=context,
             source=None,
         )
@@ -57,7 +57,7 @@ def test_compile_without_source_uses_compile_all():
         assert CompilationSlot.VALIDATOR in result.compilation_result
         assert CompilationSlot.SOLUTION in result.compilation_result
     finally:
-        command_clean(formatter=EmptyFormatter(), context=context, skip_confirm=True)
+        command_clean(formatter=TerminalFormatter(), context=context, skip_confirm=True)
 
 
 def test_compile_solution_with_grader_headers():
@@ -66,7 +66,7 @@ def test_compile_solution_with_grader_headers():
 
     try:
         summary = command_compile(
-            formatter=EmptyFormatter(),
+            formatter=TerminalFormatter(),
             context=context,
             source=str(source_file),
         )
@@ -78,4 +78,4 @@ def test_compile_solution_with_grader_headers():
         assert summary.compilation_result.produced_file is not None
         assert pathlib.Path(summary.compilation_result.produced_file).exists()
     finally:
-        command_clean(formatter=EmptyFormatter(), context=context, skip_confirm=True)
+        command_clean(formatter=TerminalFormatter(), context=context, skip_confirm=True)
