@@ -7,6 +7,7 @@ from typing import TextIO, BinaryIO, Protocol
 from zipfile import ZipFile, ZipInfo
 from contextlib import contextmanager
 
+from internal.cli import command
 from internal.compilation import languages
 from internal.context import JudgeConvention, ProblemType, TMTContext
 from internal.formatting import Formatter
@@ -402,6 +403,7 @@ COMMAND_TABLE: dict[str, ZipOperation] = {
 }
 
 
+@command("make-public", help="Build public attachment archive file.")
 def command_make_public(*, formatter: Formatter, context: TMTContext) -> bool:
     """Export problem package to a sepcific format."""
     context.log_directory = None

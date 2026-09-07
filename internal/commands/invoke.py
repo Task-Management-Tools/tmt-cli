@@ -2,6 +2,7 @@ import pathlib
 import os
 import subprocess
 
+from internal.cli import argument, command, option
 from internal.formatting import Formatter
 from internal.context import TMTContext, SandboxDirectory
 from internal.outcomes import (
@@ -68,6 +69,9 @@ class CommandInvokeSummary:
         return self
 
 
+@command("invoke", help="Invoke a solution.")
+@option("-r", "--show-reason", is_flag=True)
+@argument("submission_files", nargs="*")
 def command_invoke(
     *,
     formatter: Formatter,

@@ -2,6 +2,7 @@ from collections import Counter
 import os
 from pathlib import Path
 
+from internal.cli import command, option
 from internal.formatting import Formatter
 from internal.context import TMTContext
 from internal.verify import (
@@ -101,3 +102,41 @@ def command_verify_verdicts(
         _print_verify_issue(verifier.issues, formatter, context)
 
     return verifier.issues
+
+
+def _no_errors(issues: list[TMTVerifyIssue]) -> bool:
+    return not any(issue.type == TMTVerifyIssueType.ERROR for issue in issues)
+
+
+@command("all", help="Verify all issue classes.")
+def command_verify_cli(*, formatter: Formatter, context: TMTContext) -> bool:
+    """CLI entry point for `tmt verify all` (and the bare `tmt verify`)."""
+    issues = command_verify(print_issues=True, formatter=formatter, context=context)
+    return _no_errors(issues)
+
+
+@command("config", help="Verify configs.")
+def command_verify_config_cli(*, formatter: Formatter, context: TMTContext) -> bool:
+    """CLI entry point for `tmt verify config`."""
+    issues = command_verify_config(print_issues=True, formatter=formatter, context=context)
+    return _no_errors(issues)
+
+
+@command("verdicts", help="Verify solution verdicts.")
+@option(
+    "-s",
+    "--solution",
+    dest="solution_filename",
+    help="The solution filename in solutions/.",
+)
+def command_verify_verdicts_cli(
+    *, solution_filename: str | None, formatter: Formatter, context: TMTContext
+) -> bool:
+    """CLI entry point for `tmt verify verdicts`."""
+    issues = command_verify_verdicts(
+        solution_filename=solution_filename,
+        print_issues=True,
+        formatter=formatter,
+        context=context,
+    )
+    return _no_errors(issues)
