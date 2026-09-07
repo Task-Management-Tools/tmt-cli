@@ -44,7 +44,10 @@ def main():
 
     # parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
 
-    parser_compile = subparsers.add_parser("compile", help="Compile source codes.")
+    # tmt compile
+    parser_compile = subparsers.add_parser(
+        "compile", help="Compile source codes.", parents=[shared]
+    )
     parser_compile.add_argument("source", nargs="?", help="Specify file to compile")
 
     # tmt gen
