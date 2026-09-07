@@ -73,7 +73,9 @@ def build_app() -> App:
     verify_app.add_command(command_verify_cli)
     verify_app.add_command(command_verify_verdicts_cli)
     verify_app.add_command(command_verify_config_cli)
-    app.add_group(verify_app, "verify", default="all")
+    app.add_group(
+        verify_app, "verify", default="all", help="The issue class to be verified."
+    )
 
     return app
 

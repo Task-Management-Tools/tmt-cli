@@ -19,6 +19,13 @@ class _Registered:
     available_names: set[str] = field(default_factory=set)
 
 
+@dataclass
+class _Group:
+    app: "App"
+    default: str | None = None
+    subcommand_help: str | None = None
+
+
 def _add_option(parser: argparse.ArgumentParser, spec: OptionSpec) -> argparse.Action:
     kwargs = dict(spec.kwargs)
     if kwargs.pop("is_flag", False):
@@ -110,7 +117,7 @@ class App:
         self._global_options: list[OptionSpec] = []
         self._providers: dict[type, Provider] = {}
         self._commands: dict[str, _Registered] = {}
-        self._groups: dict[str, tuple["App", str | None]] = {}
+        self._groups: dict[str, _Group] = {}
         self._dest: str | None = None
 
     def global_option(self, *flags: str, **kwargs) -> None:
@@ -134,13 +141,23 @@ class App:
         self._commands[name] = _Registered(func=func)
         return func
 
-    def add_group(self, sub_app: "App", name: str, *, default: str | None = None) -> None:
+    def add_group(
+        self,
+        sub_app: "App",
+        name: str,
+        *,
+        default: str | None = None,
+        help: str | None = None,
+    ) -> None:
         """Nest `sub_app` as a subcommand group, e.g. `tmt verify <issue-class>`.
 
         If `default` is given, invoking `name` without a further subcommand
         dispatches to the command registered under that name in `sub_app`.
+        `help` describes `sub_app`'s own subcommand choices (e.g. "The issue
+        class to be verified."), shown in `tmt <name> --help` -- distinct from
+        `sub_app.help`, which describes `name` itself in this app's own list.
         """
-        self._groups[name] = (sub_app, default)
+        self._groups[name] = _Group(sub_app, default, help)
 
     def _build(
         self,
@@ -148,6 +165,7 @@ class App:
         inherited_options: list[OptionSpec],
         providers: dict[type, Provider],
         default: str | None,
+        subcommand_help: str | None = None,
     ) -> None:
         own_options = inherited_options + self._global_options
         # Also registered directly on `parser`, so options are usable before a
@@ -161,7 +179,9 @@ class App:
         # `dest` only needs to be unique among ancestors/descendants actually on the
         # same invocation path, which self.name already is for this project's tree.
         self._dest = self.name
-        subparsers = parser.add_subparsers(dest=self._dest, required=default is None)
+        subparsers = parser.add_subparsers(
+            dest=self._dest, required=default is None, help=subcommand_help
+        )
 
         for name, registered in self._commands.items():
             sub = subparsers.add_parser(
@@ -175,9 +195,11 @@ class App:
             registered.available_names = leaf_names
             _validate(registered.func, leaf_names, providers)
 
-        for name, (sub_app, sub_default) in self._groups.items():
-            sub = subparsers.add_parser(name, help=sub_app.help)
-            sub_app._build(sub, own_options, providers, sub_default)
+        for name, group in self._groups.items():
+            sub = subparsers.add_parser(name, help=group.app.help)
+            group.app._build(
+                sub, own_options, providers, group.default, subcommand_help=group.subcommand_help
+            )
 
     def _resolve_leaf(self, namespace: argparse.Namespace, default: str | None) -> _Registered:
         assert self._dest is not None
@@ -185,8 +207,8 @@ class App:
         if chosen in self._commands:
             return self._commands[chosen]
         if chosen in self._groups:
-            sub_app, sub_default = self._groups[chosen]
-            return sub_app._resolve_leaf(namespace, sub_default)
+            group = self._groups[chosen]
+            return group.app._resolve_leaf(namespace, group.default)
         raise RuntimeError(f"Unknown subcommand {chosen!r} for {self.name!r}.")
 
     def run(self, argv: list[str] | None = None, *, version: str | None = None) -> int:
