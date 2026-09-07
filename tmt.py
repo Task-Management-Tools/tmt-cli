@@ -59,7 +59,7 @@ def build_context(formatter: Formatter) -> TMTContext:
 
 def build_app() -> App:
     app = App("command", help="TMT - Task Management Tools")
-    app.global_option("--color", choices=["always", "auto", "never"], default=argparse.SUPPRESS)
+    app.global_option("--color", choices=["always", "auto", "never"], default="auto")
     app.provide(Formatter, build_formatter)
     app.provide(TMTContext, build_context)
 

@@ -34,6 +34,18 @@ def _add_option(parser: argparse.ArgumentParser, spec: OptionSpec) -> argparse.A
     return parser.add_argument(*spec.flags, **kwargs)
 
 
+def _suppressed(spec: OptionSpec) -> OptionSpec:
+    """A copy of `spec` whose default is `SUPPRESS`.
+
+    An inherited option is re-declared on every descendant parser so it stays
+    usable after the subcommand token too. Only the parser that first introduces
+    the option keeps its real default; the descendant copies use `SUPPRESS` so
+    that parsing a subcommand never overwrites a value given before it (e.g.
+    `tmt --color=never verify config`).
+    """
+    return OptionSpec(spec.flags, {**spec.kwargs, "default": argparse.SUPPRESS})
+
+
 def _add_param(
     parser: argparse.ArgumentParser, spec: OptionSpec | ArgumentSpec
 ) -> argparse.Action:
@@ -167,11 +179,16 @@ class App:
         default: str | None,
         subcommand_help: str | None = None,
     ) -> None:
-        own_options = inherited_options + self._global_options
-        # Also registered directly on `parser`, so options are usable before a
-        # subcommand token too (e.g. `tmt --color=never verify config`).
-        for spec in own_options:
+        # `inherited_options` already carry `SUPPRESS` as their default (their real
+        # default was declared on the ancestor that introduced them). `self._global_options`
+        # are new at this level, so they keep their real default on `parser` and are
+        # passed down suppressed. Registered on `parser` itself too, so options are
+        # usable before a subcommand token (e.g. `tmt --color=never verify config`).
+        for spec in inherited_options:
             _add_option(parser, spec)
+        for spec in self._global_options:
+            _add_option(parser, spec)
+        down_options = inherited_options + [_suppressed(s) for s in self._global_options]
 
         if not self._commands and not self._groups:
             raise RuntimeError(f"App {self.name!r} has no commands registered.")
@@ -189,7 +206,7 @@ class App:
                 help=getattr(registered.func, "__cli_help__", None),
                 **getattr(registered.func, "__cli_parser_kwargs__", {}),
             )
-            leaf_names = {_add_option(sub, spec).dest for spec in own_options}
+            leaf_names = {_add_option(sub, spec).dest for spec in down_options}
             for spec in getattr(registered.func, "__cli_params__", []):
                 leaf_names.add(_add_param(sub, spec).dest)
             registered.available_names = leaf_names
@@ -198,7 +215,7 @@ class App:
         for name, group in self._groups.items():
             sub = subparsers.add_parser(name, help=group.app.help)
             group.app._build(
-                sub, own_options, providers, group.default, subcommand_help=group.subcommand_help
+                sub, down_options, providers, group.default, subcommand_help=group.subcommand_help
             )
 
     def _resolve_leaf(self, namespace: argparse.Namespace, default: str | None) -> _Registered:
