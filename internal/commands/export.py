@@ -1,5 +1,6 @@
-from argparse import RawTextHelpFormatter
 import os
+import pathlib
+from argparse import RawTextHelpFormatter
 
 from internal.cli import argument, command, option
 from internal.formatting import Formatter
@@ -20,7 +21,6 @@ def command_export(
     output_path: str,
     package_format: type[BaseExporter] | None = None,
     force_output: bool,
-    explicit_directory: bool = False,
 ):
     """Export problem package to a sepcific format."""
     context.log_directory = None
@@ -38,12 +38,6 @@ def command_export(
                     formatter.ANSI_RESET,
                 )
                 return CommandExportSummary(invalid_format=True)
-
-    # UNIX directory
-    if output_path.endswith(os.sep):
-        output_path += context.config.short_name + ".zip"
-    if not explicit_directory and os.path.isdir(output_path):
-        output_path += os.sep + context.config.short_name + ".zip"
 
     end_with_slash = output_path.endswith(os.sep)
     output_path = os.path.normpath(os.path.join(os.getcwd(), output_path))
@@ -92,13 +86,24 @@ def command_export_cli(
     force_output: bool,
     explicit_directory: bool,
 ) -> CommandExportSummary:
-    """CLI entry point for `tmt export`; resolves `--package` into an exporter class."""
+    """CLI entry point for `tmt export`.
+
+    Resolves `--package` into an exporter class and interprets `output_path` as a
+    directory (exporting `<short_name>.zip` into it) when appropriate. The plain
+    `command_export` treats `output_path` verbatim.
+    """
     package_format = exporters[package] if package is not None else None
+
+    # UNIX directory
+    if output_path.endswith(os.sep):
+        output_path += context.config.short_name + ".zip"
+    if not explicit_directory and (pathlib.Path.cwd() / output_path).is_dir():
+        output_path += os.sep + context.config.short_name + ".zip"
+
     return command_export(
         formatter=formatter,
         context=context,
         output_path=output_path,
         package_format=package_format,
         force_output=force_output,
-        explicit_directory=explicit_directory,
     )
