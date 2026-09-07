@@ -69,7 +69,7 @@ def build_app() -> App:
     app.add_command(command_export_cli)
     app.add_command(command_make_public)
 
-    verify_app = App("verify", help="Check issues.")
+    verify_app = App("issue_class", help="Check issues.")
     verify_app.add_command(command_verify_cli)
     verify_app.add_command(command_verify_verdicts_cli)
     verify_app.add_command(command_verify_config_cli)
