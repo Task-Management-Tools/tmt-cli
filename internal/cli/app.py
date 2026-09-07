@@ -219,11 +219,11 @@ class App:
         `add_group` never have `run()` called on them directly).
         """
         parser = argparse.ArgumentParser(prog=self.name, description=self.help)
+        self._build(parser, [], self._providers, default=None)
         if version is not None:
             parser.add_argument(
                 "--version", action="version", version=version, help="Show the version of TMT."
             )
-        self._build(parser, [], self._providers, default=None)
 
         namespace = parser.parse_args(argv)
         registered = self._resolve_leaf(namespace, default=None)

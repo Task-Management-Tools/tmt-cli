@@ -31,7 +31,7 @@ def option(*flags: str, **kwargs) -> Callable[[F], F]:
 
     def decorator(func: F) -> F:
         params: list = getattr(func, "__cli_params__", [])
-        params.append(OptionSpec(flags, kwargs))
+        params.insert(0, OptionSpec(flags, kwargs))
         setattr(func, "__cli_params__", params)
         return func
 
@@ -43,7 +43,7 @@ def argument(name: str, **kwargs) -> Callable[[F], F]:
 
     def decorator(func: F) -> F:
         params: list = getattr(func, "__cli_params__", [])
-        params.append(ArgumentSpec(name, kwargs))
+        params.insert(0, ArgumentSpec(name, kwargs))
         setattr(func, "__cli_params__", params)
         return func
 
