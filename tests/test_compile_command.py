@@ -7,7 +7,7 @@ from internal.commands.compile import (
 )
 from internal.commands.clean import command_clean
 from internal.context import TMTContext
-from internal.formatting.empty import TerminalFormatter
+from internal.formatting.terminal import TerminalFormatter
 from internal.outcomes import CompilationOutcome
 from internal.steps.utils import CompilationSlot
 
