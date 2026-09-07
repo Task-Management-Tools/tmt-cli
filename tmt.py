@@ -58,7 +58,7 @@ def build_context(formatter: Formatter) -> TMTContext:
 
 
 def build_app() -> App:
-    app = App("tmt", help="TMT - Task Management Tools", version=f"TMT {__version__}")
+    app = App("tmt", help="TMT - Task Management Tools")
     app.global_option("--color", choices=["always", "auto", "never"], default="auto")
     app.provide(Formatter, build_formatter)
     app.provide(TMTContext, build_context)
@@ -80,7 +80,7 @@ def build_app() -> App:
 
 if __name__ == "__main__":
     try:
-        exit(build_app().run())
+        exit(build_app().run(version=f"TMT {__version__}"))
     except TMTMissingFileError as e:
         print()
         print(e)

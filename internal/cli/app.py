@@ -104,10 +104,9 @@ def _call_with_injection(
 class App:
     """A group of CLI commands, optionally nested under a parent `App`."""
 
-    def __init__(self, name: str, help: str | None = None, version: str | None = None):
+    def __init__(self, name: str, help: str | None = None):
         self.name = name
         self.help = help
-        self._version = version
         self._global_options: list[OptionSpec] = []
         self._providers: dict[type, Provider] = {}
         self._commands: dict[str, _Registered] = {}
@@ -190,13 +189,17 @@ class App:
             return sub_app._resolve_leaf(namespace, sub_default)
         raise RuntimeError(f"Unknown subcommand {chosen!r} for {self.name!r}.")
 
-    def run(self, argv: list[str] | None = None) -> int:
+    def run(self, argv: list[str] | None = None, *, version: str | None = None) -> int:
         """Parse `argv` (default `sys.argv[1:]`), dispatch to the matching command, and
-        return a process exit code derived from its return value."""
+        return a process exit code derived from its return value.
+
+        Only called on the root `App` of a tree (nested groups added via
+        `add_group` never have `run()` called on them directly).
+        """
         parser = argparse.ArgumentParser(prog=self.name, description=self.help)
-        if self._version is not None:
+        if version is not None:
             parser.add_argument(
-                "--version", action="version", version=self._version, help="Show the version."
+                "--version", action="version", version=version, help="Show the version of TMT."
             )
         self._build(parser, [], self._providers, default=None)
 
