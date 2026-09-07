@@ -218,7 +218,7 @@ class App:
         Only called on the root `App` of a tree (nested groups added via
         `add_group` never have `run()` called on them directly).
         """
-        parser = argparse.ArgumentParser(prog=self.name, description=self.help)
+        parser = argparse.ArgumentParser(description=self.help)
         self._build(parser, [], self._providers, default=None)
         if version is not None:
             parser.add_argument(
