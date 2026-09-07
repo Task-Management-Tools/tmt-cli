@@ -165,7 +165,9 @@ class CommandGenSummary:
     help="Show the failed reason and checker's output (in case of checker validation is enabled) of each testcase.",
 )
 @option(
-    "--verify-hash", is_flag=True, help="Check if the hash digest of the testcases matches."
+    "--verify-hash",
+    is_flag=True,
+    help="Check if the hash digest of the testcases matches.",
 )
 def command_gen(
     *, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool

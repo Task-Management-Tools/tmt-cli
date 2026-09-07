@@ -118,7 +118,9 @@ def command_verify_cli(*, formatter: Formatter, context: TMTContext) -> bool:
 @command("config", help="Verify configs.")
 def command_verify_config_cli(*, formatter: Formatter, context: TMTContext) -> bool:
     """CLI entry point for `tmt verify config`."""
-    issues = command_verify_config(print_issues=True, formatter=formatter, context=context)
+    issues = command_verify_config(
+        print_issues=True, formatter=formatter, context=context
+    )
     return _no_errors(issues)
 
 

@@ -3,6 +3,7 @@
 An `App` is a group of commands (leaf functions decorated with `@command`,
 optionally `@option`/`@argument`) and/or nested sub-`App`s.
 """
+
 import argparse
 import inspect
 from dataclasses import dataclass, field
@@ -80,7 +81,10 @@ def _validate(
                     f"Circular provider dependency detected for {param.annotation!r}."
                 )
             _validate(
-                providers[param.annotation], available_names, providers, _seen + (param.annotation,)
+                providers[param.annotation],
+                available_names,
+                providers,
+                _seen + (param.annotation,),
             )
             continue
         raise RuntimeError(
@@ -188,7 +192,9 @@ class App:
             _add_option(parser, spec)
         for spec in self._global_options:
             _add_option(parser, spec)
-        down_options = inherited_options + [_suppressed(s) for s in self._global_options]
+        down_options = inherited_options + [
+            _suppressed(s) for s in self._global_options
+        ]
 
         if not self._commands and not self._groups:
             raise RuntimeError(f"App {self.name!r} has no commands registered.")
@@ -215,10 +221,16 @@ class App:
         for name, group in self._groups.items():
             sub = subparsers.add_parser(name, help=group.app.help)
             group.app._build(
-                sub, down_options, providers, group.default, subcommand_help=group.subcommand_help
+                sub,
+                down_options,
+                providers,
+                group.default,
+                subcommand_help=group.subcommand_help,
             )
 
-    def _resolve_leaf(self, namespace: argparse.Namespace, default: str | None) -> _Registered:
+    def _resolve_leaf(
+        self, namespace: argparse.Namespace, default: str | None
+    ) -> _Registered:
         assert self._dest is not None
         chosen = getattr(namespace, self._dest, None) or default
         if chosen in self._commands:
@@ -239,7 +251,10 @@ class App:
         self._build(parser, [], self._providers, default=None)
         if version is not None:
             parser.add_argument(
-                "--version", action="version", version=version, help="Show the version of TMT."
+                "--version",
+                action="version",
+                version=version,
+                help="Show the version of TMT.",
             )
 
         namespace = parser.parse_args(argv)

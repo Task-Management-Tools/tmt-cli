@@ -1,4 +1,5 @@
 """Metadata records produced by the `option`/`argument` decorators."""
+
 from dataclasses import dataclass, field
 from typing import Any
 

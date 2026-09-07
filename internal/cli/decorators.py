@@ -1,4 +1,5 @@
 """Decorators used to declare a function as a CLI command."""
+
 from typing import Callable, TypeVar
 
 from internal.cli.params import ArgumentSpec, OptionSpec
