@@ -5,6 +5,7 @@ import json
 import filecmp
 import shutil
 
+from internal.cli import command, option
 from internal.formatting import Formatter
 from internal.context import (
     AnswerGenerationType,
@@ -156,6 +157,18 @@ class CommandGenSummary:
         return all(self.testcase_results.values())
 
 
+@command("gen", help="Generate testcases.")
+@option(
+    "-r",
+    "--show-reason",
+    is_flag=True,
+    help="Show the failed reason and checker's output (in case of checker validation is enabled) of each testcase.",
+)
+@option(
+    "--verify-hash",
+    is_flag=True,
+    help="Check if the hash digest of the testcases matches.",
+)
 def command_gen(
     *, formatter: Formatter, context: TMTContext, verify_hash: bool, show_reason: bool
 ) -> CommandGenSummary:

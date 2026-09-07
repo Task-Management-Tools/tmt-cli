@@ -1,6 +1,7 @@
 import os
 import shutil
 
+from internal.cli import command, option
 from internal.formatting import Formatter
 from internal.context import TMTContext
 from internal.steps.generation import GenerationStep
@@ -9,6 +10,14 @@ from internal.steps.solution import get_solution_step_type
 from internal.steps.checker import get_checker_step_type
 
 
+@command("clean", help="Clean-up a TMT problem directory.")
+@option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    dest="skip_confirm",
+    help="Automatic yes to prompts.",
+)
 def command_clean(*, formatter: Formatter, context: TMTContext, skip_confirm: bool):
     context.log_directory = None
 
