@@ -3,7 +3,8 @@ import pytest
 
 from internal.context import TMTContext
 from internal.formatting.terminal import TerminalFormatter
-from internal.commands import command_clean, command_gen
+from internal.commands.clean import command_clean
+from internal.commands.gen import command_gen
 from internal.commands.verify import (
     command_verify_config,
     command_verify_verdicts,

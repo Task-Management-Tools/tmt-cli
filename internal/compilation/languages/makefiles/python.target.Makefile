@@ -4,7 +4,7 @@
 # - PYTHON: real Python3 compiler name, default to python3
 
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 PYTHON ?= python3
 
@@ -35,5 +35,5 @@ emit-log:
 	 else \
 		 echo "warning: No such file: $$f" >&2; \
 	 fi
-	
+
 .PHONY: all emit-log

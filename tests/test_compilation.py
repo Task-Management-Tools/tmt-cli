@@ -11,7 +11,7 @@ from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
 )
-from internal.commands import command_clean
+from internal.commands.clean import command_clean
 from internal.commands.gen import command_gen
 
 from internal.steps.utils import CompilationSlot

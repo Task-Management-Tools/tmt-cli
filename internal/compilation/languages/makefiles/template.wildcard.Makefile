@@ -1,7 +1,7 @@
 # Target Makefile only expects compiler environment variables
 
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 # All work should be done in the build directory
 EXES = TODO # add extension if necessary

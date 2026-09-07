@@ -8,6 +8,9 @@ class EmptyFormatter(Formatter):
     def print(self, *args, endl=False) -> None:
         pass
 
+    def print_preserve_offset(self, *args, endl=False) -> None:
+        pass
+
     def print_fixed_width(self, *args, width: int, endl=False) -> None:
         pass
 
@@ -15,9 +18,6 @@ class EmptyFormatter(Formatter):
         pass
 
     def print_exec_result(self, result) -> None:
-        pass
-
-    def print_checker_reason(self, reason: str) -> None:
         pass
 
     def print_checker_status(self, result) -> None:

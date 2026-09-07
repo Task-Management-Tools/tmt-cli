@@ -285,6 +285,10 @@ manual 1.in
   - The last command's stdout will be used.
   - Validation commands do not support pipes.
 
+## Contributing
+
+See [developer documentation](docs/developer.md).
+
 ## License
 
 The default validator from the [Kattis problemtools](https://github.com/Kattis/problemtools) package is included, licensed under the MIT license. See [icpc_default_validator.cc](internal/steps/checker/default_checkers/icpc_default_validator.cc).

@@ -1,124 +1,172 @@
-import shutil
+import os
+import secrets
+import dataclasses
 from pathlib import Path
-from typing import Callable, List, Optional, IO
-import tempfile
+from typing import Generator
+from abc import ABC, abstractmethod
 
 from internal.formatting import Formatter
 from internal.context import TMTContext
+from internal.zip_handler import ZipFileHander
 
-from .operations import (
-    ConversionOperation,
-    CopyFileOperation,
-    CustomFileOperation,
-    RegexCopyOperation,
-    ExternalFileOperation,
-)
+from .operations import ExportOperation, ExportResult, ExportResultEnum
 
 
-class FolderFormatExporter:
-    """Base class for folder format conversion"""
+@dataclasses.dataclass
+class CommandExportSummary:
+    invalid_format: bool = False
+    invalid_path: bool = False
+    invalid_path_part: bool = False
+    exported_path: Path | None = None
+    export_results: list[ExportResult] = dataclasses.field(default_factory=list)
 
-    def __init__(self, output_path: str):
-        self.output_path = output_path
-        self.operations: List[ConversionOperation] = []
-
-    def add_copy_operation(self, source_path: str, target_path: str) -> None:
-        """Add a simple file copy operation"""
-        operation = CopyFileOperation(source_path, target_path)
-        self.operations.append(operation)
-
-    def add_custom_operation(
-        self,
-        source_paths: List[str],
-        target_path: str,
-        processor_func: Callable[[Formatter, TMTContext, List[Path], IO], None],
-    ) -> None:
-        """Add a custom file processing operation"""
-        operation = CustomFileOperation(source_paths, target_path, processor_func)
-        self.operations.append(operation)
-
-    def add_regex_copy_operation(
-        self,
-        pattern: str,
-        target_folder: str,
-        rename_func: Optional[
-            Callable[[Formatter, TMTContext, Path, List[Path]], str]
-        ] = None,
-        custom_func: Optional[
-            Callable[[Formatter, TMTContext, Path, List[Path], IO], None]
-        ] = None,
-        supplementary_files: Optional[List[str]] = None,
-    ) -> None:
-        """
-        Add a regex-based file copy operation
-
-        Args:
-            pattern: Regex pattern to match files
-            target_folder: Target folder name
-            rename_func: Function that takes (formatter, context, matched_file, supplementary_files) and returns target filename
-            custom_func: Function that takes (formatter, context, matched_file, supplementary_files, output_file)
-            supplementary_files: List of supplementary file paths from problem director to include
-        """
-        operation = RegexCopyOperation(
-            pattern,
-            target_folder,
-            rename_func,
-            custom_func,
-            supplementary_files,
+    def __bool__(self):
+        return (
+            not self.invalid_format
+            and not self.invalid_path
+            and not self.invalid_path_part
+            and not any(
+                r.result is ExportResultEnum.FAILURE for r in self.export_results
+            )
         )
-        self.operations.append(operation)
 
-    def add_external_file_operation(self, external_path: str, target_path: str) -> None:
-        """Add an external file copy operation"""
-        operation = ExternalFileOperation(external_path, target_path)
-        self.operations.append(operation)
+
+class BaseExporter(ABC):
+    description = "base exporter class"
+
+    @abstractmethod
+    def setup_operations(
+        self, context: TMTContext
+    ) -> Generator[ExportOperation, None, None]:
+        """
+        A generator which gives all export operations required.
+        """
+        pass
 
     def export(
-        self, formatter: Formatter, context: TMTContext, create_zip: bool = True
-    ) -> None:
-        """Export folder format"""
+        self,
+        formatter: Formatter,
+        context: TMTContext,
+        output_path: str,
+        force_output: bool,
+    ) -> CommandExportSummary:
+        """
+        Export a zip archive of the problem described by the context to output_path.
 
-        name_length = (
-            max(len(operation.target_name()) for operation in self.operations) + 2
-        )
+        Args:
+            formatter:
+                Output formatter of the error messages and export summaries.
+            context:
+                The current TMT Context.
+            output_path:
+                The path of the archive. Must be an absolute path.
+            force_output:
+                Overwrite even if path exists as a file.
+        """
 
-        formatter.println(f"Exporting {self.output_path}...")
+        export_path = Path(output_path)
+        assert export_path.is_absolute()
 
-        # Create temporary directory for conversion
-        with tempfile.TemporaryDirectory() as temp_dir:
-            if not create_zip:
-                output_dir = Path(self.output_path)
-                if output_dir.exists():
-                    formatter.println(
-                        formatter.ANSI_RED,
-                        f"Error: path {self.output_path} already exists.",
-                        formatter.ANSI_RESET,
-                    )
-                    return
-                output_dir.mkdir()
+        display_path = str(
+            export_path.relative_to(Path.cwd())
+            if export_path.is_relative_to(Path.cwd())
+            else export_path
+        ) + (os.sep if output_path.endswith(os.sep) else "")
+        formatter.println(f"Exporting to {display_path}...")
+
+        def print_err(err: str):
+            formatter.println(formatter.ANSI_RED, err, formatter.ANSI_RESET)
+
+        if output_path.endswith(os.sep):
+            print_err(f"Error: path '{output_path}' refers to a directory.")
+            return CommandExportSummary(invalid_path=True)
+        if not export_path.parent.exists():
+            print_err(
+                f"Error: parent of the specified path '{output_path}' is not a directory."
+            )
+            return CommandExportSummary(invalid_path=True)
+        if export_path.exists():
+            if not force_output:
+                print_err(f"Error: path '{output_path}' already exists.")
+                return CommandExportSummary(invalid_path=True)
+            if not export_path.is_file():
+                print_err(f"Error: '{output_path}' is not a file; cannot overwrite.")
+                return CommandExportSummary(invalid_path=True)
+
+        # We export to [archive_name].[8-digit base64].part first, so if it fails we won't override the original one
+        # Does not clean up for unexpected failure
+        for _ in range(3):
+            export_path_tmp: Path = export_path.with_name(
+                f"{export_path.name}.{secrets.token_urlsafe(6)}.part"
+            )
+            if not export_path_tmp.exists():
+                break
+        else:  # how is this possible?
+            print_err("Error: cannot write to partial file.")
+            return CommandExportSummary(invalid_path_part=True)
+
+        try:
+            zipfile = ZipFileHander(export_path_tmp)
+        except OSError as e:
+            reason = os.strerror(e.errno) if e.errno is not None else "Unknown error"
+            print_err(
+                f"Error: cannot create temporary archive {export_path_tmp}: {reason}."
+            )
+            return CommandExportSummary(invalid_path=True)
+
+        # Execute all operations
+        ops = list(self.setup_operations(context))
+        name_length = max(len(operation.target_name) for operation in ops) + 2
+
+        res_list: list[ExportResult] = []
+        for operation in ops:
+            formatter.print(" " * 4)
+            formatter.print_fixed_width(operation.target_name, width=name_length)
+            res = operation.execute(context, zipfile)
+
+            match res.result:
+                case ExportResultEnum.SUCCESS:
+                    color, text = formatter.ANSI_GREEN, "OK"
+                case ExportResultEnum.WARNING:
+                    color, text = formatter.ANSI_YELLOW, "WARN"
+                case ExportResultEnum.SKIPPED:
+                    color, text = formatter.ANSI_GREY, "SKIP"
+                case ExportResultEnum.FAILURE:
+                    color, text = formatter.ANSI_RED, "FAIL"
+                case _:
+                    raise ValueError(f"export: Unknown ExportResultEnum {res.result}")
+
+            formatter.print_fixed_width(
+                "[", color, text, formatter.ANSI_RESET, "]", width=8
+            )
+
+            msgs = res.target_compressed or ", ".join(res.target_list)
+            if len(res.target_list) >= 8:
+                msgs += f" (total {len(res.target_list)})"
+            msgs += res.msg
+
+            formatter.print_preserve_offset(msgs)
+            formatter.println()
+            res_list.append(res)
+
+        zipfile.close()
+        summary = CommandExportSummary(export_results=res_list)
+        if not summary:
+            os.remove(export_path_tmp)
+            formatter.println(
+                formatter.ANSI_RED, "Export failed.", formatter.ANSI_RESET
+            )
+        else:
+            os.rename(export_path_tmp, export_path)
+            if any(
+                r.result is ExportResultEnum.WARNING for r in summary.export_results
+            ):
+                formatter.println(
+                    formatter.ANSI_YELLOW,
+                    "Export completed with warnings.",
+                    formatter.ANSI_RESET,
+                )
             else:
-                if Path(self.output_path).exists():
-                    formatter.println(
-                        formatter.ANSI_RED,
-                        f"Error: path {self.output_path} already exists.",
-                        formatter.ANSI_RESET,
-                    )
-                    return
-                output_dir = Path(temp_dir)
-
-            # Execute all operations
-            for operation in self.operations:
-                formatter.print(" " * 4)
-                formatter.print_fixed_width(operation.target_name(), width=name_length)
-                operation.execute(formatter, context, output_dir)
-
-            # Handle output
-            if create_zip:
-                formatter.println("Creating zip file...")
-                with tempfile.NamedTemporaryFile() as temp_file:
-                    shutil.make_archive(temp_file.name, "zip", output_dir)
-                    shutil.copy2(temp_file.name + ".zip", self.output_path)
-
                 formatter.println("Export completed.")
-            else:
-                formatter.println("Export completed.")
+            summary.exported_path = export_path
+        return summary

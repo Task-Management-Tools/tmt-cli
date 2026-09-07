@@ -126,7 +126,7 @@ def gen_single(
         formatter.print_exec_result(result.output_validation)
 
     if show_reason:
-        formatter.print_checker_reason(result.reason)
+        formatter.print_preserve_offset(result.reason)
 
     formatter.println()
 

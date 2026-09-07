@@ -326,3 +326,55 @@ def eval_outcome_to_grade_outcome(eval_res: EvaluationResult) -> ExecutionOutcom
         raise ValueError(
             f"Unexpected verdict when converting {eval_res.verdict} to execution outcome."
         )
+
+
+@dataclass
+class TestsetResult:
+    testset_name: str
+
+    max_score: float | None
+    score: float = float("inf")
+    verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+
+    worst_testcase: str = None
+    num_testcases: int = 0
+    expected_testcases: int = 0
+
+    max_cpu_time_sec: float = 0.0
+    is_timer_triggered: bool = False
+
+    max_memory_kib: int = -1
+    max_memory_upper_bound_kib: int = 0
+
+    def combine(self, other: "EvaluationResult | TestsetResult"):
+        if isinstance(other, EvaluationResult):
+            self.max_cpu_time_sec, self.is_timer_triggered = max(
+                (self.max_cpu_time_sec, self.is_timer_triggered),
+                (other.cpu_time_sec, other.timer_triggered),
+            )
+            if other.score < self.score:
+                self.worst_testcase = other.codename
+                self.score = other.score
+                self.verdict = other.verdict
+            self.num_testcases += 1
+            self.expected_testcases += 1
+            self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+            self.max_memory_upper_bound_kib = max(
+                self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+            )
+
+        elif isinstance(other, TestsetResult):
+            self.max_cpu_time_sec, self.is_timer_triggered = max(
+                (self.max_cpu_time_sec, self.is_timer_triggered),
+                (other.max_cpu_time_sec, other.is_timer_triggered),
+            )
+            if other.score < self.score:
+                self.worst_testcase = other.worst_testcase
+                self.score = other.score
+                self.verdict = other.verdict
+            self.num_testcases += other.num_testcases
+            self.expected_testcases += other.expected_testcases
+            self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+            self.max_memory_upper_bound_kib = max(
+                self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+            )

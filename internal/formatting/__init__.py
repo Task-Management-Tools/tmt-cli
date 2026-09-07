@@ -1,5 +1,6 @@
 from .base import Formatter
-from .terminal import TerminalFormatter
 from .empty import EmptyFormatter
+from .plain import PlainFormatter
+from .terminal import TerminalFormatter
 
-__all__ = ["Formatter", "TerminalFormatter", "EmptyFormatter"]
+__all__ = ["Formatter", "EmptyFormatter", "PlainFormatter", "TerminalFormatter"]

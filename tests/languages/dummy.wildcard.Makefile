@@ -1,5 +1,5 @@
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 SRCS = $(wildcard *.dummy)
 EXES = $(SRCS:%.dummy=build/%)

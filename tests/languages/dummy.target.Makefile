@@ -3,7 +3,7 @@
 # - TARGET_NAME: target executable file
 
 # Set shell
-SHELL := /bin/bash
+SHELL := $(shell command -v bash)
 
 EXE = build/$(TARGET_NAME)
 LOG = build/$(TARGET_NAME).compile.log
@@ -29,5 +29,5 @@ emit-log:
 
 build:
 	[ -d build ] || mkdir build
-	
+
 .PHONY: all emit-log

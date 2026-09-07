@@ -82,6 +82,8 @@ class ProblemDirectoryHelper:
     logs_invocation = _extend_path_property(logs, "invocation")
     logs_compile_single = _extend_path_property(logs, "compile-single")
 
+    statement = _problem_path_property("statement")
+
     # Important files
     problem_yaml = _problem_path_property("problem.yaml")
     compiler_yaml = _problem_path_property("compiler.yaml")
