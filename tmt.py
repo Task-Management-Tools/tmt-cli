@@ -10,6 +10,7 @@ from internal.context import TMTContext, find_problem_dir
 from internal.commands.gen import command_gen
 from internal.commands.invoke import command_invoke
 from internal.commands.clean import command_clean
+from internal.commands.compile import command_compile
 from internal.commands.export import command_export
 from internal.commands.make_public import command_make_public
 from internal.commands.verify import (
@@ -42,6 +43,12 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # parser_init = subparsers.add_parser("init", help="Init a TMT problem directory.")
+
+    # tmt compile
+    parser_compile = subparsers.add_parser(
+        "compile", help="Compile source codes.", parents=[shared]
+    )
+    parser_compile.add_argument("source", nargs="?", help="Specify file to compile")
 
     # tmt gen
     parser_gen = subparsers.add_parser(
@@ -174,6 +181,14 @@ def main():
             "Warning: In problem.yaml, tmt_version is set to 'latest' in this problem. You should never use 'latest' in non-unit-test problem repositories.",
             formatter.ANSI_RESET,
         )
+
+    if args.command == "compile":
+        cmd_ret = command_compile(
+            formatter=formatter,
+            context=context,
+            source=args.source,
+        )
+        return bool(cmd_ret)
 
     if args.command == "gen":
         cmd_ret = command_gen(
