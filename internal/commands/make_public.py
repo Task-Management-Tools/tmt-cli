@@ -9,6 +9,7 @@ from contextlib import contextmanager
 
 from internal.compilation import languages
 from internal.context import JudgeConvention, ProblemType, TMTContext
+from internal.context.config import SolutionCompilationGradered
 from internal.formatting import Formatter
 from internal.utils import FuzzyMatcher
 
@@ -121,7 +122,7 @@ def format_public(
     context: TMTContext, zipf: ZipFile, src: str, dest: str
 ) -> ZipOperationResult:
     """
-    Formats the file using the current TMTConfig and place it inside the zip archive.
+    Formats the file using the current ProblemConfig and place it inside the zip archive.
 
     Args:
         context: The current TMTContext.
@@ -270,6 +271,11 @@ def header_public(
 def grader_public(
     context: TMTContext, zipf: ZipFile, lang_id: str, dest: str
 ) -> ZipOperationResult:
+    if not isinstance(context.config.solution.compilation, SolutionCompilationGradered):
+        return ZipOperationResult(
+            filename=None, error="Grader is not configured for this problem."
+        )
+
     lang = None
     for lang_type in languages.languages:
         if lang_type(context).id == lang_id:
@@ -283,7 +289,7 @@ def grader_public(
     grader = None
     for ext in lang.source_extensions:
         public_grader_path = pathlib.Path(context.path.graders) / (
-            context.config.solution.grader_name + ext
+            context.config.solution.compilation.grader_name + ext
         )
         if public_grader_path.exists() and public_grader_path.is_file():
             grader = public_grader_path
