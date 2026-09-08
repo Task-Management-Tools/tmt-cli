@@ -2,16 +2,21 @@ import json
 from pathlib import Path
 from typing import Any
 
-from internal.zip_handler import ZipFileHander
 from internal.compilation import languages, recognize_language
 from internal.context.config import (
     CheckerType,
     JudgeConvention,
+    ProblemConfig,
+    ProblemConfigBatch,
+    ProblemConfigCommunication,
+    ProblemConfigOutputOnly,
     ProblemType,
+    SolutionCompilationGradered,
     SolutionType,
-    TMTConfig,
 )
 from internal.context import TMTContext
+from internal.utils import assert_never
+from internal.zip_handler import ZipFileHander
 
 from .base import BaseExporter
 from .operations import (
@@ -34,7 +39,9 @@ class GraderExportOperation(ExportOperation):
         return "Graders"
 
     def execute(self, context: TMTContext, zipfile: ZipFileHander) -> ExportResult:
-        if context.config.solution.type is not SolutionType.GRADER:
+        if not isinstance(
+            context.config.solution.compilation, SolutionCompilationGradered
+        ):
             return ExportResult(ExportResultEnum.SKIPPED)
 
         graders = []
@@ -44,7 +51,7 @@ class GraderExportOperation(ExportOperation):
             if not src.is_file():
                 continue
             dst = Path("graders") / (src.relative_to(Path(context.path.graders)))
-            if src.stem == context.config.solution.grader_name and (
+            if src.stem == context.config.solution.compilation.grader_name and (
                 lang := recognize_language([str(src)], context)
             ):
                 ext = lang(context).source_extensions[0]
@@ -105,21 +112,24 @@ class SubtaskConfigExportOperation(ExportOperation):
 class CMSTPSExporter(BaseExporter):
     description = "TPS export format for CMS"
 
-    def construct_problem_json(self, config: TMTConfig):
+    def construct_problem_json(self, config: ProblemConfig):
         task_type_params: dict[str, Any] = {}
-        match config.problem_type:
-            case ProblemType.BATCH:
-                if config.solution.type == SolutionType.GRADER:
-                    task_type_params["Batch_compilation"] = "grader"
-                else:
-                    task_type_params["Batch_compilation"] = "alone"
+        match config:
+            case ProblemConfigBatch():
+                match config.solution.compilation.type:
+                    case SolutionType.DEFAULT:
+                        task_type_params["Batch_compilation"] = "alone"
+                    case SolutionType.GRADER:
+                        task_type_params["Batch_compilation"] = "grader"
+                    case _:
+                        assert_never(config.solution.compilation.type)
 
-            case ProblemType.COMMUNICATION:
+            case ProblemConfigCommunication():
                 task_type_params["Communication_num_processes"] = (
-                    config.solution.num_procs
+                    config.solution.execution.num_procs
                 )
 
-            case ProblemType.OUTPUT_ONLY:
+            case ProblemConfigOutputOnly():
                 pass
 
             case _:

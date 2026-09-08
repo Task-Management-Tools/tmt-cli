@@ -60,7 +60,7 @@ class SolutionStep(ABC):
                 raise ValueError(
                     f"SolutionStep.__init__: submission_files {file} is not an absolute path."
                 )
-        self.grader = context.config.solution.grader_name
+        self.grader = context.config.solution.compilation.grader_name
 
     @abstractmethod
     def compilation_jobs(self) -> Generator[CompilationJob, None, None]:

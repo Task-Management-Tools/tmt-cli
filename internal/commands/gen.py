@@ -5,13 +5,14 @@ import json
 import filecmp
 import shutil
 
-from internal.formatting import Formatter
 from internal.context import (
     AnswerGenerationType,
     TMTContext,
     SandboxDirectory,
 )
+from internal.context.config.checker import Checker
 from internal.exceptions import TMTInvalidConfigError
+from internal.formatting import Formatter
 from internal.outcomes import (
     CompilationResult,
     EvaluationResult,
@@ -98,28 +99,32 @@ def gen_single(
     formatter.print_exec_result(result.output_generation)
 
     # If both input is validated and output is available, run checker if the testcase type should apply check
-    success_verdicts = [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]
+
+    def should_run_checker(
+        result: GenerationResult, checker_conf: Checker | None
+    ) -> ExecutionOutcome:
+        good = [ExecutionOutcome.SUCCESS, ExecutionOutcome.SKIPPED_SUCCESS]
+        # No checker / not meaningful
+        if checker_step is None:
+            return ExecutionOutcome.SKIPPED_SUCCESS
+
+        assert checker_conf is not None
+        if result.output_generation not in good:
+            return ExecutionOutcome.SKIPPED
+        if result.input_validation not in good:
+            return ExecutionOutcome.SKIPPED
+        if result.is_output_forced and not checker_conf.check_forced_output:
+            return ExecutionOutcome.SKIPPED_SUCCESS
+        if not result.is_output_forced and not checker_conf.check_generated_output:
+            return ExecutionOutcome.SKIPPED_SUCCESS
+        return ExecutionOutcome.UNKNOWN
 
     # Not meaningful to run / no checker
-    if checker_step is None:
-        result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
-    # Already failed
-    elif (
-        result.output_generation not in success_verdicts
-        or result.input_validation not in success_verdicts
-    ):
-        result.output_validation = ExecutionOutcome.SKIPPED
-    # The config explicitly asked so
-    elif (
-        result.is_output_forced and not context.config.checker.check_forced_output
-    ) or (
-        not result.is_output_forced
-        and not context.config.checker.check_generated_output
-    ):
-        result.output_validation = ExecutionOutcome.SKIPPED_SUCCESS
-    else:
-        assert result.output_validation == ExecutionOutcome.UNKNOWN
+    result.output_validation = should_run_checker(result, context.config.checker)
+    if result.output_validation is ExecutionOutcome.UNKNOWN:
         formatter.print("check ")
+        assert checker_step is not None
+        assert solution_result is not None
         checker_result = checker_step.run_checker(solution_result, codename)
         result.output_validation = eval_outcome_to_grade_outcome(checker_result)
         result.reason = checker_result.reason
