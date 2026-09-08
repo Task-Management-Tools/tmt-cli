@@ -7,6 +7,7 @@ import signal
 import subprocess
 
 from internal.compilation.makefile import make_clean, make_compile_target
+from internal.context.config import ProblemConfigInteractive
 from internal.exceptions import TMTMissingFileError
 from internal.process import Process, wait_procs
 from internal.compilation import get_run_single_command
@@ -28,7 +29,7 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
     Requires executable "interactor".
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         if self.sandbox:
             self.workdir = self.sandbox.interactor
@@ -37,9 +38,8 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             raise TMTMissingFileError(filetype="Directory", filename="interactor")
 
         # Pre-condition ensured by config
-        assert self.context.config.interactor is not None
-
-        self.interactor_name = self.context.config.interactor.filename
+        assert isinstance(self.context.config, ProblemConfigInteractive)
+        self.config: ProblemConfigInteractive = self.context.config
 
     def clean_up(self):
         super().clean_up()
@@ -53,7 +53,9 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             ", ".join(os.path.basename(file) for file in self.submission_files),
         )
         yield CompilationJob(
-            CompilationSlot.INTERACTOR, self.compile_interactor, self.interactor_name
+            CompilationSlot.INTERACTOR,
+            self.compile_interactor,
+            self.config.interactor.filename,
         )
 
     @requires_sandbox
@@ -61,18 +63,16 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         comp_result = make_compile_target(
             context=self.context,
             directory=self.context.path.interactor,
-            sources=[self.context.config.interactor.filename],
+            sources=[self.config.interactor.filename],
             target="interactor",
-            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+            executable_stack_size_mib=self.config.trusted_step_memory_limit_mib,
         )
 
         if comp_result.verdict is CompilationOutcome.SUCCESS:
             if comp_result.produced_file is None:
                 raise TMTMissingFileError(
                     filetype="interactor (executable)",
-                    filename=os.path.splitext(self.context.config.interactor.filename)[
-                        0
-                    ],
+                    filename=os.path.splitext(self.config.interactor.filename)[0],
                 )
 
         return comp_result
@@ -145,7 +145,7 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             context=self.context,
             directory=self.context.path.interactor_build,
             executable_filename_base="interactor",
-            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+            executable_stack_size_mib=self.config.trusted_step_memory_limit_mib,
         )
         assert interactor_exec_command is not None
         interactor_exec_args = [
@@ -164,10 +164,10 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             stdout=solution.stdin,
             stderr_redirect=sandbox_interactor_err_file,
             time_limit_sec=max(
-                interactor_time_limit, self.context.config.trusted_step_time_limit_sec
+                interactor_time_limit, self.config.trusted_step_time_limit_sec
             ),
-            memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-            output_limit_mib=self.context.config.trusted_step_output_limit_mib,
+            memory_limit_mib=self.config.trusted_step_memory_limit_mib,
+            output_limit_mib=self.config.trusted_step_output_limit_mib,
         )
 
         assert solution.stdin is not None and solution.stdout is not None
