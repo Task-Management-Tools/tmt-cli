@@ -76,7 +76,9 @@ problem-root/
 
 ## `problem.yaml`
 
-### Example: A + B Problem (`icpc + batch` with default checker)
+### Examples
+
+Example: A + B Problem (ICPC, batch, default checker)
 
 ```yaml
 title: A + B Problem
@@ -109,7 +111,7 @@ compile_memory_limit: unlimited
 tmt_version: 0.1.0
 ```
 
-Explanation:
+Brief explanation:
 
 - `input_extension` and `output_extension` specify the extension of the generated testcase files.
 - `solution.time_limit` accepts `ms` or `s`.
@@ -117,8 +119,6 @@ Explanation:
   - Note that `M` = `MiB` and `G` = `GiB`.
 - `solution.output_limit` accepts the same units or `unlimited`.
 - `answer_generation.filename` specifies what the reference solution is.
-
-### Other Examples
 
 For other examples, please check the `examples/` folder in this repository.
 
@@ -130,7 +130,9 @@ For other examples, please check the `examples/` folder in this repository.
 | `examples/icpc/revadd/`    | `icpc + batch`       | custom checker                 |
 | `examples/icpc/guess/`     | `icpc + interactive` | interactor                     |
 
-todo: examples of `checker.check_generated_output` and `checker.check_forced_output`
+### Specification
+
+You may refer to the [**specification**](./docs/problem-yaml.md) for all available configs.
 
 ## `compiler.yaml`
 
