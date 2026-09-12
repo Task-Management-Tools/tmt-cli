@@ -61,7 +61,11 @@ class TMTContext:
     #     raise ValueError("Not yet supported now")
 
     def compile_flags(self, language: str) -> list[str]:
-        return self.compiler_yaml[language]["flags"]
+        try:
+            return self.compiler_yaml[language]["flags"]
+        except KeyError:
+            # no extra flags by default
+            return []
 
     def construct_test_filename(self, code_name: str, extension: str):
         if not extension.startswith("."):
