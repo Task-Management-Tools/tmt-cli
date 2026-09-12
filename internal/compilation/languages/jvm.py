@@ -18,6 +18,8 @@ class JVMLanguage(Language):
         executable_stack_mib: int,
     ) -> list[str]:
         java = os.getenv("JAVA", "java")
+        # Some java environments would fail due to a hard stack limit of 1 GiB
+        executable_stack_mib = min(executable_stack_mib, 1024)
         return [
             java,
             f"-Xss{executable_stack_mib}m",
