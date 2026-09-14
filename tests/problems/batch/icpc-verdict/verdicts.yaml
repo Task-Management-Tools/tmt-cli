@@ -10,3 +10,5 @@
 - {filename: rte.cpp,       verdict: runtime-error}
 - {filename: ok-output.cpp, verdict: accepted}
 - {filename: ole.cpp,       verdict: output-limit}
+- {filename: ok.java,       verdict: accepted}
+- {filename: rte.java,      verdict: runtime-error}

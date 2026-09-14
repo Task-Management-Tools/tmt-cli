@@ -13,7 +13,7 @@ validator: default
 solution:
   type: default
   time_limit: 500 ms
-  memory_limit: 64 M
+  memory_limit: 256 M
   output_limit: 2 M
 
 answer_generation: ok.py
