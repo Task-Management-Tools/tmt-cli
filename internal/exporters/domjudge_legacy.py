@@ -9,7 +9,13 @@ from typing import BinaryIO
 from internal.utils import FuzzyMatcher
 from internal.zip_handler import ZipFileHander
 from internal.context.config import CheckerType, JudgeConvention
-from internal.compilation.languages import languages, LanguageCpp, LanguagePython3, LanguageJava, LanguageKotlin
+from internal.compilation.languages import (
+    languages,
+    LanguageCpp,
+    LanguagePython3,
+    LanguageJava,
+)
+from internal.compilation.utils import recognize_language
 from internal.context import TMTContext
 from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
 
@@ -315,18 +321,26 @@ class DOMJudgeLegacyExporter(BaseExporter):
         assert set([".py", ".py2", ".py3"]).issuperset(
             LanguagePython3(context).source_extensions
         )
-        assert set([".java"]).issuperset(
-            LanguageJava(context).source_extensions
-        )
-        assert set([".kt"]).issuperset(
-            LanguageKotlin(context).source_extensions
-        )
+        assert set([".java"]).issuperset(LanguageJava(context).source_extensions)
+
+        # Ensure that the source file of an executable is in one of DOMjudge's accepted languages
+        # TODO: Perhaps provide a default build script for languages we support but DOMjudge doesn't
+        def check_domjudge_support(filename):
+            language = recognize_language([filename], context)
+            if language is None:
+                raise ValueError(f"File {filename} is in an unrecognized language")
+            elif language not in (LanguageCpp, LanguagePython3, LanguageJava):
+                raise ValueError(
+                    f"File {filename} is in the language {language(context).name} which is not supported by DOMjudge, "
+                    "supported ones are C, C++, Python3 and Java"
+                )
 
         # Checker & Interactor -> output_validators/
         # export them only if config says so, add header if we do want that
         if context.config.checker and context.config.checker.type is CheckerType.CUSTOM:
             checker_filename = context.config.checker.filename
             assert checker_filename is not None
+            check_domjudge_support(checker_filename)
             yield CopyFileOperation(
                 "Checker",
                 "checker/" + checker_filename,
@@ -336,10 +350,12 @@ class DOMJudgeLegacyExporter(BaseExporter):
                 "Checker headers", context.path.include, "output_validators/"
             )
         if context.config.interactor:
+            interactor_filename = context.config.interactor.filename
+            check_domjudge_support(interactor_filename)
             yield CopyFileOperation(
                 "Interactor",
-                "interactor/" + context.config.interactor.filename,
-                "output_validators/" + context.config.interactor.filename,
+                "interactor/" + interactor_filename,
+                "output_validators/" + interactor_filename,
             )
             yield GlobCopyOperation(
                 "Interactor headers", context.path.include, "output_validators/"
