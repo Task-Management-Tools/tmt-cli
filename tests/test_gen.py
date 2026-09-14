@@ -89,6 +89,8 @@ expected_results_batch_icpc_generator = (
         "1-good-4":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
         "1-good-5":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
         "1-good-6":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-good-7":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
+        "1-good-8":  expected_result_helper(gen=OK,   val=OK,   ans=OK),
         "2-proof-1": expected_result_helper(gen=OK,   val=OK,   ans=OK),
         "3-bad-1":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
         "3-bad-2":   expected_result_helper(gen=OK,   val=FAIL, ans=SKIP),
@@ -97,6 +99,8 @@ expected_results_batch_icpc_generator = (
         "3-bad-5":   expected_result_helper(gen=TLE,  val=SKIP, ans=SKIP),
         "3-bad-6":   expected_result_helper(gen=FAIL, val=SKIP, ans=SKIP),
         "3-bad-7":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3-bad-8":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
+        "3-bad-9":   expected_result_helper(gen=RTE,  val=SKIP, ans=SKIP),
     }
 )
 

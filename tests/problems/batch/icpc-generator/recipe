@@ -5,6 +5,8 @@ print 100 200
 print 100 200 | swap
 print 600 700 | swap | swap | swap | swap | swap
 print-py 600 700
+print-java 800 900
+print-kotlin 1000 1100
 manual input.in
 manual input.in | swap
 
@@ -20,3 +22,5 @@ signaled-exit
 time-limit-wall
 remove-stdout
 syntax-error-py
+runtime-error-java
+runtime-error-kotlin
