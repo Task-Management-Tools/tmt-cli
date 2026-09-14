@@ -9,7 +9,7 @@ from typing import BinaryIO
 from internal.utils import FuzzyMatcher
 from internal.zip_handler import ZipFileHander
 from internal.context.config import CheckerType, JudgeConvention
-from internal.compilation.languages import languages, LanguageCpp, LanguagePython3
+from internal.compilation.languages import languages, LanguageCpp, LanguagePython3, LanguageJava, LanguageKotlin
 from internal.context import TMTContext
 from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
 
@@ -314,6 +314,12 @@ class DOMJudgeLegacyExporter(BaseExporter):
         )
         assert set([".py", ".py2", ".py3"]).issuperset(
             LanguagePython3(context).source_extensions
+        )
+        assert set([".java"]).issuperset(
+            LanguageJava(context).source_extensions
+        )
+        assert set([".kt"]).issuperset(
+            LanguageKotlin(context).source_extensions
         )
 
         # Checker & Interactor -> output_validators/
