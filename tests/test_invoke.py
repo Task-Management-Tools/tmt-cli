@@ -134,6 +134,30 @@ expected_results_batch_cms_verdict = {
                        "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
                        "1-full-11": (RTE,      SCORE == 0),
                        "1-full-12": (MLE,      SCORE == 0), },
+    ("java.java",):  { "1-full-01": (CORRECT,  SCORE == 1),
+                       "1-full-02": (WRONG,    SCORE == 0),
+                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
+                       "1-full-04": (WRONG,    SCORE == 0), # Did not implement this in Python
+                       "1-full-05": (TLE_CPU,  SCORE == 0),
+                       "1-full-06": (TLE_WALL, SCORE == 0),
+                       "1-full-07": (RTE_EXIT, SCORE == 0),
+                       "1-full-08": (RTE_SIG,  SCORE == 0),
+                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
+                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
+                       "1-full-11": (RTE,      SCORE == 0),
+                       "1-full-12": (MLE,      SCORE == 0), },
+    ("kotlin.kt",):  { "1-full-01": (CORRECT,  SCORE == 1),
+                       "1-full-02": (WRONG,    SCORE == 0),
+                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
+                       "1-full-04": (WRONG,    SCORE == 0), # Did not implement this in Python
+                       "1-full-05": (TLE_CPU,  SCORE == 0),
+                       "1-full-06": (TLE_WALL, SCORE == 0),
+                       "1-full-07": (RTE_EXIT, SCORE == 0),
+                       "1-full-08": (RTE_SIG,  SCORE == 0),
+                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
+                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
+                       "1-full-11": (RTE,      SCORE == 0),
+                       "1-full-12": (MLE,      SCORE == 0), },
 }
 
 expected_results_batch_icpc_checker = {
