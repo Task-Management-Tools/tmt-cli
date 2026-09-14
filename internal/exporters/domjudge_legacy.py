@@ -325,14 +325,20 @@ class DOMJudgeLegacyExporter(BaseExporter):
 
         # Ensure that the source file of an executable is in one of DOMjudge's accepted languages
         # TODO: Perhaps provide a default build script for languages we support but DOMjudge doesn't
-        def check_domjudge_support(filename):
+        def check_domjudge_support(
+            step_name: str, filename: str
+        ) -> ExportErrorOperation | None:
             language = recognize_language([filename], context)
             if language is None:
-                raise ValueError(f"File {filename} is in an unrecognized language")
+                return ExportErrorOperation(
+                    name=step_name,
+                    msg=f"File {filename} is in an unrecognized language",
+                )
             elif language not in (LanguageCpp, LanguagePython3, LanguageJava):
-                raise ValueError(
-                    f"File {filename} is in the language {language(context).name} which is not supported by DOMjudge, "
-                    "supported ones are C, C++, Python3 and Java"
+                return ExportErrorOperation(
+                    name=step_name,
+                    msg=f"File {filename} is in the language {language(context).name} which is not supported by DOMjudge, "
+                    "supported ones are C, C++, Python3 and Java",
                 )
 
         # Checker & Interactor -> output_validators/
@@ -340,23 +346,27 @@ class DOMJudgeLegacyExporter(BaseExporter):
         if context.config.checker and context.config.checker.type is CheckerType.CUSTOM:
             checker_filename = context.config.checker.filename
             assert checker_filename is not None
-            check_domjudge_support(checker_filename)
-            yield CopyFileOperation(
-                "Checker",
-                "checker/" + checker_filename,
-                "output_validators/" + checker_filename,
-            )
-            yield GlobCopyOperation(
-                "Checker headers", context.path.include, "output_validators/"
-            )
+            if error := check_domjudge_support("Checker", checker_filename):
+                yield error
+            else:
+                yield CopyFileOperation(
+                    "Checker",
+                    "checker/" + checker_filename,
+                    "output_validators/" + checker_filename,
+                )
+                yield GlobCopyOperation(
+                    "Checker headers", context.path.include, "output_validators/"
+                )
         if context.config.interactor:
             interactor_filename = context.config.interactor.filename
-            check_domjudge_support(interactor_filename)
-            yield CopyFileOperation(
-                "Interactor",
-                "interactor/" + interactor_filename,
-                "output_validators/" + interactor_filename,
-            )
-            yield GlobCopyOperation(
-                "Interactor headers", context.path.include, "output_validators/"
-            )
+            if error := check_domjudge_support("Interactor", interactor_filename):
+                yield error
+            else:
+                yield CopyFileOperation(
+                    "Interactor",
+                    "interactor/" + interactor_filename,
+                    "output_validators/" + interactor_filename,
+                )
+                yield GlobCopyOperation(
+                    "Interactor headers", context.path.include, "output_validators/"
+                )
