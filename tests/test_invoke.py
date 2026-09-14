@@ -141,9 +141,11 @@ expected_results_batch_cms_verdict = {
                        "1-full-05": (TLE_CPU,  SCORE == 0),
                        "1-full-06": (TLE_WALL, SCORE == 0),
                        "1-full-07": (RTE_EXIT, SCORE == 0),
-                       "1-full-08": (RTE_SIG,  SCORE == 0),
-                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
-                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
+                       # Since there is no standard way to raise a signal in Java, we cannot reliably test for RTE_SIG
+                       # Therefore, testcases which expect some signal are ignored explicitly
+                       # "1-full-08": (RTE_SIG,  SCORE == 0),
+                       # "1-full-09": (RTE,      SCORE == 0),
+                       # "1-full-10": (RTE_SIG,  SCORE == 0),
                        "1-full-11": (RTE,      SCORE == 0),
                        "1-full-12": (MLE,      SCORE == 0), },
     ("kotlin.kt",):  { "1-full-01": (CORRECT,  SCORE == 1),
@@ -153,9 +155,11 @@ expected_results_batch_cms_verdict = {
                        "1-full-05": (TLE_CPU,  SCORE == 0),
                        "1-full-06": (TLE_WALL, SCORE == 0),
                        "1-full-07": (RTE_EXIT, SCORE == 0),
-                       "1-full-08": (RTE_SIG,  SCORE == 0),
-                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
-                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
+                       # Since there is no standard way to raise a signal in Kotlin, we cannot reliably test for RTE_SIG
+                       # Therefore, testcases which expect some signal are ignored explicitly
+                       # "1-full-08": (RTE_SIG,  SCORE == 0),
+                       # "1-full-09": (RTE,      SCORE == 0),
+                       # "1-full-10": (RTE_SIG,  SCORE == 0),
                        "1-full-11": (RTE,      SCORE == 0),
                        "1-full-12": (MLE,      SCORE == 0), },
 }

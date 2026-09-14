@@ -6,15 +6,6 @@ object Lcg {
     }
 }
 
-// TODO: No portable way to raise POSIX signals in the program itself, or setting handlers
-// There's a proprietary API sun.misc.Signal but it's unsupported and deprecated
-fun raiseSignal(name: String) {
-    // OpenJDK by default ignores SIGXFSZ, but the intended behavior is to die
-    if (name == "XFSZ") error("fake OLE")
-    val pid = ProcessHandle.current().pid()
-    ProcessBuilder("kill", "-$name", pid.toString()).start().waitFor()
-}
-
 fun main() {
     when (readln()) {
         "correct" -> println("answer")
@@ -30,9 +21,8 @@ fun main() {
         }
         "timeout-wall" -> Thread.sleep(2_000)
         "runerror-exit" -> kotlin.system.exitProcess(1)
-        "runerror-signal" -> raiseSignal("ABRT")
-        "runerror-sigxfsz" -> raiseSignal("XFSZ")
-        "runerror-sigxcpu" -> raiseSignal("XCPU")
+        // There is no standard way in Kotlin to raise a POSIX signal, so create a generic error instead
+        "runerror-signal", "runerror-sigxfsz", "runerror-sigxcpu" -> error("would be killed by a signal")
         "runerror-any" -> error("test error")
         "memory-limit" -> {
             val largeMemory = IntArray(64 * 1024 * 1024)

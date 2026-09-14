@@ -10,17 +10,6 @@ class Lcg {
 }
 
 class Main {
-    // TODO: No portable way to raise POSIX signals in the program itself, or setting handlers
-    // There's a proprietary API sun.misc.Signal but it's unsupported and deprecated
-    private static void raiseSignal(String name) throws InterruptedException, IOException {
-        // OpenJDK by default ignores SIGXFSZ, but the intended behavior is to die
-        if (name == "XFSZ") {
-            throw new IOException("fake OLE");
-        }
-        long pid = ProcessHandle.current().pid();
-        new ProcessBuilder("kill", "-" + name, Long.toString(pid)).start().waitFor();
-    }
-
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         Lcg lcg = new Lcg();
@@ -49,14 +38,10 @@ class Main {
                 System.exit(1);
                 break;
             case "runerror-signal":
-                raiseSignal("ABRT");
-                break;
             case "runerror-sigxfsz":
-                raiseSignal("XFSZ");
-                break;
             case "runerror-sigxcpu":
-                raiseSignal("XCPU");
-                break;
+                // There is no standard way in Java to raise a POSIX signal, so create a generic error instead
+                throw new RuntimeException("would be killed by a signal");
             case "runerror-any":
                 throw new RuntimeException("test error");
             case "memory-limit": {
