@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-char buf[48 * 1024 * 1024];
+char buf[192 * 1024 * 1024];
 
 int main()
 {

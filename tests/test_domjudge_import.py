@@ -206,6 +206,8 @@ batch_verdict = ExpectedProblemData(
         "rte.cpp": "RTE",
         "ok-output.cpp": "AC",
         "ole.cpp": "OLE",
+        "ok.java": "AC",
+        "rte.java": "RTE",
     },
     scan_messages={
         r"Added(?:/updated)? 1 sample testcase\(s\): .*",

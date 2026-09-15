@@ -20,13 +20,16 @@ Run from anywhere inside a problem directory. `tmt` searches upward from the cur
 - `make`
   - `tmt` assumes that GNU Make is used, so if you're on macOS please take care of that (e.g. add `MAKE=gmake`).
 - C++ toolchain for `.cpp` and `.cc` sources (e.g. `g++`)
+- Java toolchain for `.java` and `.kt` sources (e.g. `openjdk`)
+- Kotlin toolchain for `.kt` sources (e.g. `kotlinc`)
 
 Optional environment variables:
 
 - `MAKE` to override the `make` executable
 - `PYTHON` to override the `python3` executable
 - `CXX` to override the `g++` executable
-- `CXXFLAGS`
+- `JAVA`, `JAVAC`, `JAR`, and `JAVAP` to override the `java`, `javac`, `jar`, and `javap` executables
+- `CXXFLAGS`, `JAVACFLAGS`, `KOTLINCFLAGS`
 
 ## Directory structure
 
@@ -40,9 +43,9 @@ problem-root/
 │   └── headers used by generator/validator/checker, e.g. testlib.h
 ├── generator/
 │   ├── manual/
-│   └── *.cpp, *.cc, *.py
+│   └── *.cpp, *.cc, *.py, *.java, *.kt
 ├── validator/
-│   └── *.cpp, *.cc, *.py
+│   └── *.cpp, *.cc, *.py, *.java, *.kt
 ├── solutions/
 │   └── reference/incorrect solutions
 ├── checker/ (optional)
@@ -139,10 +142,14 @@ todo: examples of `checker.check_generated_output` and `checker.check_forced_out
 ```yaml
 cpp:
   flags: ["-std=gnu++20", "-O2", "-Wall", "-Wextra", "-Wshadow", "-Wconversion"]
+java:
+  flags: ["-encoding", "utf8"]
+kotlin:
+  flags: []
 ```
 
-- Specify the flags to compile all C++ files.
-- You can use `CXXFLAGS` environment variable to temporarily override it.
+- Specify additional flags to add to all compile commands for each language. Defaults to empty.
+- You can use the `CXXFLAGS`, `JAVACFLAGS`, and `KOTLINCFLAGS` environment variables to temporarily override them.
   - Example: `CXXFLAGS="-fsanitize=undefined" tmt invoke some.cpp`
   - Notice that by default `tmt` may add some additional flags to mitigate some platform-dependent issues, but if you specified `CXXFLAGS`, `tmt` won't do that for you.
 

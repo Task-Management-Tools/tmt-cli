@@ -9,7 +9,13 @@ from typing import BinaryIO
 from internal.utils import FuzzyMatcher
 from internal.zip_handler import ZipFileHander
 from internal.context.config import CheckerType, JudgeConvention
-from internal.compilation.languages import languages, LanguageCpp, LanguagePython3
+from internal.compilation.languages import (
+    languages,
+    LanguageCpp,
+    LanguagePython3,
+    LanguageJava,
+)
+from internal.compilation.utils import recognize_language
 from internal.context import TMTContext
 from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
 
@@ -315,26 +321,53 @@ class DOMJudgeLegacyExporter(BaseExporter):
         assert set([".py", ".py2", ".py3"]).issuperset(
             LanguagePython3(context).source_extensions
         )
+        assert set([".java"]).issuperset(LanguageJava(context).source_extensions)
+
+        # Ensure that the source file of an executable is in one of DOMjudge's accepted languages
+        # TODO: Perhaps provide a default build script for languages we support but DOMjudge doesn't
+        def check_domjudge_support(
+            step_name: str, filename: str
+        ) -> ExportErrorOperation | None:
+            language = recognize_language([filename], context)
+            if language is None:
+                return ExportErrorOperation(
+                    name=step_name,
+                    msg=f"File {filename} is in an unrecognized language",
+                )
+            elif language not in (LanguageCpp, LanguagePython3, LanguageJava):
+                return ExportErrorOperation(
+                    name=step_name,
+                    msg=f"File {filename} is in the language {language(context).name}, which is not supported by DOMjudge. "
+                    "Supported ones are C, C++, Python3 and Java",
+                )
+            return None
 
         # Checker & Interactor -> output_validators/
         # export them only if config says so, add header if we do want that
         if context.config.checker and context.config.checker.type is CheckerType.CUSTOM:
             checker_filename = context.config.checker.filename
             assert checker_filename is not None
-            yield CopyFileOperation(
-                "Checker",
-                "checker/" + checker_filename,
-                "output_validators/" + checker_filename,
-            )
-            yield GlobCopyOperation(
-                "Checker headers", context.path.include, "output_validators/"
-            )
+            if error := check_domjudge_support("Checker", checker_filename):
+                yield error
+            else:
+                yield CopyFileOperation(
+                    "Checker",
+                    "checker/" + checker_filename,
+                    "output_validators/" + checker_filename,
+                )
+                yield GlobCopyOperation(
+                    "Checker headers", context.path.include, "output_validators/"
+                )
         if context.config.interactor:
-            yield CopyFileOperation(
-                "Interactor",
-                "interactor/" + context.config.interactor.filename,
-                "output_validators/" + context.config.interactor.filename,
-            )
-            yield GlobCopyOperation(
-                "Interactor headers", context.path.include, "output_validators/"
-            )
+            interactor_filename = context.config.interactor.filename
+            if error := check_domjudge_support("Interactor", interactor_filename):
+                yield error
+            else:
+                yield CopyFileOperation(
+                    "Interactor",
+                    "interactor/" + interactor_filename,
+                    "output_validators/" + interactor_filename,
+                )
+                yield GlobCopyOperation(
+                    "Interactor headers", context.path.include, "output_validators/"
+                )
