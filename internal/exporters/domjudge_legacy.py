@@ -337,9 +337,10 @@ class DOMJudgeLegacyExporter(BaseExporter):
             elif language not in (LanguageCpp, LanguagePython3, LanguageJava):
                 return ExportErrorOperation(
                     name=step_name,
-                    msg=f"File {filename} is in the language {language(context).name} which is not supported by DOMjudge, "
-                    "supported ones are C, C++, Python3 and Java",
+                    msg=f"File {filename} is in the language {language(context).name}, which is not supported by DOMjudge. "
+                    "Supported ones are C, C++, Python3 and Java",
                 )
+            return None
 
         # Checker & Interactor -> output_validators/
         # export them only if config says so, add header if we do want that
