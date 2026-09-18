@@ -1,6 +1,12 @@
 import functools
 import re
 import string
+from typing import NoReturn
+
+
+# Backport for Python 3.10
+def assert_never(value: NoReturn) -> NoReturn:
+    raise AssertionError(f"Expected code to be unreachable, got: {value!r}")
 
 
 class FuzzyMatcher:
