@@ -1,14 +1,10 @@
 import os
-import signal
 
 from abc import ABC, abstractmethod
 from typing import Generator
 
 from internal.context import TMTContext, SandboxDirectory
-from internal.outcomes import (
-    EvaluationResult,
-    EvaluationOutcome,
-)
+from internal.outcomes import EvaluationResult
 from internal.steps.utils import CompilationJob
 
 
@@ -86,34 +82,3 @@ class SolutionStep(ABC):
             code_name (str): The code name of the testcase to be used.
         """
         raise NotImplementedError
-
-    def is_solution_abormal_exit(self, eval_res: EvaluationResult) -> bool:
-        """
-        Determine whether the solution terminates normally.
-        Returns True if not, and fills respective EvaluationOutcome eval_res.
-
-        Args:
-            eval_res (EvaluationResult): The EvaluationResult to be filled.
-        """
-
-        if eval_res.max_memory_kib > self.memory_limit_mib * 1024:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_MEMORY
-        if eval_res.cpu_time_sec > self.time_limit_sec:
-            eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif eval_res.wall_clock_time_sec > self.time_limit_sec:
-            eval_res.verdict = EvaluationOutcome.TIMEOUT_WALL
-        elif eval_res.exit_signal == signal.SIGXFSZ:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_OUTPUT
-        # elif eval_res.exit_signal == signal.SIGXCPU:
-        #     eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif eval_res.exit_signal != 0:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            eval_res.reason = (
-                f"Execution killed by signal ({signal.strsignal(eval_res.exit_signal)})"
-            )
-        elif eval_res.exit_code != 0:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_EXITCODE
-            eval_res.reason = f"Execution exited with exit code {eval_res.exit_code}"
-        else:
-            return False
-        return True

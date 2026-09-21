@@ -17,6 +17,8 @@ def get_checker_step_type(
             return CMSCheckerStep
         case (ProblemType.INTERACTIVE, JudgeConvention.ICPC):
             return None
+        case (ProblemType.MULTI_PASS, JudgeConvention.ICPC):
+            return None
         case (ProblemType.COMMUNICATION, JudgeConvention.CMS):
             return None
         case (ProblemType.OUTPUT_ONLY, JudgeConvention.CMS):
