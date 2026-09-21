@@ -10,7 +10,7 @@ description:              # string, optional
 input_extension:          # string, starts with .
 output_extension:         # string, starts with .
 judge_convention:         # string, "icpc|cms"
-problem_type:             # string, "batch|interactive|communication|output-only"
+problem_type:             # string, "batch|interactive|communication|output-only|multi-pass"
 tmt_version:              # string
 compile_time_limit:       # time limit
 compile_memory_limit:     # byte limit (allow unlimited)
@@ -111,6 +111,9 @@ The following specification refers to them as "DOMjudge" and "CMS", respectively
   - `output-only`:
     Output only problems.
     The test case inputs are given in advance and submissions are the produced outputs.
+  - `multi-pass`:
+    ICPC style multi-pass problems.
+    Submissions and the interactor interact asynchronously through multiple passes.
 - `compile_time_limit`:
   The compilation time limit TMT allows for every file, in the time limit format.
   It is a safeguard for TMT and is never exported to the packages.
@@ -129,9 +132,9 @@ The following specification refers to them as "DOMjudge" and "CMS", respectively
 
 Note: not all combinations of `judge_convention` and `problem_type` are supported based on the judge.
 Currently:
- - `icpc` supports `batch` and `interactive`.
- - `cms` supports `batch`, `communication`, and `output-only`.
-   - Please use `communication` for `interactive` problems.
+- `icpc` supports `batch`, `interactive`, and `multi-pass`.
+- `cms` supports `batch`, `communication`, and `output-only`.
+  - Please use `communication` for `interactive` and `multi-pass` problems.
 
 ## Validator
 Specifies validation of generated test cases.
@@ -158,7 +161,6 @@ Specifies invocation of submissions (solutions).
 - `grader_name`: The base name of the grader (without file extension).
   This config should be present if and only if `type` is `grader`.
 
-
 ### Communication Task Specific Configs
 The following fields must be present when the task type is `communication` and absent otherwise.
 
@@ -170,6 +172,11 @@ The following fields must be present when the task type is `communication` and a
   TMT does **not** export this option yet because it is hardcoded in the TPS importer of CMS.
   Following the importer default, it should be `true` for CMS version <= 1.5.1 and `false` if > 1.5.1 or using most of the IOI forks.
   This option is always configurable in the CMS admin interface, in case the configured value is different from the default.
+
+### Multi-pass Task Specific Configs
+The following field must be present when the task type is `multi-pass` and absent otherwise.
+
+- `max_passes`: Maximum number of passes allowed for the interaction.
 
 ## Answer Generation
 Specifies generation of answers (reference outputs).
@@ -190,7 +197,8 @@ answer_generation:
 
 ## Checker
 Specifies the checker (output validator in ICPC, or comparator in CMS).
-This config section **must not be present** when `problem_type` is `interactive` or `communication`.
+This config can only be present when the task type is `batch` or `output-only`.
+Otherwise, it must be absent.
 
 - `type`: Must be one of:
   - `default`: Use the default checker based on the judge convention.
@@ -225,7 +233,8 @@ checker:
 
 ## Interactor
 Specifies the interactor.
-This config must be present if the task type is `interactive` or absent otherwise.
+This config must be present if the task type is `interactive`, or `multi-pass`.
+Otherwise, it should be absent.
 
 - `filename`: File name of the interactor, relative to `interactor/`.
 - `arguments`: Optional field for additional command-line arguments appended to the default arguments.

@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Generic, Literal, TypeAlias, TypeVar, final
 
-from internal.utils import assert_never
-
 from .parser import DictParser, TMTConfigError, TMTConfigErrorsList, unwrap
 
 
@@ -44,15 +42,27 @@ class SolutionExecutionCommunication:
     use_fifo: bool
 
 
+@final
+@dataclass
+class SolutionExecutionMultipass:
+    max_passes: int
+
+
 SolutionExecution: TypeAlias = (
-    SolutionExecutionStandalone | SolutionExecutionCommunication
+    SolutionExecutionStandalone
+    | SolutionExecutionCommunication
+    | SolutionExecutionMultipass
 )
 
 C = TypeVar(
     "C", SolutionCompilation, SolutionCompilationGradered, SolutionCompilationStandalone
 )
 E = TypeVar(
-    "E", SolutionExecution, SolutionExecutionStandalone, SolutionExecutionCommunication
+    "E",
+    SolutionExecution,
+    SolutionExecutionStandalone,
+    SolutionExecutionCommunication,
+    SolutionExecutionMultipass,
 )
 
 
@@ -87,12 +97,11 @@ def parse_solution(data: Any) -> Solution | TMTConfigErrorsList:
     time_limit_sec = parser.pop_time_to_second("time_limit")
     memory_limit_mib = parser.pop_bytes_to_mib("memory_limit")
     output_limit_mib = parser.pop_bytes_to_mib("output_limit", allow_unlimited=True)
-
     type_ = parser.pop("type", SolutionType)
     grader_name = parser.pop_optional("grader_name", str)
-
     num_procs = parser.pop_optional("num_procs", int)
     use_fifo = parser.pop_optional("use_fifo", bool)
+    max_passes = parser.pop_optional("max_passes", int)
 
     parser.reject_remaining()
 
@@ -126,23 +135,38 @@ def parse_solution(data: Any) -> Solution | TMTConfigErrorsList:
                 "CMS does not support Communication task with more than 10 solution processes. "
                 "See https://github.com/cms-dev/cms/issues/1207."
             )
+    if isinstance(max_passes, int):
+        if max_passes <= 1:
+            bad = parser.add_err(
+                "Config option solution.max_passes must be at least 2."
+            )
 
-    match (num_procs, use_fifo):
-        case (TMTConfigError() as e, _) | (_, TMTConfigError() as e):
+    match (num_procs, use_fifo, max_passes):
+        case (
+            (TMTConfigError() as e, _, _)
+            | (_, TMTConfigError() as e, _)
+            | (_, _, TMTConfigError() as e)
+        ):
             execution = e
-        case (None, None):
+        case (None, None, None):
             execution = SolutionExecutionStandalone()
-        case (int(), bool()):
+        case (int(), bool(), None):
             execution = bad or SolutionExecutionCommunication(num_procs, use_fifo)
-        case (int(), None) | (None, bool()):
+        case (int(), None, None) | (None, bool(), None):
             execution = parser.add_err(
                 "Invalid config solution.{num_procs,use_fifo}: "
                 "One of the config exists but not the other. "
                 "Communication task must have both and other tasks must have none of them."
             )
+        case (None, None, int()):
+            execution = bad or SolutionExecutionMultipass(max_passes)
         case _:
-            # ??? mypy cannot reason this
-            assert_never((num_procs, use_fifo))  # type: ignore[arg-type]
+            execution = parser.add_err(
+                "Mixed configs supplied for task-type specific fields: "
+                "Communication task must have both 'num_procs' and 'use_fifo'; "
+                "multi-pass task must have 'max_passes'; "
+                "other tasks must have none of them."
+            )
 
     return parser.errors or Solution(
         time_limit_sec=unwrap(time_limit_sec),
