@@ -19,10 +19,14 @@ from .solution import (
     Solution,
     SolutionCompilation,
     SolutionExecutionCommunication,
+    SolutionExecutionMultipass,
     SolutionExecutionStandalone,
     parse_solution,
 )
 from .validator import Validator, parse_validator
+
+
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -65,6 +69,7 @@ class ProblemType(Enum):
     INTERACTIVE = "interactive"
     COMMUNICATION = "communication"
     OUTPUT_ONLY = "output-only"
+    MULTI_PASS = "multi-pass"
 
 
 @dataclass
@@ -121,11 +126,21 @@ class ProblemConfigOutputOnly(ProblemConfigBase):
     manager: None
 
 
+@dataclass
+class ProblemConfigMultipass(ProblemConfigBase):
+    problem_type: Literal[ProblemType.MULTI_PASS]
+    solution: Solution[SolutionCompilation, SolutionExecutionMultipass]
+    checker: None
+    interactor: Interactor
+    manager: None
+
+
 ProblemConfig: TypeAlias = (
     ProblemConfigBatch
     | ProblemConfigInteractive
     | ProblemConfigCommunication
     | ProblemConfigOutputOnly
+    | ProblemConfigMultipass
 )
 
 T = TypeVar("T")
@@ -226,19 +241,25 @@ def parse_problem_yaml(data: Any) -> ProblemConfig | TMTConfigErrorsList:
         )
         return {f.name: getattr(base, f.name) for f in fields(base)}
 
-    def check_solution_param(prob_type: ProblemType, is_communication: bool):
+    def check_solution_param(prob_type: ProblemType, exe_type: type):
         if not isinstance(solution, Solution):
             return
-        has_param = isinstance(solution.execution, SolutionExecutionCommunication)
-        name = "Config for communication problem in solution (num_procs, use_fifo)"
-        if is_communication and not has_param:
-            parser.add_err(
-                f"{name} must be present when 'problem_type' is '{prob_type.value}'."
-            )
-        if not is_communication and has_param:
-            parser.add_err(
-                f"{name} must not be present when 'problem_type' is '{prob_type.value}'."
-            )
+        entry_name = {
+            SolutionExecutionStandalone: None,
+            SolutionExecutionCommunication: "Config for communication problem in solution (num_procs, use_fifo)",
+            SolutionExecutionMultipass: "Config for multi-pass problem in solution (max_passes)",
+        }
+        if not isinstance(solution.execution, exe_type):
+            missing_name = entry_name[exe_type]
+            if missing_name is not None:
+                parser.add_err(
+                    f"{missing_name} must be present when 'problem_type' is '{prob_type.value}'."
+                )
+            extra_name = entry_name[type(solution.execution)]
+            if extra_name is not None:
+                parser.add_err(
+                    f"{missing_name} must not be present when 'problem_type' is '{prob_type.value}'."
+                )
 
     # It is fine that we use check_subconfig_none/exists early, because we don't use
     # the value later.
@@ -247,7 +268,7 @@ def parse_problem_yaml(data: Any) -> ProblemConfig | TMTConfigErrorsList:
             checker = parser.check_checker_args(judge_convention, checker)
             interactor = parser.check_config_none("interactor", prob_type, interactor)
             manager = parser.check_config_none("manager", prob_type, manager)
-            check_solution_param(prob_type, is_communication=False)
+            check_solution_param(prob_type, SolutionExecutionStandalone)
 
             if parser.errors:
                 return parser.errors
@@ -270,7 +291,7 @@ def parse_problem_yaml(data: Any) -> ProblemConfig | TMTConfigErrorsList:
             checker = parser.check_config_none("checker", prob_type, checker)
             interactor = parser.check_config_exists("interactor", prob_type, interactor)
             manager = parser.check_config_none("manager", prob_type, manager)
-            check_solution_param(prob_type, is_communication=False)
+            check_solution_param(prob_type, SolutionExecutionStandalone)
 
             if parser.errors:
                 return parser.errors
@@ -293,7 +314,7 @@ def parse_problem_yaml(data: Any) -> ProblemConfig | TMTConfigErrorsList:
             checker = parser.check_config_none("checker", prob_type, checker)
             interactor = parser.check_config_none("interactor", prob_type, interactor)
             manager = parser.check_config_exists("manager", prob_type, manager)
-            check_solution_param(prob_type, is_communication=True)
+            check_solution_param(prob_type, SolutionExecutionCommunication)
 
             if parser.errors:
                 return parser.errors
@@ -316,7 +337,7 @@ def parse_problem_yaml(data: Any) -> ProblemConfig | TMTConfigErrorsList:
             checker = parser.check_checker_args(judge_convention, checker)
             interactor = parser.check_config_none("interactor", prob_type, interactor)
             manager = parser.check_config_none("manager", prob_type, manager)
-            check_solution_param(prob_type, is_communication=False)
+            check_solution_param(prob_type, SolutionExecutionStandalone)
 
             if parser.errors:
                 return parser.errors
@@ -327,6 +348,29 @@ def parse_problem_yaml(data: Any) -> ProblemConfig | TMTConfigErrorsList:
             )
             assert isinstance(solution.execution, SolutionExecutionStandalone)
             return ProblemConfigOutputOnly(
+                **get_common(),
+                problem_type=prob_type,
+                solution=solution,
+                checker=unwrap(checker),
+                interactor=unwrap(interactor),
+                manager=unwrap(manager),
+            )
+
+        case ProblemType.MULTI_PASS:
+            checker = parser.check_config_none("checker", prob_type, checker)
+            interactor = parser.check_config_exists("interactor", prob_type, interactor)
+            manager = parser.check_config_none("manager", prob_type, manager)
+            check_solution_param(prob_type, SolutionExecutionMultipass)
+
+            if parser.errors:
+                return parser.errors
+
+            solution = cast(
+                Solution[SolutionCompilation, SolutionExecutionMultipass],
+                unwrap(solution),
+            )
+            assert isinstance(solution.execution, SolutionExecutionMultipass)
+            return ProblemConfigMultipass(
                 **get_common(),
                 problem_type=prob_type,
                 solution=solution,
