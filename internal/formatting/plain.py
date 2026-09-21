@@ -274,10 +274,15 @@ class PlainFormatter(Formatter):
                 return
 
             # Max time & memory
-            self.print(
+            time_color = (
                 self.ANSI_BLUE
-                if ts.max_cpu_time_sec > sol_config.time_limit_sec
-                else "",
+                if ts.all_verdicts.intersection(
+                    EvaluationOutcomeGroup.TIMEOUT.outcome_list
+                )
+                else self.ANSI_RESET
+            )
+            self.print(
+                time_color,
                 self.format_time_usage(ts.max_cpu_time_sec, ts.is_timer_triggered),
                 self.ANSI_RESET,
             )
