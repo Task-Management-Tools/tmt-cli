@@ -129,6 +129,7 @@ For other examples, please check the `examples/` folder in this repository.
 | `examples/icpc/floatadd/`  | `icpc + batch`       | default checker with arguments |
 | `examples/icpc/revadd/`    | `icpc + batch`       | custom checker                 |
 | `examples/icpc/guess/`     | `icpc + interactive` | interactor                     |
+| `examples/icpc/bitflip/`   | `icpc + multi-pass`  | multi-pass interactor          |
 
 ### Specification
 
