@@ -1,13 +1,14 @@
-from pathlib import Path
+from conftest import skip_not_applicable
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import cast
+import itertools
 import os
 import re
 import shutil
 import subprocess
-import itertools
-import time
 import textwrap
-from typing import cast
+import time
 
 import pytest
 
@@ -160,7 +161,11 @@ def prepare_env(request):
     yield from env.environment()
 
 
-@pytest.fixture(scope="module", params=[(8, 1, 3), (8, 2, 2), (8, 3, 1), (9, 0, 0)])
+@pytest.fixture(
+    scope="module",
+    params=[(8, 1, 3), (8, 2, 2), (8, 3, 1), (9, 0, 0)],
+    ids=lambda x: ".".join(map(str, x)),
+)
 def domjudge(request, prepare_env: VagrantEnvironment | HostEnvironment):
     domjudge_version = request.param
     domjudge_version_string = ".".join(map(str, domjudge_version))
@@ -181,7 +186,7 @@ def generate_contest_yaml():
 
 
 @dataclass
-class ExpectedProblemData:
+class _ProblemPackage:
     problem_path: str
     # dict[submission name, result]
     submissions: dict[str, str]
@@ -189,10 +194,11 @@ class ExpectedProblemData:
     scan_messages: set[str] = field(default_factory=set)
     # set[regex not matching any import messages]
     scan_not_messages: set[str] = field(default_factory=set)
+    min_version: tuple[int, ...] = (8, 0, 0)
 
 
 # On DOMjudge 8.2, "added" is changed to "added/updated" since the code path shares between adding and inplace update
-batch_verdict = ExpectedProblemData(
+batch_verdict = _ProblemPackage(
     problem_path="batch/icpc-verdict",
     submissions={
         "ok.py": "AC",
@@ -214,7 +220,7 @@ batch_verdict = ExpectedProblemData(
         r"Added output validator .*",
     },
 )
-batch_default_floatcmp = ExpectedProblemData(
+batch_default_floatcmp = _ProblemPackage(
     problem_path="batch/icpc-default-floatcmp",
     submissions={
         "model-solution.cpp": "AC",
@@ -235,7 +241,7 @@ batch_default_floatcmp = ExpectedProblemData(
         r"Added output validator .*",
     },
 )
-batch_checker = ExpectedProblemData(
+batch_checker = _ProblemPackage(
     problem_path="batch/icpc-checker-export",
     submissions={
         "model-solution.cpp": "AC",
@@ -249,7 +255,7 @@ batch_checker = ExpectedProblemData(
         r"Added output validator .*",
     },
 )
-interactive_guess = ExpectedProblemData(
+interactive_guess = _ProblemPackage(
     problem_path="interactive/guess",
     submissions={
         "sol.cpp": "AC",
@@ -263,13 +269,45 @@ interactive_guess = ExpectedProblemData(
         r"Added output validator .*",
     },
 )
+multi_pass_verdict = _ProblemPackage(
+    problem_path="multi-pass/icpc-verdict",
+    min_version=(9, 0, 0),
+    submissions={
+        "1-pass-ac.py": "AC",
+        "2-pass-ac.py": "AC",
+        "3-pass-ac.py": "AC",
+        "3-pass-cpu-ac.py": "AC",
+        "3-pass-sleep-ac.py": "AC",
+        "1-pass-wa.py": "WA",
+        "2-pass-wa.py": "WA",
+        "3-pass-wa.py": "WA",
+        "forever-pass.py": "WA",
+        "3-pass-cpu-tle.py": "TLE",
+        "3-pass-sleep-tle.py": "TLE",
+    },
+    scan_messages={
+        r"Added(?:/updated)? 1 secret testcase\(s\): .*",
+        r"Added output validator .*",
+    },
+)
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "problem", [batch_verdict, batch_default_floatcmp, batch_checker, interactive_guess]
+    "problem",
+    [
+        batch_verdict,
+        batch_default_floatcmp,
+        batch_checker,
+        interactive_guess,
+        multi_pass_verdict,
+    ],
+    ids=lambda p: p.problem_path,
 )
-def test_domjudge_import(domjudge: DOMJudgeServer, problem: ExpectedProblemData):
+def test_domjudge_import(domjudge: DOMJudgeServer, problem: _ProblemPackage):
+    if problem.min_version > domjudge.version:
+        skip_not_applicable()
+
     import requests
 
     script_dir = Path(__file__).parent.parent.resolve()
