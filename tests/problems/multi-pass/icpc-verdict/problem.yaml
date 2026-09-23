@@ -1,0 +1,23 @@
+title: ICPC Multi-pass Judge Test
+short_name: multipasstest
+
+input_extension: .in
+output_extension: .ans
+
+judge_convention: icpc
+problem_type: multi-pass
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 500 ms
+  memory_limit: 1 G
+  output_limit: 8 M
+  max_passes: 3
+
+answer_generation: 1-pass-ac.py
+interactor: checker.cc
+
+tmt_version: latest
