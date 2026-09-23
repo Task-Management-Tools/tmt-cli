@@ -1,0 +1,15 @@
+@global-validation validator
+
+@testset sample
+manual sample.in    | dupe
+
+@testset full
+random 10000 -1     | dupe
+random 10 1         | dupe
+random 100 2        | dupe
+random 1000 3       | dupe
+random 10000 4      | dupe
+random 10000 5      | dupe
+random 10000 10     | dupe
+random 10000 15     | dupe
+random 10000 20     | dupe
