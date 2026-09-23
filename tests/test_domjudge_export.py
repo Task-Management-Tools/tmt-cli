@@ -61,6 +61,24 @@ expected_result_interactive_guess = {
     "output_validators/checker.cc":                 "interactor/checker.cc",
     "input_validators/validator.cpp":               "validator/validator.cpp",
 }
+expected_result_multi_pass_verdict = {
+    "problem.yaml":                                        "_expected_export/problem.yaml",
+    ".timelimit":                                          "_expected_export/.timelimit",
+    "data/secret/1-full-1.in":                             "testcases/1-full-1.in",
+    "data/secret/1-full-1.ans":                            "testcases/1-full-1.ans",
+    "submissions/accepted/1-pass-ac.py":                   "solutions/1-pass-ac.py",
+    "submissions/accepted/2-pass-ac.py":                   "solutions/2-pass-ac.py",
+    "submissions/accepted/3-pass-ac.py":                   "solutions/3-pass-ac.py",
+    "submissions/accepted/3-pass-cpu-ac.py":               "solutions/3-pass-cpu-ac.py",
+    "submissions/accepted/3-pass-sleep-ac.py":             "solutions/3-pass-sleep-ac.py",
+    "submissions/wrong_answer/1-pass-wa.py":               "solutions/1-pass-wa.py",
+    "submissions/wrong_answer/2-pass-wa.py":               "solutions/2-pass-wa.py",
+    "submissions/wrong_answer/3-pass-wa.py":               "solutions/3-pass-wa.py",
+    "submissions/wrong_answer/forever-pass.py":            "solutions/forever-pass.py",
+    "submissions/time_limit_exceeded/3-pass-cpu-tle.py":   "solutions/3-pass-cpu-tle.py",
+    "submissions/time_limit_exceeded/3-pass-sleep-tle.py": "solutions/3-pass-sleep-tle.py",
+    "output_validators/checker.cc":                        "interactor/checker.cc",
+}
 # fmt: on
 
 
@@ -70,6 +88,7 @@ expected_result_interactive_guess = {
         ("problems/batch/icpc-default-floatcmp", expected_result_batch_floatcmp),
         ("problems/batch/icpc-checker-export", expected_result_batch_checker),
         ("problems/interactive/guess", expected_result_interactive_guess),
+        ("problems/multi-pass/icpc-verdict", expected_result_multi_pass_verdict),
     ],
 )
 def test_domjudge_export(
