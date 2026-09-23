@@ -1,0 +1,23 @@
+title: ICPC Multi-pass Checker Test
+short_name: chktest
+
+input_extension: .in
+output_extension: .ans
+
+judge_convention: icpc
+problem_type: multi-pass
+
+validator:
+  type: default
+
+solution:
+  type: default
+  time_limit: 1000 ms
+  memory_limit: 2 GiB
+  output_limit: 8 MiB
+  max_passes: 3
+
+answer_generation: 1-pass.py
+interactor: checker.cc
+
+tmt_version: latest
