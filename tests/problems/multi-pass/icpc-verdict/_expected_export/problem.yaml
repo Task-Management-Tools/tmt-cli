@@ -1,0 +1,8 @@
+limits:
+  memory: 1024
+  output: 8
+  time_limit: 0.5
+  validation_passes: 3
+name: ICPC Multi-pass Judge Test
+problem_format_version: legacy
+validation: custom multi-pass
