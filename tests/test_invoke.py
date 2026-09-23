@@ -193,6 +193,15 @@ expected_results_outputonly_basic = {
                         "3": (CORRECT, SCORE == 1),
                         "4": (NO_FILE,) },
 }
+
+expected_results_multi_pass_icpc_checker = {
+    ("1-pass.py",):               { "1-full-1": (CORRECT,  SCORE == 1) },
+    ("2-pass.py",):               { "1-full-1": (CORRECT,  SCORE == 1) },
+    ("3-pass.py",):               { "1-full-1": (CORRECT,  SCORE == 1) },
+    ("4-pass.py",):               { "1-full-1": (CHK_FAIL,) },
+    ("reject-with-nextpass.py",): { "1-full-1": (CHK_FAIL,) },
+}
+
 @pytest.mark.parametrize(
     "problem_path, expected_results",
     [
@@ -206,6 +215,7 @@ expected_results_outputonly_basic = {
         ("problems/communication/1-proc-grader-stdio", expected_results_communication_1_proc_grader_stdio),
         ("problems/communication/2-proc-grader-stdio", expected_results_communication_2_proc_grader_stdio),
         ("problems/outputonly/basic",    expected_results_outputonly_basic),
+        ("problems/multi-pass/icpc-checker", expected_results_multi_pass_icpc_checker),
     ],
 )
 # fmt: on
