@@ -173,7 +173,7 @@ def main():
     context = TMTContext(problem_dir, script_dir)
 
     # This check could be placed inside __init__ of TMTContext and check for certain environments,
-    # but TMTConfig use __post_init__ for verfication and this is the only entry point of every command from the command line,
+    # but ProblemConfig use __post_init__ for verfication and this is the only entry point of every command from the command line,
     # so placing it here kind of also make sense.
     if context.config.tmt_version == "latest":
         formatter.println(

@@ -3,6 +3,7 @@ import pathlib
 import shutil
 
 from internal.compilation import recognize_language
+from internal.context.config import SolutionCompilationGradered
 from internal.process import Process, wait_procs
 from internal.compilation import compile_single, get_run_single_command
 from internal.outcomes import (
@@ -77,7 +78,8 @@ class BatchSolutionStep(SolutionStep):
             )
 
         # TODO: what is the specification of graders in ICPC format?
-        if self.grader is not None:
+        sol_compilation = self.context.config.solution.compilation
+        if isinstance(sol_compilation, SolutionCompilationGradered):
             lang = lang_type(self.context)
             grader_dir = pathlib.Path(self.context.path.graders)
 
@@ -86,7 +88,7 @@ class BatchSolutionStep(SolutionStep):
                 if not file.is_file():
                     continue
                 base, ext = os.path.splitext(os.path.basename(file))
-                if base == self.grader:
+                if base == sol_compilation.grader_name:
                     if ext in lang.source_extensions:
                         graders.append(str(file.absolute()))
                 else:

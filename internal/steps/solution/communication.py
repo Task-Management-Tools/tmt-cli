@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 
 from internal.compilation.makefile import make_clean, make_compile_target
+from internal.context.config.config import ProblemConfigCommunication
 from internal.exceptions import TMTMissingFileError
 from internal.process import Process, wait_procs
 from internal.compilation import get_run_single_command
@@ -37,13 +38,12 @@ class CommunicationSolutionStep(BatchSolutionStep):
             raise TMTMissingFileError(filetype="Directory", filename="manager")
 
         # Pre-condition ensured by config
-        assert self.context.config.manager is not None
-        assert self.context.config.checker is None
-        assert self.context.config.solution.num_procs is not None
+        assert isinstance(self.context.config, ProblemConfigCommunication)
+        self.config: ProblemConfigCommunication = self.context.config
 
-        self.manager_name = self.context.config.manager.filename
-        self.num_procs = self.context.config.solution.num_procs
-        self.use_fifo = self.context.config.solution.use_fifo
+        self.manager_name = self.config.manager.filename
+        self.num_procs = self.config.solution.execution.num_procs
+        self.use_fifo = self.config.solution.execution.use_fifo
 
     def clean_up(self):
         super().clean_up()
@@ -66,16 +66,16 @@ class CommunicationSolutionStep(BatchSolutionStep):
         comp_result = make_compile_target(
             context=self.context,
             directory=self.context.path.manager,
-            sources=[self.context.config.manager.filename],
+            sources=[self.config.manager.filename],
             target="manager",
-            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+            executable_stack_size_mib=self.config.trusted_step_memory_limit_mib,
         )
 
         if comp_result.verdict is CompilationOutcome.SUCCESS:
             if comp_result.produced_file is None:
                 raise TMTMissingFileError(
                     filetype="manager (executable)",
-                    filename=os.path.splitext(self.context.config.manager.filename)[0],
+                    filename=os.path.splitext(self.config.manager.filename)[0],
                 )
         return comp_result
 
@@ -136,7 +136,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
             context=self.context,
             directory=self.context.path.manager_build,
             executable_filename_base="manager",
-            executable_stack_size_mib=self.context.config.trusted_step_memory_limit_mib,
+            executable_stack_size_mib=self.config.trusted_step_memory_limit_mib,
         )
         assert manager_exec_command is not None
 
@@ -179,10 +179,10 @@ class CommunicationSolutionStep(BatchSolutionStep):
             stdout_redirect=manager_out_filename,
             stderr_redirect=manager_err_filename,
             time_limit_sec=max(
-                manager_time_limit, self.context.config.trusted_step_time_limit_sec
+                manager_time_limit, self.config.trusted_step_time_limit_sec
             ),
-            memory_limit_mib=self.context.config.trusted_step_memory_limit_mib,
-            output_limit_mib=self.context.config.trusted_step_output_limit_mib,
+            memory_limit_mib=self.config.trusted_step_memory_limit_mib,
+            output_limit_mib=self.config.trusted_step_output_limit_mib,
         )
 
         solutions: list[Process] = []

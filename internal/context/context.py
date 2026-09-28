@@ -3,11 +3,13 @@ import pathlib
 import yaml
 
 
+from internal.context.config.config import parse_problem_yaml
 from internal.recipe_parser import parse_recipe_data
 from internal.exceptions import TMTMissingFileError, TMTInvalidConfigError
 
 from .paths import ProblemDirectoryHelper
-from .config import ProblemType, TMTConfig
+from .config import ProblemType
+from .config.parser import TMTConfigErrorsList
 
 
 class TMTContext:
@@ -25,13 +27,12 @@ class TMTContext:
         except yaml.YAMLError as e:
             raise TMTInvalidConfigError(self.path.problem_yaml) from e
 
-        try:
-            config = TMTConfig.from_raw(problem_yaml)
-            if not isinstance(config, TMTConfig):
-                raise ValueError("\n".join([e.what for e in config]))
-            self.config = config
-        except (TypeError, ValueError) as e:
-            raise TMTInvalidConfigError(self.path.problem_yaml) from e
+        config = parse_problem_yaml(problem_yaml)
+        if isinstance(config, TMTConfigErrorsList):
+            raise TMTInvalidConfigError(self.path.problem_yaml) from ValueError(
+                "\n".join([e.what for e in config])
+            )
+        self.config = config
 
         try:
             with open(self.path.compiler_yaml, "r") as file:
