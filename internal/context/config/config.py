@@ -168,7 +168,10 @@ class _ConfigDictParser(DictParser):
         return checker
 
 
-def parse_problem_yaml(data: dict) -> ProblemConfig | TMTConfigErrorsList:
+def parse_problem_yaml(data: Any) -> ProblemConfig | TMTConfigErrorsList:
+    if not isinstance(data, dict):
+        return TMTConfigErrorsList.single_bad_complex_type("root", data)
+
     parser = _ConfigDictParser(data, "")
 
     # fmt: off

@@ -16,7 +16,6 @@ class SolutionType(Enum):
 @dataclass
 class SolutionCompilationStandalone:
     type: Literal[SolutionType.DEFAULT]
-    grader_name: None
 
 
 @final
@@ -65,6 +64,7 @@ class Solution(Generic[C, E]):
     compilation: C
     execution: E
 
+    # Helper properties, also for internal use
     @property
     def memory_limit_bytes(self) -> float:
         return self.memory_limit_mib * 1024 * 1024
@@ -76,6 +76,20 @@ class Solution(Generic[C, E]):
     @property
     def memory_limit_gib(self) -> float:
         return self.memory_limit_mib / 1024
+
+    # Helper properties, only for config formatter use
+    # Use getattr here to supress mypy warning; formatter will handle AttributeError
+    @property
+    def grader_name(self) -> Any:
+        return getattr(self.compilation, "grader_name")
+
+    @property
+    def num_procs(self) -> Any:
+        return getattr(self.execution, "num_procs")
+
+    @property
+    def use_fifo(self) -> Any:
+        return getattr(self.execution, "use_fifo")
 
 
 def parse_solution(data: Any) -> Solution | TMTConfigErrorsList:
@@ -101,7 +115,7 @@ def parse_solution(data: Any) -> Solution | TMTConfigErrorsList:
         case (TMTConfigError() as e, _) | (_, TMTConfigError() as e):
             compilation = e
         case (SolutionType.DEFAULT, None):
-            compilation = SolutionCompilationStandalone(type_, grader_name)
+            compilation = SolutionCompilationStandalone(type_)
         case (SolutionType.DEFAULT, str()):
             compilation = parser.add_err(
                 "Invalid config solution.grader_name: "
