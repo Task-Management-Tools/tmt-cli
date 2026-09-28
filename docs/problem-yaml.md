@@ -175,7 +175,7 @@ The following fields must be present when the task type is `communication` and a
 Specifies generation of answers (reference outputs).
 
 - `type`: Must be `solution`. It is the only supported mode.
-- `filename`: The filename of the model solution, relative to `solution/`.
+- `filename`: The filename of the model solution, relative to `solutions/`.
 
 This config supports a shorthand:
 ```yaml
