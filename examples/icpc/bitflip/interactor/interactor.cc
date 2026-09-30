@@ -23,15 +23,16 @@ int main(int argc, char **argv)
         exit(EXIT_WA);
     };
 
-    // Note: regardless of pass, the input still contains the original input.
-    // If the interactor need the produced input, they must save it independently.
+    // The input will always be the previously produced input
+    // If the interactor need the original input, they must save it independently.
+    // In this case, the answer file is the same as the input; we read the input from there instead
     int n;
-    input.ignore(6); // "first"
-    input >> n;
+    answer.ignore(6); // "first"
+    answer >> n;
 
     std::vector<std::string> original(n);
     for (int i = 0; i < n; i++)
-        input >> original[i];
+        answer >> original[i];
 
     // All non-special files in the judge feedback directory preserves across check.
     // Thus, we can use this file to keep track of the number of passes
