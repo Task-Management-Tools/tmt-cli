@@ -23,18 +23,20 @@ int main(int argc, char **argv)
         exit(EXIT_WA);
     };
 
-    // Note: regardless of pass, the input still contains the original input.
-    // If the interactor need the produced input, they must save it independently.
+    // The input will always be the previously produced input.
+    // If the interactor need the original input, they must save it independently.
+    // In this case, the answer file is the same as the input; we read the input from there instead.
     int n;
-    input.ignore(6); // "first"
-    input >> n;
+    answer.ignore(6); // "first"
+    answer >> n;
 
     std::vector<std::string> original(n);
     for (int i = 0; i < n; i++)
-        input >> original[i];
+        answer >> original[i];
 
-    // All non-special files in the judge feedback directory preserves across check.
-    // Thus, we can use this file to keep track of the number of passes
+    // All non-special files in the judge feedback directory preserves across output validator runs.
+    // Thus, we can use this file to keep track of the number of passes.
+    // Alternatively, in this problem, read from input is also an option; here we do so for demonstration purposes.
     std::filesystem::path marker = std::filesystem::path(argv[3]) / "pass-marker";
     // Pass 1
     if (!std::filesystem::exists(marker))
@@ -62,13 +64,14 @@ int main(int argc, char **argv)
         }
 
         // Hash the input for deterministic random seed
-        // Alternatively, include the seed in the answer file
+        // Alternatively, include the seed/flipping decision in the answer file
         unsigned long long seed = 0;
         constexpr unsigned long long base = 0x5851F42D4C957F2D;
         for (int i = 0; i < n; i++)
             seed = seed * base + std::stoull(original[i], nullptr, 2);
         std::mt19937_64 rd(seed);
 
+        // Direct concatenation is fine: ICPC package format spec guarantees it
         std::ofstream next_input(std::string(argv[3]) + "nextpass.in");
         next_input << "second " << n << '\n';
         for (const auto &str : modified)

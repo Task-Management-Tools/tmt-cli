@@ -213,9 +213,9 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
             # Run interactor
             fname_interact_stdout = fname_interact_stdout_fmt.format(i)
             fname_interact_stderr = fname_interact_stderr_fmt.format(i)
-            f_interact_testcase_input = interact_workdir.file(fname_testcase_input)
+            f_interact_prev_input = interact_workdir.file(fname_testcase_input)
             f_interact_testcase_answer = interact_workdir.file(fname_testcase_answer)
-            shutil.copy(f_testcase_input, f_interact_testcase_input)
+            shutil.copy(f_next_input, f_interact_prev_input)
             shutil.copy(f_testcase_answer, f_interact_testcase_answer)
             f_interact_stdout = interact_workdir.file(fname_interact_stdout)
             f_interact_stderr = interact_workdir.file(fname_interact_stderr)
@@ -223,7 +223,7 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
 
             # <output_validator_program> input_file answer_file feedback_dir [additional_arguments] < team_output
             interactor_required_args = [
-                f_interact_testcase_input,
+                f_interact_prev_input,
                 f_interact_testcase_answer,
                 dir_interactor_feedback.path + os.sep,  # required in ICPC format
             ]

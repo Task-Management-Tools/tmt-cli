@@ -5,9 +5,9 @@ int main()
 {
     std::string mode;
     std::cin >> mode;
-    int t;
-    std::cin >> t;
-    for (int i = 0; i < t; i++)
+    int n;
+    std::cin >> n;
+    for (int i = 0; i < n; i++)
     {
         std::string s;
         std::cin >> s;
