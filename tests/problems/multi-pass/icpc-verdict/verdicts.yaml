@@ -1,0 +1,11 @@
+- {filename: 1-pass-ac.py, verdict: accepted}
+- {filename: 1-pass-wa.py, verdict: wrong-answer}
+- {filename: 2-pass-ac.py, verdict: accepted}
+- {filename: 2-pass-wa.py, verdict: wrong-answer}
+- {filename: 3-pass-ac.py, verdict: accepted}
+- {filename: 3-pass-wa.py, verdict: wrong-answer}
+- {filename: 3-pass-cpu-ac.py, verdict: accepted}
+- {filename: 3-pass-cpu-tle.py, verdict: time-limit}
+- {filename: 3-pass-sleep-ac.py, verdict: accepted}
+- {filename: 3-pass-sleep-tle.py, verdict: time-limit}
+- {filename: forever-pass.py, verdict: wrong-answer}

@@ -4,11 +4,15 @@ import resource
 import yaml
 import os
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Literal, TypedDict
 
-from internal.utils import FuzzyMatcher
-from internal.zip_handler import ZipFileHander
+from internal.context import TMTContext
 from internal.context.config import CheckerType, JudgeConvention
+from internal.context.config.checker import CheckerCustom
+from internal.context.config.config import (
+    ProblemConfigInteractive,
+    ProblemConfigMultipass,
+)
 from internal.compilation.languages import (
     languages,
     LanguageCpp,
@@ -16,8 +20,9 @@ from internal.compilation.languages import (
     LanguageJava,
 )
 from internal.compilation.utils import recognize_language
-from internal.context import TMTContext
+from internal.utils import FuzzyMatcher, assert_never
 from internal.verify.verdicts_parser import ExpectedVerdict, parse_verdicts
+from internal.zip_handler import ZipFileHander
 
 from .base import BaseExporter
 from .operations import (
@@ -187,38 +192,71 @@ class DOMJudgeSubmissionsOperation(ExportOperation):
         return ExportResult(ExportResultEnum.SUCCESS, msg=", ".join(mappings))
 
 
+# Splits are due to typing.NotRequired requiring Python 3.11
+class _LimitsRequired(TypedDict):
+    # we include this time_limit because DOMjudge 9.0+ parses this,
+    # but it is not reliable in this format. DOMjudge 8.0+ uses .time_limit file.
+    time_limit: float
+    memory: int
+    output: int
+
+
+class _Limits(_LimitsRequired, total=False):
+    validation_passes: int
+
+
+class _ProblemMetadataRequired(TypedDict):
+    problem_format_version: Literal["legacy"]
+    name: str
+    limits: _Limits
+
+
+class _ProblemMetadata(_ProblemMetadataRequired, total=False):
+    validation: str
+    validator_flags: str
+
+
 class DOMJudgeLegacyExporter(BaseExporter):
     description = "DOMjudge 8+ package format, based on ICPC legacy format"
 
     def yaml_builder(self, context: TMTContext, f: BinaryIO) -> ExportResult:
         """Builds ICPC legacy format problem.yaml"""
-
         config = context.config
-        output_yaml = {
-            "problem_format_version": "legacy",
-            "name": config.title,
-            "author": "anonymous",  # TODO if we support author and licensing
-            "license": "unknown",  # TODO
-            # Limits
-            # we include this time_limit because DOMjudge 9.0+ parses this,
-            # but it is not reliable in this format. DOMjudge 8.0+ uses .time_limit file.
-            "limits": {
-                "time_limit": config.solution.time_limit_sec,
-                "memory": config.solution.memory_limit_mib,
-                "output": config.solution.output_limit_mib,
-            },
-        }
+
+        # Pre-conditions
         if config.solution.output_limit_mib == resource.RLIM_INFINITY:
             return ExportResult(
                 ExportResultEnum.FAILURE,
                 msg="Output limit is unlimited. Please set an explicit value.",
             )
 
-        # Checker/Interactor
-        # ICPC legacy format only allows:
-        # default, custom (checker), custom interactive (interactive)
-        if config.interactor:
+        # Limits
+        limits: _Limits = {
+            "time_limit": config.solution.time_limit_sec,
+            "memory": config.solution.memory_limit_mib,
+            "output": config.solution.output_limit_mib,
+        }
+        if isinstance(config, ProblemConfigMultipass):
+            limits["validation_passes"] = config.solution.execution.max_passes
+
+        # Basic YAML
+        output_yaml: _ProblemMetadata = {
+            "problem_format_version": "legacy",
+            "name": config.title,
+            "limits": limits,
+        }
+
+        # Validation
+        if isinstance(config, ProblemConfigInteractive):
             output_yaml["validation"] = "custom interactive"
+            assert config.interactor is not None
+            if config.interactor.arguments:
+                output_yaml["validator_flags"] = " ".join(config.interactor.arguments)
+        elif isinstance(config, ProblemConfigMultipass):
+            output_yaml["validation"] = "custom multi-pass"
+            assert config.interactor is not None
+            if config.interactor.arguments:
+                output_yaml["validator_flags"] = " ".join(config.interactor.arguments)
         elif config.checker:
             match config.checker.type:
                 case CheckerType.DEFAULT:
@@ -226,11 +264,7 @@ class DOMJudgeLegacyExporter(BaseExporter):
                 case CheckerType.CUSTOM:
                     output_yaml["validation"] = "custom"
                 case _:
-                    return ExportResult(
-                        ExportResultEnum.FAILURE,
-                        msg=f"Unknown checker type: {config.checker.type}",
-                    )
-
+                    assert_never(config.checker.type)
             if config.checker.arguments:
                 output_yaml["validator_flags"] = " ".join(config.checker.arguments)
 
@@ -344,9 +378,8 @@ class DOMJudgeLegacyExporter(BaseExporter):
 
         # Checker & Interactor -> output_validators/
         # export them only if config says so, add header if we do want that
-        if context.config.checker and context.config.checker.type is CheckerType.CUSTOM:
+        if isinstance(context.config.checker, CheckerCustom):
             checker_filename = context.config.checker.filename
-            assert checker_filename is not None
             if error := check_domjudge_support("Checker", checker_filename):
                 yield error
             else:
@@ -358,7 +391,9 @@ class DOMJudgeLegacyExporter(BaseExporter):
                 yield GlobCopyOperation(
                     "Checker headers", context.path.include, "output_validators/"
                 )
-        if context.config.interactor:
+        if isinstance(
+            context.config, (ProblemConfigInteractive, ProblemConfigMultipass)
+        ):
             interactor_filename = context.config.interactor.filename
             if error := check_domjudge_support("Interactor", interactor_filename):
                 yield error

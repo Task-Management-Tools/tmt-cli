@@ -1,0 +1,5 @@
+- filename: model-solution.cpp
+  verdict: accepted
+
+- filename: plain.cpp
+  verdict: wrong-answer

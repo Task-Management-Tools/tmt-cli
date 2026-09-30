@@ -1,7 +1,7 @@
 import os
 
 from enum import Enum, unique
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from internal.process import Process
 
@@ -335,6 +335,7 @@ class TestsetResult:
     max_score: float | None
     score: float = float("inf")
     verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+    all_verdicts: set[EvaluationOutcome] = field(default_factory=set)
 
     worst_testcase: str = None
     num_testcases: int = 0
@@ -356,6 +357,7 @@ class TestsetResult:
                 self.worst_testcase = other.codename
                 self.score = other.score
                 self.verdict = other.verdict
+            self.all_verdicts.add(other.verdict)
             self.num_testcases += 1
             self.expected_testcases += 1
             self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
@@ -372,6 +374,7 @@ class TestsetResult:
                 self.worst_testcase = other.worst_testcase
                 self.score = other.score
                 self.verdict = other.verdict
+            self.all_verdicts = self.all_verdicts | other.all_verdicts
             self.num_testcases += other.num_testcases
             self.expected_testcases += other.expected_testcases
             self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
