@@ -14,6 +14,7 @@ from internal.outcomes import (
     CompilationResult,
     EvaluationOutcome,
     EvaluationResult,
+    ProcessStats,
 )
 from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
 
@@ -111,8 +112,10 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
         This function only returns FileNotFoundError for execution error.
         """
         config = self.context.config
-
         assert self.sandbox is not None
+
+        # ---------------------------------------------------------------------
+        # Set up filenames and formats
         solution_workdir = self.sandbox.solution_invocation
         solution_workdir.create()
         interact_workdir = self.sandbox.interactor
@@ -127,6 +130,8 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
         fname_interact_stdout_fmt = f"{codename}.interactor.out.{{0}}"
         fname_interact_stderr_fmt = f"{codename}.interactor.err.{{0}}"
 
+        # ---------------------------------------------------------------------
+        # Obtain run commands
         solution_exec_command = get_run_single_command(
             context=self.context,
             directory=self.sandbox.solution_compilation.subdir("build").path,
@@ -142,25 +147,8 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
         )
         assert interactor_exec_command is not None
 
-        # Create dummy answer if it doesn't exist
-        f_testcase_input = os.path.join(
-            self.context.path.testcases, fname_testcase_input
-        )
-        f_testcase_answer = os.path.join(
-            self.context.path.testcases, fname_testcase_answer
-        )
-        Path(f_testcase_answer).touch()
-        dir_interactor_feedback = interact_workdir.subdir("feedback_dir")
-        dir_interactor_feedback.create()
-        dir_interactor_feedback.clean()
-
-        def get_interactor_feedback() -> str:
-            interactor_feedback_file = dir_interactor_feedback.file("judgemessage.txt")
-            if os.path.isfile(interactor_feedback_file):
-                with open(interactor_feedback_file, "r") as f:
-                    return f.readline().strip()
-            return ""
-
+        # ---------------------------------------------------------------------
+        # Logging helpers
         def remove(src: str):
             if (p := Path(src)).exists():
                 p.unlink()
@@ -173,11 +161,35 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
             Path(src).touch()
             shutil.move(src, self.context.log_file(Path(src).name))
 
+        # ---------------------------------------------------------------------
+        # Get testcase
+        f_testcase_input = os.path.join(
+            self.context.path.testcases, fname_testcase_input
+        )
+        f_testcase_answer = os.path.join(
+            self.context.path.testcases, fname_testcase_answer
+        )
+        # Create dummy answer if it doesn't exist
+        Path(f_testcase_answer).touch()
+        dir_interactor_feedback = interact_workdir.subdir("feedback_dir")
+        dir_interactor_feedback.create()
+        dir_interactor_feedback.clean()
+
+        def get_interactor_feedback() -> str:
+            interactor_feedback_file = dir_interactor_feedback.file("judgemessage.txt")
+            if os.path.isfile(interactor_feedback_file):
+                with open(interactor_feedback_file, "r") as f:
+                    return f.readline().strip()
+            return ""
+
+        # ---------------------------------------------------------------------
+        # Run
         max_passes = self.config.solution.execution.max_passes
         f_next_input = f_testcase_input
-        agg_result = EvaluationResult(
-            codename=codename, verdict=EvaluationOutcome.RUN_SUCCESS
-        )
+        stats_all = ProcessStats.empty()
+        verdict: EvaluationOutcome
+        score: float
+        reason = ""
         for i in range(max_passes):
             # Run solution
             fname_sol_stdin = fname_sol_stdin_fmt.format(i)
@@ -202,13 +214,17 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
                 output_limit_mib=self.output_limit_mib,
             )
             wait_procs([solution])
-            agg_result.fill_from_solution_process(solution)
-            if self.is_solution_abnormal_exit(agg_result, solution):
-                break
-
             copy_to_log(f_sol_stdout)
             move_to_log(f_sol_stderr)
             del f_sol_stderr
+
+            stat = ProcessStats.collect(solution)
+            stats_all.add(stat)
+            # Check each instead of all
+            verdict, reason = self.are_solutions_abnormal_exit(stat)
+            if verdict is not EvaluationOutcome.RUN_SUCCESS:
+                score = 0.0
+                break
 
             # Run interactor
             fname_interact_stdout = fname_interact_stdout_fmt.format(i)
@@ -240,46 +256,58 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
                 output_limit_mib=config.trusted_step_output_limit_mib,
             )
             wait_procs([interactor])
-
             remove(f_sol_stdout)
             remove(f_interact_testcase_answer)
             move_to_log(f_interact_stdout)
             move_to_log(f_interact_stderr)
 
+            # Check interactor response
             if interactor.is_timedout:
-                agg_result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
+                verdict = EvaluationOutcome.CHECKER_TIMEDOUT
+                score = 0.0
                 break
             if interactor.is_signaled_exit:
-                agg_result.verdict = EvaluationOutcome.CHECKER_CRASHED
+                verdict = EvaluationOutcome.CHECKER_CRASHED
+                score = 0.0
                 break
 
             has_next_input = os.path.exists(f_interact_nextpass)
-            # Now, we can check if the solution is actually correct
-            if interactor.exit_code != 42:
+            # check if the solution is actually correct
+            if interactor.exit_code == 42:
                 if has_next_input:
-                    agg_result.verdict = EvaluationOutcome.CHECKER_FAILED
-                    agg_result.reason = (
-                        "Interactor must not produce next input while exit code != 42"
+                    # Move out of the feedbackdir
+                    f_next_input = interact_workdir.file(
+                        fname_sol_stdin_fmt.format(i + 1)
                     )
+                    shutil.move(f_interact_nextpass, f_next_input)
+                    copy_to_log(f_next_input)
+                    continue  # proceed to next pass
                 else:
-                    agg_result.verdict = EvaluationOutcome.WRONG
-                    agg_result.reason = get_interactor_feedback()
-                break
-
-            if has_next_input:
-                # Move out of the feedbackdir
-                f_next_input = interact_workdir.file(fname_sol_stdin_fmt.format(i + 1))
-                shutil.move(f_interact_nextpass, f_next_input)
-                copy_to_log(f_next_input)
+                    verdict = EvaluationOutcome.ACCEPTED
+                    score = 1.0
+                    reason = get_interactor_feedback()
+                    break
+            elif interactor.exit_code == 43:
+                if has_next_input:
+                    verdict = EvaluationOutcome.CHECKER_FAILED
+                    score = 0.0
+                    reason = "Interactor must not produce next input while exit code is not 42"
+                    break
+                else:
+                    verdict = EvaluationOutcome.WRONG
+                    score = 0.0
+                    reason = get_interactor_feedback()
+                    break
             else:
-                agg_result.verdict = EvaluationOutcome.ACCEPTED
-                agg_result.score = 1.0
-                agg_result.reason = get_interactor_feedback()
+                verdict = EvaluationOutcome.CHECKER_FAILED
+                score = 0.0
+                reason = "Interactor must exit code with code 42 (correct/next pass) or 43 (wrong)"
                 break
         else:
             # max number of pass exceeded
-            agg_result.verdict = EvaluationOutcome.CHECKER_FAILED
-            agg_result.reason = "Interactor must not produce next input when maximum pass number is reached"
+            verdict = EvaluationOutcome.CHECKER_FAILED
+            score = 0.0
+            reason = "Interactor must not produce next input when maximum pass number is reached"
 
         # Move summary logs
         interactor_feedback_logs = self.context.log_file(
@@ -289,4 +317,11 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
             shutil.rmtree(interactor_feedback_logs)
         shutil.copytree(dir_interactor_feedback.path, interactor_feedback_logs)
 
-        return agg_result
+        return EvaluationResult(
+            codename=codename,
+            run_stats=stats_all,
+            score=score,
+            verdict=verdict,
+            reason=reason,
+            output_file=None,  # it wouldn't make sense to use the output of any passes
+        )

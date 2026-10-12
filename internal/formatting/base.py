@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 from internal.outcomes import (
     CompilationResult,
+    EvaluationStats,
     ExecutionOutcome,
     EvaluationResult,
     TestsetResult,
@@ -93,7 +94,7 @@ class Formatter(ABC):
 
     @abstractmethod
     def print_exec_details(
-        self, result: EvaluationResult, context: "TMTContext"
+        self, result: EvaluationStats | EvaluationResult, context: "TMTContext"
     ) -> None:
         """
         Formats the detail statistics of the execution output.

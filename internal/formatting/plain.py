@@ -6,6 +6,7 @@ from internal.outcomes import (
     EvaluationOutcome,
     EvaluationOutcomeGroup,
     EvaluationResult,
+    EvaluationStats,
     ExecutionOutcome,
     TestsetResult,
 )
@@ -221,16 +222,17 @@ class PlainFormatter(Formatter):
         return f"{point:.2f}".rstrip("0").rstrip(".")
 
     def print_exec_details(
-        self, result: EvaluationResult, context: "TMTContext"
+        self, result: EvaluationStats | EvaluationResult, context
     ) -> None:
+        stats = result.run_stats
         self.print(
-            self.format_time_usage(result.cpu_time_sec, result.timer_triggered),
+            self.format_time_usage(stats.cpu_time_sec, stats.timer_triggered),
             self.ANSI_RESET,
         )
         self.print(" / ")
         self.print(
             *self.format_memory_usage(
-                result.max_memory_kib, result.max_memory_upper_bound_kib
+                stats.max_memory_kib, stats.max_memory_upper_bound_kib
             )
         )
         self.print(" " * 2)

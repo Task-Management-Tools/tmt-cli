@@ -8,6 +8,7 @@ from internal.outcomes import (
     CompilationResult,
     EvaluationOutcome,
     EvaluationResult,
+    EvaluationStats,
     TestsetResult,
     eval_outcome_to_run_outcome,
 )
@@ -193,17 +194,21 @@ def command_invoke(
             f.write(solution_result.reason)
 
         # TODO option to skip_checker
+        evaluation_result: EvaluationResult
         if checker_step is not None:
             formatter.print("check ")
-            solution_result = checker_step.run_checker(solution_result, codename)
+            assert isinstance(solution_result, EvaluationStats)
+            evaluation_result = checker_step.run_checker(solution_result, codename)
+        else:
+            evaluation_result = solution_result
 
-        formatter.print_checker_status(solution_result)
+        formatter.print_checker_status(evaluation_result)
         formatter.print_testcase_verdict(
-            solution_result, context=context, print_reason=show_reason
+            evaluation_result, context=context, print_reason=show_reason
         )
         formatter.println()
 
-        summary.testcase_results[codename] = solution_result
+        summary.testcase_results[codename] = evaluation_result
 
     testset_results: dict[str, TestsetResult] = {}
 

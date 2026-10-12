@@ -15,6 +15,7 @@ from internal.outcomes import (
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
+    ProcessStats,
 )
 from internal.steps.checker.cms import CMSCheckerStep
 from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
@@ -84,6 +85,8 @@ class CommunicationSolutionStep(BatchSolutionStep):
         """
         This function only returns FileNotFoundError for execution error.
         """
+        assert self.sandbox is not None
+
         self.sandbox.manager.clean()
         self.sandbox.solution_invocation.clean()
 
@@ -223,32 +226,35 @@ class CommunicationSolutionStep(BatchSolutionStep):
         for i in range(self.num_procs):
             copy_to_log(solution_err_filename[i])
 
-        # Get verdict
-        result = EvaluationResult(
-            codename=codename,
-            verdict=EvaluationOutcome.RUN_SUCCESS,
-            output_file=manager_out_filename,
-        )
+        # Collect stats and determine verdict
+        stats = ProcessStats.empty()
         for solution in solutions:
-            result.fill_from_solution_process(solution)
+            stats.add(ProcessStats.collect(solution))
 
-        # First, we check if the manager crashed
+        verdict, reason = self.are_solutions_abnormal_exit(stats)
+
+        # Let manager crashed/failure override
         if manager.is_timedout:
-            result.verdict = EvaluationOutcome.MANAGER_TIMEOUT
+            verdict = EvaluationOutcome.MANAGER_TIMEOUT
         elif manager.is_signaled_exit or manager.exit_code:
-            result.verdict = EvaluationOutcome.MANAGER_CRASHED
-        # else, we check if solution executed successfully
-        elif self.are_solutions_abnormal_exit(result):
-            pass
-        # We read the standard manager output to determine the result:
+            verdict = EvaluationOutcome.MANAGER_CRASHED
+
+        # Determine verdicts and score
+        score: float
+        display, reason = None, ""
+        if verdict is not EvaluationOutcome.RUN_SUCCESS:
+            score = 0.0
         else:
             score, verdict, display, reason = CMSCheckerStep.parse_std_manager_output(
                 manager_out_filename, manager_err_filename, False
             )
 
-            result.score = score
-            result.verdict = verdict
-            result.override_verdict_display = display
-            result.reason = result.reason or reason or ""
-
-        return result
+        return EvaluationResult(
+            codename=codename,
+            run_stats=stats,
+            score=score,
+            verdict=verdict,
+            override_verdict_display=display,
+            reason=reason or "",
+            output_file=manager_out_filename,
+        )

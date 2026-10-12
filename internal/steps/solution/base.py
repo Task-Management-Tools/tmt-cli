@@ -1,10 +1,16 @@
 import os
 
 from abc import ABC, abstractmethod
+import signal
 from typing import Generator
 
 from internal.context import TMTContext, SandboxDirectory
-from internal.outcomes import EvaluationResult
+from internal.outcomes import (
+    EvaluationOutcome,
+    EvaluationResult,
+    EvaluationStats,
+    ProcessStats,
+)
 from internal.steps.utils import CompilationJob
 
 
@@ -71,13 +77,46 @@ class SolutionStep(ABC):
         """
         pass
 
+    # TODO we may want to tie checkers with Batch and OutputOnly for type
+    # issues, but it could also depend on whether TIOJ have other usages
     @abstractmethod
-    def run_solution(self, code_name: str) -> EvaluationResult:
+    def run_solution(self, code_name: str) -> EvaluationStats | EvaluationResult:
         """
         Runs solution for testcase of the given code name.
         The solution always keep the output in the sandbox if it runs successfully.
+
+        Returns EvaluationStats if it needs checker, or EvaluationResult if it does not.
 
         Args:
             code_name (str): The code name of the testcase to be used.
         """
         raise NotImplementedError
+
+    def are_solutions_abnormal_exit(
+        self, stats: ProcessStats
+    ) -> tuple[EvaluationOutcome, str]:
+        """
+        Determine whether the solutions terminate normally.
+        Returns the corresponding verdict and reason.
+        If normally termianted, returns EvaluationOutcome.RUN_SUCCESS.
+        """
+        if stats.max_memory_kib > self.memory_limit_mib * 1024:
+            return EvaluationOutcome.RUNERROR_MEMORY, ""
+        if stats.cpu_time_sec > self.time_limit_sec:
+            return EvaluationOutcome.TIMEOUT, ""
+        elif stats.wall_clock_time_sec > self.time_limit_sec:
+            return EvaluationOutcome.TIMEOUT_WALL, ""
+        elif stats.exit_signal == signal.SIGXFSZ:
+            return EvaluationOutcome.RUNERROR_OUTPUT, ""
+        elif stats.exit_signal != 0:
+            return (
+                EvaluationOutcome.RUNERROR_SIGNAL,
+                f"Execution killed by signal ({signal.strsignal(stats.exit_signal)})",
+            )
+        elif stats.exit_code != 0:
+            return (
+                EvaluationOutcome.RUNERROR_EXITCODE,
+                f"Execution exited with exit code {stats.exit_code}",
+            )
+
+        return EvaluationOutcome.RUN_SUCCESS, ""

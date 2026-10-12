@@ -1,7 +1,6 @@
 import os
 import pathlib
 import shutil
-import signal
 
 from internal.compilation import (
     compile_single,
@@ -13,7 +12,8 @@ from internal.outcomes import (
     CompilationOutcome,
     CompilationResult,
     EvaluationOutcome,
-    EvaluationResult,
+    EvaluationStats,
+    ProcessStats,
 )
 from internal.process import Process, wait_procs
 from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
@@ -45,9 +45,7 @@ class BatchSolutionStep(SolutionStep):
 
     @requires_sandbox
     def compile_solution(self) -> CompilationResult:
-        """
-        Compiles the solution.
-        """
+        assert self.sandbox is not None
 
         def compile_fail(reason: str) -> CompilationResult:
             return CompilationResult(
@@ -126,7 +124,9 @@ class BatchSolutionStep(SolutionStep):
         return comp_result
 
     @requires_sandbox
-    def run_solution(self, codename: str) -> EvaluationResult:
+    def run_solution(self, codename: str) -> EvaluationStats:
+        assert self.sandbox is not None
+
         workdir = self.sandbox.solution_invocation
         workdir.clean()
 
@@ -168,53 +168,16 @@ class BatchSolutionStep(SolutionStep):
         pathlib.Path(sandbox_error_file).touch()
         shutil.move(sandbox_error_file, self.context.log_file(file_err_name))
 
-        result = EvaluationResult(
+        stats = ProcessStats.collect(solution)
+        verdict, reason = self.are_solutions_abnormal_exit(stats)
+        if not pathlib.Path(sandbox_output_file).exists():
+            verdict = EvaluationOutcome.NO_FILE
+            sandbox_output_file = None
+
+        return EvaluationStats(
             codename=codename,
-            verdict=EvaluationOutcome.RUN_SUCCESS,
+            run_stats=stats,
+            verdict=verdict,
+            reason=reason,
             output_file=sandbox_output_file,
         )
-        result.fill_from_solution_process(solution)
-
-        if not pathlib.Path(sandbox_output_file).exists():
-            result.verdict = EvaluationOutcome.NO_FILE
-            result.output_file = None
-
-        elif self.are_solutions_abnormal_exit(result):
-            pass
-
-        return result
-
-    def are_solutions_abnormal_exit(self, eval_res: EvaluationResult) -> bool:
-        """
-        Determine whether the solutions terminate normally.
-        Returns True if not, and fills respective EvaluationOutcome eval_res.
-
-        Args:
-            eval_res (EvaluationResult): The EvaluationResult to be filled.
-            solution (Process): The relevant solution process result.
-        """
-        # By default we consider the aggregate of all solutions.
-        # This is useful for most of the scenarios, but ICPC multi-pass applies per-solution,
-        # so the second argument is used for checking per-solution run and set the relevant verdicts.
-
-        if eval_res.max_memory_kib > self.memory_limit_mib * 1024:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_MEMORY
-        if eval_res.cpu_time_sec > self.time_limit_sec:
-            eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif eval_res.wall_clock_time_sec > self.time_limit_sec:
-            eval_res.verdict = EvaluationOutcome.TIMEOUT_WALL
-        elif eval_res.exit_signal == signal.SIGXFSZ:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_OUTPUT
-        # elif eval_res.exit_signal == signal.SIGXCPU:
-        #     eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif eval_res.exit_signal != 0:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            eval_res.reason = (
-                f"Execution killed by signal ({signal.strsignal(eval_res.exit_signal)})"
-            )
-        elif eval_res.exit_code != 0:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_EXITCODE
-            eval_res.reason = f"Execution exited with exit code {eval_res.exit_code}"
-        else:
-            return False
-        return True
