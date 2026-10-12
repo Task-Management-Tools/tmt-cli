@@ -193,13 +193,9 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
         reason = ""
         for i in range(max_passes):
             # Run solution
-            fname_sol_stdin = fname_sol_stdin_fmt.format(i)
-            fname_sol_stdout = fname_sol_stdout_fmt.format(i)
-            fname_sol_stderr = fname_sol_stderr_fmt.format(i)
-
-            f_sol_stdin = solution_workdir.file(fname_sol_stdin)
-            f_sol_stdout = solution_workdir.file(fname_sol_stdout)
-            f_sol_stderr = solution_workdir.file(fname_sol_stderr)
+            f_sol_stdin = solution_workdir.file(fname_sol_stdin_fmt.format(i))
+            f_sol_stdout = solution_workdir.file(fname_sol_stdout_fmt.format(i))
+            f_sol_stderr = solution_workdir.file(fname_sol_stderr_fmt.format(i))
 
             solution_workdir.clean()
             shutil.copy(f_next_input, f_sol_stdin)
@@ -228,12 +224,12 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
                 break
 
             # Run interactor
-            fname_interact_stdout = fname_interact_stdout_fmt.format(i)
-            fname_interact_stderr = fname_interact_stderr_fmt.format(i)
             f_interact_prev_input = interact_workdir.file(fname_testcase_input)
             f_interact_testcase_answer = interact_workdir.file(fname_testcase_answer)
             shutil.copy(f_next_input, f_interact_prev_input)
             shutil.copy(f_testcase_answer, f_interact_testcase_answer)
+            fname_interact_stdout = fname_interact_stdout_fmt.format(i)
+            fname_interact_stderr = fname_interact_stderr_fmt.format(i)
             f_interact_stdout = interact_workdir.file(fname_interact_stdout)
             f_interact_stderr = interact_workdir.file(fname_interact_stderr)
             f_interact_nextpass = dir_interactor_feedback.file("nextpass.in")
