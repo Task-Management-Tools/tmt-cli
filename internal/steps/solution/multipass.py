@@ -116,6 +116,7 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
 
         # ---------------------------------------------------------------------
         # Set up filenames and formats
+        # Since there are a lot of files to keep track of, fname_* means file (base)name and f_* means full file path
         solution_workdir = self.sandbox.solution_invocation
         solution_workdir.create()
         interact_workdir = self.sandbox.interactor
