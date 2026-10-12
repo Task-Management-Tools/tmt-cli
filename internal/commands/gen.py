@@ -15,9 +15,12 @@ from internal.exceptions import TMTInvalidConfigError
 from internal.formatting import Formatter
 from internal.outcomes import (
     CompilationResult,
+    EvaluationOutcome,
     EvaluationResult,
+    EvaluationStats,
     ExecutionOutcome,
     GenerationResult,
+    ProcessStats,
     eval_outcome_to_grade_outcome,
     eval_outcome_to_run_outcome,
 )
@@ -74,7 +77,7 @@ def gen_single(
     # skip (and fail) if input validation did not succeed
     # skip if generator already produced output
     formatter.print("ans ")
-    solution_result = None
+    solution_result: None | EvaluationStats | EvaluationResult = None
 
     testcase_answer_file = os.path.join(
         context.path.testcases, context.construct_output_filename(codename)
@@ -82,8 +85,11 @@ def gen_single(
     if result.input_validation is not ExecutionOutcome.SUCCESS:
         result.output_generation = ExecutionOutcome.SKIPPED
     elif result.output_generation is ExecutionOutcome.SKIPPED_SUCCESS:
-        solution_result = EvaluationResult(
-            output_file=testcase_answer_file, codename=codename
+        solution_result = EvaluationStats(
+            codename=codename,
+            run_stats=ProcessStats.empty(),
+            verdict=EvaluationOutcome.RUN_SUCCESS,
+            output_file=testcase_answer_file,
         )
     else:
         solution_result = solution_step.run_solution(codename)
@@ -124,7 +130,7 @@ def gen_single(
     if result.output_validation is ExecutionOutcome.UNKNOWN:
         formatter.print("check ")
         assert checker_step is not None
-        assert solution_result is not None
+        assert isinstance(solution_result, EvaluationStats)
         checker_result = checker_step.run_checker(solution_result, codename)
         result.output_validation = eval_outcome_to_grade_outcome(checker_result)
         result.reason = checker_result.reason

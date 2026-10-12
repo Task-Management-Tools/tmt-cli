@@ -1,9 +1,9 @@
 import os
 
 from enum import Enum, unique
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from internal.process import Process
+from internal.process import ProcessStats
 
 
 @unique
@@ -132,37 +132,23 @@ class EvaluationOutcomeGroup(Enum):
 
 
 @dataclass
-class EvaluationResult:
+class EvaluationStats:
     codename: str
-    score: float = 0.0
-    verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
-    override_verdict_display: str | None = None
+    run_stats: ProcessStats
+    verdict: EvaluationOutcome
     reason: str = ""
-
-    cpu_time_sec: float = 0.0
-    wall_clock_time_sec: float = 0.0
-    timer_triggered: bool = False
-    max_memory_kib: int = -1
-    max_memory_upper_bound_kib: int = 0
-    exit_code: int = 0
-    exit_signal: int = 0
-
     output_file: str | None = None
 
-    checker_run: bool = False
 
-    def fill_from_solution_process(self, solution: Process):
-        self.cpu_time_sec += solution.cpu_time_sec
-        self.wall_clock_time_sec = max(
-            self.wall_clock_time_sec, solution.wall_clock_time_sec
-        )
-        self.timer_triggered = self.timer_triggered or solution.timer_triggered
-        self.max_memory_upper_bound_kib = max(
-            self.max_memory_upper_bound_kib, solution.rss_detectable_lb_kib
-        )
-        self.max_memory_kib = max(self.max_memory_kib, solution.max_rss_kib)
-        self.exit_code = self.exit_code or solution.exit_code
-        self.exit_signal = self.exit_signal or solution.exit_signal
+@dataclass
+class EvaluationResult:
+    codename: str
+    run_stats: ProcessStats
+    score: float
+    verdict: EvaluationOutcome
+    override_verdict_display: str | None = None
+    reason: str = ""
+    output_file: str | None = None
 
     @property
     def feedback(self) -> str:
@@ -248,7 +234,9 @@ class GenerationResult:
         return True
 
 
-def eval_outcome_to_run_outcome(eval_res: EvaluationResult) -> ExecutionOutcome:
+def eval_outcome_to_run_outcome(
+    eval_res: EvaluationStats | EvaluationResult,
+) -> ExecutionOutcome:
     """
     Maps EvaluationResult to ExecutionOutcome, when whether output is correct is not relavant here.
     (For example, when generating answer files.)
@@ -335,6 +323,7 @@ class TestsetResult:
     max_score: float | None
     score: float = float("inf")
     verdict: EvaluationOutcome = EvaluationOutcome.RUN_SUCCESS
+    all_verdicts: set[EvaluationOutcome] = field(default_factory=set)
 
     worst_testcase: str = None
     num_testcases: int = 0
@@ -348,19 +337,21 @@ class TestsetResult:
 
     def combine(self, other: "EvaluationResult | TestsetResult"):
         if isinstance(other, EvaluationResult):
+            stat = other.run_stats
             self.max_cpu_time_sec, self.is_timer_triggered = max(
                 (self.max_cpu_time_sec, self.is_timer_triggered),
-                (other.cpu_time_sec, other.timer_triggered),
+                (stat.cpu_time_sec, stat.timer_triggered),
             )
             if other.score < self.score:
                 self.worst_testcase = other.codename
                 self.score = other.score
                 self.verdict = other.verdict
+            self.all_verdicts.add(other.verdict)
             self.num_testcases += 1
             self.expected_testcases += 1
-            self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+            self.max_memory_kib = max(self.max_memory_kib, stat.max_memory_kib)
             self.max_memory_upper_bound_kib = max(
-                self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+                self.max_memory_upper_bound_kib, stat.max_memory_upper_bound_kib
             )
 
         elif isinstance(other, TestsetResult):
@@ -372,6 +363,7 @@ class TestsetResult:
                 self.worst_testcase = other.worst_testcase
                 self.score = other.score
                 self.verdict = other.verdict
+            self.all_verdicts = self.all_verdicts | other.all_verdicts
             self.num_testcases += other.num_testcases
             self.expected_testcases += other.expected_testcases
             self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)

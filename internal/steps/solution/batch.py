@@ -2,16 +2,20 @@ import os
 import pathlib
 import shutil
 
-from internal.compilation import recognize_language
+from internal.compilation import (
+    compile_single,
+    get_run_single_command,
+    recognize_language,
+)
 from internal.context.config import SolutionCompilationGradered
-from internal.process import Process, wait_procs
-from internal.compilation import compile_single, get_run_single_command
 from internal.outcomes import (
-    EvaluationOutcome,
-    EvaluationResult,
     CompilationOutcome,
     CompilationResult,
+    EvaluationOutcome,
+    EvaluationStats,
+    ProcessStats,
 )
+from internal.process import Process, wait_procs
 from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
 
 from .base import SolutionStep
@@ -41,9 +45,7 @@ class BatchSolutionStep(SolutionStep):
 
     @requires_sandbox
     def compile_solution(self) -> CompilationResult:
-        """
-        Compiles the solution.
-        """
+        assert self.sandbox is not None
 
         def compile_fail(reason: str) -> CompilationResult:
             return CompilationResult(
@@ -122,7 +124,9 @@ class BatchSolutionStep(SolutionStep):
         return comp_result
 
     @requires_sandbox
-    def run_solution(self, codename: str) -> EvaluationResult:
+    def run_solution(self, codename: str) -> EvaluationStats:
+        assert self.sandbox is not None
+
         workdir = self.sandbox.solution_invocation
         workdir.clean()
 
@@ -164,18 +168,16 @@ class BatchSolutionStep(SolutionStep):
         pathlib.Path(sandbox_error_file).touch()
         shutil.move(sandbox_error_file, self.context.log_file(file_err_name))
 
-        result = EvaluationResult(
+        stats = ProcessStats.collect(solution)
+        verdict, reason = self.are_solutions_abnormal_exit(stats)
+        if not pathlib.Path(sandbox_output_file).exists():
+            verdict = EvaluationOutcome.NO_FILE
+            sandbox_output_file = None
+
+        return EvaluationStats(
             codename=codename,
-            verdict=EvaluationOutcome.RUN_SUCCESS,
+            run_stats=stats,
+            verdict=verdict,
+            reason=reason,
             output_file=sandbox_output_file,
         )
-        result.fill_from_solution_process(solution)
-
-        if not pathlib.Path(sandbox_output_file).exists():
-            result.verdict = EvaluationOutcome.NO_FILE
-            result.output_file = None
-
-        elif self.is_solution_abormal_exit(result):
-            pass
-
-        return result

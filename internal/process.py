@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import time
 import os
 import select
@@ -217,6 +218,63 @@ class Process(subprocess.Popen):
     @property
     def is_timedout(self):
         return self.is_cpu_timedout or self.is_wall_clock_timedout
+
+
+@dataclass
+class ProcessStats:
+    processes: int
+
+    cpu_time_sec: float
+    wall_clock_time_sec: float
+    timer_triggered: bool
+
+    # Upper bound exists because Python RSS is preserved across exec
+    max_memory_upper_bound_kib: int
+    max_memory_kib: int
+
+    exit_code: int
+    exit_signal: int
+
+    @classmethod
+    def empty(cls):
+        return cls(
+            processes=0,
+            cpu_time_sec=0.0,
+            wall_clock_time_sec=0.0,
+            timer_triggered=False,
+            max_memory_upper_bound_kib=0.0,
+            max_memory_kib=0.0,
+            exit_code=0,
+            exit_signal=0,
+        )
+
+    @classmethod
+    def collect(cls, process: Process):
+        return cls(
+            processes=1,
+            cpu_time_sec=process.cpu_time_sec,
+            wall_clock_time_sec=process.wall_clock_time_sec,
+            timer_triggered=process.timer_triggered,
+            max_memory_upper_bound_kib=process.rss_detectable_lb_kib,
+            max_memory_kib=process.max_rss_kib,
+            exit_code=process.exit_code,
+            exit_signal=process.exit_signal,
+        )
+
+    def add(self, other: "ProcessStats"):
+        self.processes += other.processes
+        self.cpu_time_sec += other.cpu_time_sec
+        self.wall_clock_time_sec = max(
+            self.wall_clock_time_sec, other.wall_clock_time_sec
+        )
+        self.timer_triggered = self.timer_triggered or other.timer_triggered
+        self.max_memory_upper_bound_kib = max(
+            self.max_memory_upper_bound_kib, other.max_memory_upper_bound_kib
+        )
+        self.max_memory_kib = max(self.max_memory_kib, other.max_memory_kib)
+        if not self.exit_code and not self.exit_signal:
+            self.exit_code = other.exit_code
+            self.exit_signal = other.exit_signal
 
 
 def wait_procs(procs: list[Process]) -> None:

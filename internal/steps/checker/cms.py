@@ -11,6 +11,7 @@ from internal.outcomes import (
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
+    EvaluationStats,
 )
 from internal.process import Process, wait_procs
 from internal.steps.utils import requires_sandbox
@@ -178,28 +179,40 @@ class CMSCheckerStep(CheckerStep):
     @requires_sandbox
     def run_checker(
         self,
-        result: EvaluationResult,
+        stats: EvaluationStats,
         codename: str,
     ) -> EvaluationResult:
+        assert self.sandbox is not None
 
         # In CMS mode we do not need to check anything
         # we are guaranteed that the process does terminate successfully and checker always need to be run
-        if result.verdict is not EvaluationOutcome.RUN_SUCCESS:
-            result.checker_run = False
-            return result
+        if stats.verdict is not EvaluationOutcome.RUN_SUCCESS:
+            return EvaluationResult(
+                codename=stats.codename,
+                run_stats=stats.run_stats,
+                score=0.0,
+                verdict=stats.verdict,
+                reason=stats.reason,
+                output_file=stats.output_file,
+            )
 
         input_file = os.path.join(
             self.context.path.testcases, self.context.construct_input_filename(codename)
         )
-        output_file = result.output_file
+        output_file = stats.output_file
         answer_file = os.path.join(
             self.context.path.testcases,
             self.context.construct_output_filename(codename),
         )
 
         if output_file is None or not Path(output_file).exists():
-            result.verdict = EvaluationOutcome.NO_FILE
-            return result
+            return EvaluationResult(
+                codename=stats.codename,
+                run_stats=stats.run_stats,
+                score=0.0,
+                verdict=EvaluationOutcome.NO_FILE,
+                output_file=None,
+            )
 
         self.sandbox.checker.clean()
 
@@ -216,9 +229,14 @@ class CMSCheckerStep(CheckerStep):
                     f"Default whitediff failed with exception {str(e)}",
                 )
 
-            result.score = score
-            result.verdict = verdict
-            result.reason = feedback
+            result = EvaluationResult(
+                codename=stats.codename,
+                run_stats=stats.run_stats,
+                score=score,
+                verdict=verdict,
+                reason=feedback,
+                output_file=stats.output_file,
+            )
             with open(self.context.log_file(f"{codename}.check.err"), "w") as f:
                 f.write(result.reason)
 
@@ -264,18 +282,25 @@ class CMSCheckerStep(CheckerStep):
                 self.context.log_file(os.path.basename(checker_err_file)),
             )
 
+            display, reason = None, ""
             if checker_process.is_timedout:
-                result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
+                score = 0.0
+                verdict = EvaluationOutcome.CHECKER_TIMEDOUT
             elif checker_process.is_signaled_exit or checker_process.exit_code:
-                result.verdict = EvaluationOutcome.CHECKER_CRASHED
+                score = 0.0
+                verdict = EvaluationOutcome.CHECKER_CRASHED
             else:
                 score, verdict, display, reason = self.parse_std_manager_output(
                     checker_out_file, checker_err_file, True
                 )
 
-                result.score = score
-                result.verdict = verdict
-                result.override_verdict_display = display
-                result.reason = result.reason or reason or ""
-
+            result = EvaluationResult(
+                codename=stats.codename,
+                run_stats=stats.run_stats,
+                score=score,
+                verdict=verdict,
+                override_verdict_display=display,
+                reason=stats.reason or reason or "",
+                output_file=stats.output_file,
+            )
         return result
