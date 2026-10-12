@@ -2,7 +2,6 @@ import os
 import shutil
 
 from pathlib import Path
-import signal
 
 from internal.compilation.makefile import make_clean, make_compile_target
 from internal.context.config.config import ProblemConfigMultipass
@@ -72,39 +71,6 @@ class ICPCMultipassSolutionStep(BatchSolutionStep):
     def clean_up(self):
         super().clean_up()
         make_clean(directory=self.context.path.interactor)
-
-    def is_solution_abnormal_exit(
-        self, eval_res: EvaluationResult, solution: Process
-    ) -> bool:
-        """
-        Determine whether the solution terminate normally.
-        Used when each solution must be considered separately.
-        Returns True if not, and fills respective EvaluationOutcome eval_res.
-
-        Args:
-            eval_res (EvaluationResult): The EvaluationResult to be filled.
-            solution (Process): The relevant solution process result.
-        """
-
-        if solution.max_rss_kib > self.memory_limit_mib * 1024:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_MEMORY
-        if solution.cpu_time_sec > self.time_limit_sec:
-            eval_res.verdict = EvaluationOutcome.TIMEOUT
-        elif solution.wall_clock_time_sec > self.time_limit_sec:
-            eval_res.verdict = EvaluationOutcome.TIMEOUT_WALL
-        elif solution.exit_signal == signal.SIGXFSZ:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_OUTPUT
-        elif solution.exit_signal != 0:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_SIGNAL
-            eval_res.reason = (
-                f"Execution killed by signal ({signal.strsignal(solution.exit_signal)})"
-            )
-        elif solution.exit_code != 0:
-            eval_res.verdict = EvaluationOutcome.RUNERROR_EXITCODE
-            eval_res.reason = f"Execution exited with exit code {solution.exit_code}"
-        else:
-            return False
-        return True
 
     @requires_sandbox
     def run_solution(self, codename: str) -> EvaluationResult:
