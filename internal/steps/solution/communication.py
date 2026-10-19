@@ -241,7 +241,7 @@ class CommunicationSolutionStep(BatchSolutionStep):
 
         # Determine verdicts and score
         score: float
-        display, reason = None, ""
+        display = None
         if verdict is not EvaluationOutcome.RUN_SUCCESS:
             score = 0.0
         else:

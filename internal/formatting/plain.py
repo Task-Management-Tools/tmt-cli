@@ -209,7 +209,7 @@ class PlainFormatter(Formatter):
             return f"{time_sec:.3f}".rjust(7) + " s"
 
     def format_memory_usage(self, max_memory_kib: int, max_memory_upper_bound_kib: int):
-        if max_memory_kib == -1:
+        if max_memory_kib < max_memory_upper_bound_kib:
             return (
                 self.ANSI_GREY,
                 f"< {max_memory_upper_bound_kib // 1024:3} MiB",
