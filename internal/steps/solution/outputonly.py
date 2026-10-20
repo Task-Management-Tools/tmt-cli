@@ -7,9 +7,10 @@ import zipfile
 from internal.compilation import compile_single, recognize_language
 from internal.outcomes import (
     EvaluationOutcome,
-    EvaluationResult,
     CompilationOutcome,
     CompilationResult,
+    EvaluationStats,
+    ProcessStats,
 )
 from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
 
@@ -33,6 +34,8 @@ class OutputOnlySolutionStep(BatchSolutionStep):
 
     @requires_sandbox
     def compile_solution(self) -> CompilationResult:
+        assert self.sandbox is not None
+
         self.sandbox.solution_compilation.clean()
         self.sandbox.solution_invocation.clean()
 
@@ -169,21 +172,26 @@ class OutputOnlySolutionStep(BatchSolutionStep):
         )
 
     @requires_sandbox
-    def run_solution(self, codename: str) -> EvaluationResult:
+    def run_solution(self, codename: str) -> EvaluationStats:
+        assert self.sandbox is not None
+
         if self.supplied_output:
             output_file = os.path.join(
                 self.sandbox.solution_invocation.path,
                 self.context.construct_output_filename(codename),
             )
             if pathlib.Path(output_file).exists():
-                return EvaluationResult(
-                    codename=codename, output_file=output_file, max_memory_kib=0
+                return EvaluationStats(
+                    codename=codename,
+                    run_stats=ProcessStats.empty(),
+                    verdict=EvaluationOutcome.RUN_SUCCESS,
+                    output_file=output_file,
                 )
-            return EvaluationResult(
+            return EvaluationStats(
                 codename=codename,
+                run_stats=ProcessStats.empty(),
                 verdict=EvaluationOutcome.NO_FILE,
                 output_file=None,
-                max_memory_kib=0,
             )
 
         else:

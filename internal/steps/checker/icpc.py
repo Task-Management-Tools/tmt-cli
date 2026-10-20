@@ -12,6 +12,7 @@ from internal.process import Process, wait_procs
 from internal.steps.utils import requires_sandbox
 from internal.outcomes import (
     EvaluationOutcome,
+    EvaluationStats,
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
@@ -35,6 +36,8 @@ class ICPCCheckerStep(CheckerStep):
 
     @requires_sandbox
     def compile(self) -> CompilationResult:
+        assert self.sandbox is not None
+
         workdir = self.sandbox.checker_compilation
         workdir.clean()
 
@@ -71,9 +74,10 @@ class ICPCCheckerStep(CheckerStep):
     @requires_sandbox
     def run_checker(
         self,
-        result: EvaluationResult,
+        stats: EvaluationStats,
         codename: str,
     ) -> EvaluationResult:
+        assert self.sandbox is not None
 
         input_file = os.path.join(
             self.context.path.testcases, self.context.construct_input_filename(codename)
@@ -84,9 +88,24 @@ class ICPCCheckerStep(CheckerStep):
         )
 
         # In ICPC mode we do not need to check anything
-        if result.verdict is not EvaluationOutcome.RUN_SUCCESS:
-            result.checker_run = False
-            return result
+        if stats.verdict is not EvaluationOutcome.RUN_SUCCESS:
+            return EvaluationResult(
+                codename=stats.codename,
+                run_stats=stats.run_stats,
+                score=0.0,
+                verdict=stats.verdict,
+                reason=stats.reason,
+                output_file=stats.output_file,
+            )
+        if stats.output_file is None:
+            return EvaluationResult(
+                codename=stats.codename,
+                run_stats=stats.run_stats,
+                score=0.0,
+                verdict=EvaluationOutcome.NO_FILE,
+                reason=stats.reason,
+                output_file=None,
+            )
 
         # We must create a directory for judge feedbacks
         # TODO: generate a name that will not clash with other files
@@ -118,7 +137,7 @@ class ICPCCheckerStep(CheckerStep):
             + [input_file, answer_file, feedback_dir.path + os.sep]
             + self.arguments,
             preexec_fn=lambda: os.chdir(self.sandbox.checker.path),
-            stdin_redirect=result.output_file,
+            stdin_redirect=stats.output_file,
             stdout_redirect=checker_out_file,
             stderr_redirect=checker_err_file,
             time_limit_sec=self.limits.trusted_step_time_limit_sec,
@@ -141,25 +160,36 @@ class ICPCCheckerStep(CheckerStep):
         #  - judgemessage.txt: feedback to the judges, we should report this in our CLI.
         #  - teammessage.txt: feedback to the teams, normally this is not visible just ignore it
         #  - judgeimage.<ext>, teamimage.<ext>: we cannot display any of them in the CLI, so ignore them
+        reason = ""
         checker_feedback_file = feedback_dir.file("judgemessage.txt")
         if os.path.isfile(checker_feedback_file):
             with open(checker_feedback_file, "r") as f:
-                result.reason = f.readline().strip()
+                reason = f.readline().strip()
             shutil.copy(
                 checker_feedback_file,
                 self.context.log_file(f"{codename}.check.feedback"),
             )
 
         if checker_process.is_timedout:
-            result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
+            verdict, score = EvaluationOutcome.CHECKER_TIMEDOUT, 0.0
         elif checker_process.is_signaled_exit:
-            result.verdict = EvaluationOutcome.CHECKER_CRASHED
+            verdict, score = EvaluationOutcome.CHECKER_CRASHED, 0.0
         elif checker_process.exit_code == 42:
-            result.verdict = EvaluationOutcome.ACCEPTED
-            result.score = 1.0
+            verdict, score = EvaluationOutcome.ACCEPTED, 1.0
+        elif checker_process.exit_code == 43:
+            if os.path.getsize(stats.output_file) == 0:
+                verdict, score = EvaluationOutcome.NO_OUTPUT, 0.0
+            else:
+                verdict, score = EvaluationOutcome.WRONG, 0.0
         else:
-            result.verdict = EvaluationOutcome.WRONG
-            if result.output_file is None or os.path.getsize(result.output_file) == 0:
-                result.verdict = EvaluationOutcome.NO_OUTPUT
+            verdict, score = EvaluationOutcome.CHECKER_FAILED, 0.0
+            reason = "ICPC checker must exit with code 42 (correct) or 43 (wrong)."
 
-        return result
+        return EvaluationResult(
+            codename=stats.codename,
+            run_stats=stats.run_stats,
+            score=score,
+            verdict=verdict,
+            reason=reason,
+            output_file=stats.output_file,
+        )

@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from internal.context import CheckerType, TMTContext, SandboxDirectory
 from internal.exceptions import TMTMissingFileError
 from internal.formatting.base import Formatter
-from internal.outcomes import EvaluationResult, CompilationResult
+from internal.outcomes import EvaluationStats, EvaluationResult, CompilationResult
 
 
 class CheckerStep(ABC):
@@ -91,7 +91,7 @@ class CheckerStep(ABC):
     @abstractmethod
     def run_checker(
         self,
-        result: EvaluationResult,
+        stats: EvaluationStats,
         codename: str,
     ) -> EvaluationResult:
         """

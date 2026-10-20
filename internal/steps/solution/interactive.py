@@ -16,6 +16,7 @@ from internal.outcomes import (
     EvaluationResult,
     CompilationOutcome,
     CompilationResult,
+    ProcessStats,
 )
 from internal.steps.utils import CompilationJob, CompilationSlot, requires_sandbox
 
@@ -82,6 +83,8 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
         """
         This function only returns FileNotFoundError for execution error.
         """
+        assert self.sandbox is not None
+
         self.workdir.clean()
 
         file_in_name = self.context.construct_input_filename(codename)
@@ -196,31 +199,50 @@ class ICPCInteractiveSolutionStep(BatchSolutionStep):
             shutil.rmtree(interactor_feedback_logs)
         shutil.copytree(sandbox_interactor_feedback_dir.path, interactor_feedback_logs)
 
-        result = EvaluationResult(
-            codename=codename, verdict=EvaluationOutcome.RUN_SUCCESS, output_file=None
-        )
-        result.fill_from_solution_process(solution)
-
-        # First, we check if the interactor crashed
-        if interactor.is_timedout:
-            result.verdict = EvaluationOutcome.CHECKER_TIMEDOUT
-        elif interactor.is_signaled_exit:
-            result.verdict = EvaluationOutcome.CHECKER_CRASHED
-        # else, we check if solution executed successfully
-        elif self.is_solution_abormal_exit(result):
-            pass
-        # Now, we can check if the solution is actually correct
-        elif interactor.exit_code == 42:
-            result.verdict = EvaluationOutcome.ACCEPTED
-        else:
-            result.verdict = EvaluationOutcome.WRONG
-
-            # See ICPCCheckerStep.
+        def get_interactor_feedback() -> str:
             interactor_feedback_file = (
                 Path(sandbox_interactor_feedback_dir.path) / "judgemessage.txt"
             )
-            if interactor_feedback_file.is_file():
+            if os.path.isfile(interactor_feedback_file):
                 with open(interactor_feedback_file, "r") as f:
-                    result.reason = f.readline().strip()
+                    return f.readline().strip()
+            return ""
 
-        return result
+        verdict: EvaluationOutcome
+        reason = ""
+
+        stats = ProcessStats.collect(solution)
+
+        verdict, reason = self.are_solutions_abnormal_exit(stats)
+
+        # Let interactor failure override
+        if interactor.is_timedout:
+            verdict = EvaluationOutcome.CHECKER_TIMEDOUT
+        elif interactor.is_signaled_exit:
+            verdict = EvaluationOutcome.CHECKER_CRASHED
+
+        score: float
+        # Determine verdicts
+        if verdict is not EvaluationOutcome.RUN_SUCCESS:
+            score = 0.0
+        elif interactor.exit_code == 42:
+            verdict = EvaluationOutcome.ACCEPTED
+            score = 1.0
+            reason = get_interactor_feedback()
+        elif interactor.exit_code == 43:
+            verdict = EvaluationOutcome.WRONG
+            score = 0.0
+            reason = get_interactor_feedback()
+        else:
+            verdict = EvaluationOutcome.CHECKER_FAILED
+            score = 0.0
+            reason = "ICPC checker must exit with code 42 (correct) or 43 (wrong)."
+
+        return EvaluationResult(
+            codename=codename,
+            run_stats=stats,
+            score=score,
+            verdict=verdict,
+            reason=reason,
+            output_file=None,
+        )

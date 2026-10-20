@@ -3,6 +3,7 @@ from typing import Type
 from .base import SolutionStep
 from .batch import BatchSolutionStep
 from .interactive import ICPCInteractiveSolutionStep
+from .multipass import ICPCMultipassSolutionStep
 from .communication import CommunicationSolutionStep
 from .outputonly import OutputOnlySolutionStep
 
@@ -25,6 +26,13 @@ def get_solution_step_type(
         case (ProblemType.INTERACTIVE, _):
             raise ValueError(
                 f"Interactive task is not supported in {str(judge_convention)}"
+            )
+
+        case (ProblemType.MULTI_PASS, JudgeConvention.ICPC):
+            return ICPCMultipassSolutionStep
+        case (ProblemType.MULTI_PASS, _):
+            raise ValueError(
+                f"Multi-pass task is not supported in {str(judge_convention)}"
             )
 
         case (ProblemType.COMMUNICATION, JudgeConvention.CMS):
