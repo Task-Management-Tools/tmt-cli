@@ -20,16 +20,25 @@ Run from anywhere inside a problem directory. `tmt` searches upward from the cur
 - `make`
   - `tmt` assumes that GNU Make is used, so if you're on macOS please take care of that (e.g. add `MAKE=gmake`).
 - C++ toolchain for `.cpp` and `.cc` sources (e.g. `g++`)
+  - It is required for compiling ICPC-style default checkers
+
+Recommended toolchains:
+
+- C toolchain for `.c` sources (e.g. `gcc`)
 - Java toolchain for `.java` and `.kt` sources (e.g. `openjdk`)
 - Kotlin toolchain for `.kt` sources (e.g. `kotlinc`)
+
+Technically, all of these toolchains are optional for TMT, but you would not be able to use
+some languages if the corresponding toolchains are not available.
 
 Optional environment variables:
 
 - `MAKE` to override the `make` executable
 - `PYTHON` to override the `python3` executable
+- `CC` to override the `gcc` executable
 - `CXX` to override the `g++` executable
 - `JAVA`, `JAVAC`, `JAR`, and `JAVAP` to override the `java`, `javac`, `jar`, and `javap` executables
-- `CXXFLAGS`, `JAVACFLAGS`, `KOTLINCFLAGS`
+- `CFLAGS`, `CXXFLAGS`, `JAVACFLAGS`, `KOTLINCFLAGS`
 
 ## Directory structure
 
@@ -43,9 +52,9 @@ problem-root/
 │   └── headers used by generator/validator/checker, e.g. testlib.h
 ├── generator/
 │   ├── manual/
-│   └── *.cpp, *.cc, *.py, *.java, *.kt
+│   └── *.c, *.cpp, *.cc, *.py, *.java, *.kt
 ├── validator/
-│   └── *.cpp, *.cc, *.py, *.java, *.kt
+│   └── *.c, *.cpp, *.cc, *.py, *.java, *.kt
 ├── solutions/
 │   └── reference/incorrect solutions
 ├── checker/ (optional)

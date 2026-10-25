@@ -1,0 +1,52 @@
+from abc import abstractmethod
+import os
+import platform
+
+from .base import MakeInfo
+from .executable import ExecutableLanguage
+
+
+class CFamilyLanguage(ExecutableLanguage):
+    """
+    Common language specification for C-family languages (C/C++, Obj-C/C++, but not C#).
+    """
+
+    @property
+    @abstractmethod
+    def flag_environment_variable(self):
+        raise NotImplementedError
+
+    def _get_stack_size_args(self, executable_stack_mib: int) -> list[str]:
+        if platform.system() == "Darwin":
+            executable_stack_mib = min(executable_stack_mib, 512)
+            return [
+                "-Wl,-stack_size",
+                f"-Wl,{executable_stack_mib * 1024 * 1024:x}",
+            ]
+        return []
+
+    def _construct_make_env(self, executable_stack_mib: int) -> dict[str, str]:
+        compile_flags = self.context.compile_flags(self.id)
+        compile_flags += self._get_stack_size_args(executable_stack_mib)
+        return {
+            self.flag_environment_variable: " ".join(compile_flags),
+            "INCLUDE_PATHS": self.context.path.include,
+        }
+
+    def get_make_wildcard_command(self, executable_stack_mib: int) -> MakeInfo:
+        return MakeInfo(
+            makefile=os.path.join(
+                self.context.path.script_dir,
+                f"internal/compilation/languages/makefiles/{self.id}.wildcard.Makefile",
+            ),
+            extra_env=self._construct_make_env(executable_stack_mib),
+        )
+
+    def get_make_target_command(self, executable_stack_mib: int) -> MakeInfo:
+        return MakeInfo(
+            makefile=os.path.join(
+                self.context.path.script_dir,
+                f"internal/compilation/languages/makefiles/{self.id}.target.Makefile",
+            ),
+            extra_env=self._construct_make_env(executable_stack_mib),
+        )
