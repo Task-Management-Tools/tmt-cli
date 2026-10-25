@@ -1,4 +1,5 @@
 - {filename: ok.py,         verdict: accepted}
+- {filename: ok.c,          verdict: accepted}
 # TODO no.cpp is no-output, but we do not (and older DOMjudge version also do not) support it yet
 - {filename: no.cpp,        verdict: wrong-answer}
 - {filename: ok-cpu.cpp,    verdict: accepted}
