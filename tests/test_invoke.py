@@ -110,58 +110,65 @@ expected_results_batch_cms_grader = {
 }
 
 expected_results_batch_cms_verdict = {
-    ("cpp.cpp",):    { "1-full-01": (CORRECT,  SCORE == 1),
-                       "1-full-02": (WRONG,    SCORE == 0),
-                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
-                       "1-full-04": (NO_FILE,  SCORE == 0),
-                       "1-full-05": (TLE_CPU,  SCORE == 0),
-                       "1-full-06": (TLE_WALL, SCORE == 0),
-                       "1-full-07": (RTE_EXIT, SCORE == 0),
-                       "1-full-08": (RTE_SIG,  SCORE == 0),
-                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
-                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
-                       "1-full-11": (RTE,      SCORE == 0),
-                       "1-full-12": (MLE,      SCORE == 0), },
-    ("python3.py",): { "1-full-01": (CORRECT,  SCORE == 1),
-                       "1-full-02": (WRONG,    SCORE == 0),
-                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
-                       "1-full-04": (WRONG,    SCORE == 0), # Did not implement this in Python
-                       "1-full-05": (TLE_CPU,  SCORE == 0),
-                       "1-full-06": (TLE_WALL, SCORE == 0),
-                       "1-full-07": (RTE_EXIT, SCORE == 0),
-                       "1-full-08": (RTE_SIG,  SCORE == 0),
-                       "1-full-09": (RTE,      SCORE == 0), # CMS has no explicit OLE signal, any RTE is fine here
-                       "1-full-10": (RTE_SIG,  SCORE == 0), # We don't send SIGXCPU anymore, just a normal signal
-                       "1-full-11": (RTE,      SCORE == 0),
-                       "1-full-12": (MLE,      SCORE == 0), },
-    ("java.java",):  { "1-full-01": (CORRECT,  SCORE == 1),
-                       "1-full-02": (WRONG,    SCORE == 0),
-                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
-                       "1-full-04": (WRONG,    SCORE == 0), # Did not implement this in Python
-                       "1-full-05": (TLE_CPU,  SCORE == 0),
-                       "1-full-06": (TLE_WALL, SCORE == 0),
-                       "1-full-07": (RTE_EXIT, SCORE == 0),
-                       # Since there is no standard way to raise a signal in Java, we cannot reliably test for RTE_SIG
-                       # Therefore, testcases which expect some signal are ignored explicitly
-                       # "1-full-08": (RTE_SIG,  SCORE == 0),
-                       # "1-full-09": (RTE,      SCORE == 0),
-                       # "1-full-10": (RTE_SIG,  SCORE == 0),
-                       "1-full-11": (RTE,      SCORE == 0),
-                       "1-full-12": (MLE,      SCORE == 0), },
-    ("kotlin.kt",):  { "1-full-01": (CORRECT,  SCORE == 1),
-                       "1-full-02": (WRONG,    SCORE == 0),
-                       "1-full-03": (WRONG,    SCORE == 0), # CMS has no "no output" verdict
-                       "1-full-04": (WRONG,    SCORE == 0), # Did not implement this in Python
-                       "1-full-05": (TLE_CPU,  SCORE == 0),
-                       "1-full-06": (TLE_WALL, SCORE == 0),
-                       "1-full-07": (RTE_EXIT, SCORE == 0),
-                       # Since there is no standard way to raise a signal in Kotlin, we cannot reliably test for RTE_SIG
-                       # Therefore, testcases which expect some signal are ignored explicitly
-                       # "1-full-08": (RTE_SIG,  SCORE == 0),
-                       # "1-full-09": (RTE,      SCORE == 0),
-                       # "1-full-10": (RTE_SIG,  SCORE == 0),
-                       "1-full-11": (RTE,      SCORE == 0),
-                       "1-full-12": (MLE,      SCORE == 0), },
+    # 03-empty gives WA, since CMS no output means no output file produced (when using file I/O)
+    # 09-rte-xfsz gives any RTE, since CMS don't set the resource limit and does not report
+    ("cpp.cpp",):    { "01-correct---1": (CORRECT,  SCORE == 1),
+                       "02-wrong-----1": (WRONG,    SCORE == 0),
+                       "03-empty-----1": (WRONG,    SCORE == 0),
+                       "04-no-stdout-1": (NO_FILE,  SCORE == 0),
+                       "05-tle-cpu---1": (TLE_CPU,  SCORE == 0),
+                       "06-tle-wall--1": (TLE_WALL, SCORE == 0),
+                       "07-rte-exit--1": (RTE_EXIT, SCORE == 0),
+                       "08-rte-sig---1": (RTE_SIG,  SCORE == 0),
+                       "09-rte-xfsz--1": (RTE,      SCORE == 0),
+                       "10-rte-any---1": (RTE,      SCORE == 0),
+                       "11-mle-------1": (MLE,      SCORE == 0), },
+    ("c.c",):        { "01-correct---1": (CORRECT,  SCORE == 1),
+                       "02-wrong-----1": (WRONG,    SCORE == 0),
+                       "03-empty-----1": (WRONG,    SCORE == 0),
+                       # 04-no-stdout not implemented
+                       "05-tle-cpu---1": (TLE_CPU,  SCORE == 0),
+                       "06-tle-wall--1": (TLE_WALL, SCORE == 0),
+                       "07-rte-exit--1": (RTE_EXIT, SCORE == 0),
+                       "08-rte-sig---1": (RTE_SIG,  SCORE == 0),
+                       "09-rte-xfsz--1": (RTE,      SCORE == 0),
+                       "10-rte-any---1": (RTE,      SCORE == 0),
+                       "11-mle-------1": (MLE,      SCORE == 0), },
+    ("python3.py",): { "01-correct---1": (CORRECT,  SCORE == 1),
+                       "02-wrong-----1": (WRONG,    SCORE == 0),
+                       "03-empty-----1": (WRONG,    SCORE == 0),
+                       # 04-no-stdout not implemented
+                       "05-tle-cpu---1": (TLE_CPU,  SCORE == 0),
+                       "06-tle-wall--1": (TLE_WALL, SCORE == 0),
+                       "07-rte-exit--1": (RTE_EXIT, SCORE == 0),
+                       "08-rte-sig---1": (RTE_SIG,  SCORE == 0),
+                       "09-rte-xfsz--1": (RTE,      SCORE == 0),
+                       "10-rte-any---1": (RTE,      SCORE == 0),
+                       "11-mle-------1": (MLE,      SCORE == 0), },
+    ("java.java",):  { "01-correct---1": (CORRECT,  SCORE == 1),
+                       "02-wrong-----1": (WRONG,    SCORE == 0),
+                       "03-empty-----1": (WRONG,    SCORE == 0),
+                       # 04-no-stdout not implemented
+                       "05-tle-cpu---1": (TLE_CPU,  SCORE == 0),
+                       "06-tle-wall--1": (TLE_WALL, SCORE == 0),
+                       "07-rte-exit--1": (RTE_EXIT, SCORE == 0),
+                       # No standard way to raise a signal in Java, skip
+                       # 08-rte-sig
+                       # 09-rte-xfsz
+                       "10-rte-any---1": (RTE,      SCORE == 0),
+                       "11-mle-------1": (MLE,      SCORE == 0), },
+    ("kotlin.kt",):  { "01-correct---1": (CORRECT,  SCORE == 1),
+                       "02-wrong-----1": (WRONG,    SCORE == 0),
+                       "03-empty-----1": (WRONG,    SCORE == 0),
+                       # 04-no-stdout not implemented
+                       "05-tle-cpu---1": (TLE_CPU,  SCORE == 0),
+                       "06-tle-wall--1": (TLE_WALL, SCORE == 0),
+                       "07-rte-exit--1": (RTE_EXIT, SCORE == 0),
+                       # No standard way to raise a signal in Kotlin, skip
+                       # 08-rte-sig
+                       # 09-rte-xfsz
+                       "10-rte-any---1": (RTE,      SCORE == 0),
+                       "11-mle-------1": (MLE,      SCORE == 0), },
 }
 
 expected_results_batch_icpc_checker = {

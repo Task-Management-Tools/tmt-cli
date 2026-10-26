@@ -15,6 +15,7 @@ from internal.context.config.config import (
 )
 from internal.compilation.languages import (
     languages,
+    LanguageC,
     LanguageCpp,
     LanguagePython3,
     LanguageJava,
@@ -347,13 +348,12 @@ class DOMJudgeLegacyExporter(BaseExporter):
         # but DOMjudge accepts C source (.c), C++ source (.cpp/.cc/.C), Java source (.java), and Python source (.py, .py2, .py3).
         # Thus, we export the source here and map file extension if required
         # These assertion ensures that we don't need to add remaps
-        assert set([".cpp", ".cc", ".C"]).issuperset(
-            LanguageCpp(context).source_extensions
-        )
-        assert set([".py", ".py2", ".py3"]).issuperset(
+        assert {".c"}.issuperset(LanguageC(context).source_extensions)
+        assert {".cpp", ".cc", ".C"}.issuperset(LanguageCpp(context).source_extensions)
+        assert {".py", ".py2", ".py3"}.issuperset(
             LanguagePython3(context).source_extensions
         )
-        assert set([".java"]).issuperset(LanguageJava(context).source_extensions)
+        assert {".java"}.issuperset(LanguageJava(context).source_extensions)
 
         # Ensure that the source file of an executable is in one of DOMjudge's accepted languages
         # TODO: Perhaps provide a default build script for languages we support but DOMjudge doesn't
@@ -366,11 +366,16 @@ class DOMJudgeLegacyExporter(BaseExporter):
                     name=step_name,
                     msg=f"File {filename} is in an unrecognized language",
                 )
-            elif language not in (LanguageCpp, LanguagePython3, LanguageJava):
+            elif language not in (
+                LanguageC,
+                LanguageCpp,
+                LanguagePython3,
+                LanguageJava,
+            ):
                 return ExportErrorOperation(
                     name=step_name,
                     msg=f"File {filename} is in the language {language(context).name}, which is not supported by DOMjudge. "
-                    "Supported ones are C, C++, Python3 and Java",
+                    "Supported ones are C, C++, Python3, and Java",
                 )
             return None
 
