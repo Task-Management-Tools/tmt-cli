@@ -12,12 +12,14 @@ int lcg()
     return (current = ((long long)current * mul + shift) % modulo);
 };
 
+volatile double x = -1.0;
+volatile double pi;
+
 int main()
 {
     {
         // check -lm
-        double pi = acos(-1.0);
-        (void)pi;
+        pi = acos(x);
         // check stack
         char mem[32 * 1024 * 1024];
         for (int i = 0; i < sizeof(mem); i++)
