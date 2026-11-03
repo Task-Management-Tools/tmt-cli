@@ -20,7 +20,7 @@ Run from anywhere inside a problem directory. `tmt` searches upward from the cur
 - `make`
   - `tmt` assumes that GNU Make is used, so if you're on macOS please take care of that (e.g. add `MAKE=gmake`).
 - C++ toolchain for `.cpp` and `.cc` sources (e.g. `g++`)
-  - It is required for compiling ICPC-style default checkers
+  - It is required for compiling the ICPC-style default checker
 
 Recommended toolchains:
 
