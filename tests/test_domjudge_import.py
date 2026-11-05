@@ -202,6 +202,7 @@ batch_verdict = _ProblemPackage(
     problem_path="batch/icpc-verdict",
     submissions={
         "ok.py": "AC",
+        "ok.c": "AC",
         "no.cpp": "NO",
         "ok-cpu.cpp": "AC",
         "ok-wall.cpp": "AC",

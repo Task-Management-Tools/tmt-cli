@@ -1,2 +1,4 @@
 cpp:
   flags: ["-std=gnu++20", "-O2", "-Wall", "-Wextra", "-Wshadow", "-Wconversion"]
+c:
+  flags: ["-std=gnu17", "-O2", "-lm", "-Wall", "-Wextra", "-Wshadow", "-Wconversion"]

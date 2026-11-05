@@ -1,11 +1,7 @@
-import os
-import platform
-
-from .base import MakeInfo
-from .executable import ExecutableLanguage
+from .c_family import CFamilyLanguage
 
 
-class LanguageCpp(ExecutableLanguage):
+class LanguageCpp(CFamilyLanguage):
     @property
     def id(self):
         return "cpp"
@@ -18,37 +14,6 @@ class LanguageCpp(ExecutableLanguage):
     def source_extensions(self):
         return [".cpp", ".cc"]
 
-    def _get_stack_size_args(self, executable_stack_mib: int) -> list[str]:
-        if platform.system() == "Darwin":
-            executable_stack_mib = min(executable_stack_mib, 512)
-            return [
-                "-Wl,-stack_size",
-                f"-Wl,{executable_stack_mib * 1024 * 1024:x}",
-            ]
-        return []
-
-    def _construct_make_env(self, executable_stack_mib: int) -> dict[str, str]:
-        compile_flags = self.context.compile_flags(self.id)
-        compile_flags += self._get_stack_size_args(executable_stack_mib)
-        return {
-            "CXXFLAGS": " ".join(compile_flags),
-            "INCLUDE_PATHS": self.context.path.include,
-        }
-
-    def get_make_wildcard_command(self, executable_stack_mib: int) -> MakeInfo:
-        return MakeInfo(
-            makefile=os.path.join(
-                self.context.path.script_dir,
-                "internal/compilation/languages/makefiles/cpp.wildcard.Makefile",
-            ),
-            extra_env=self._construct_make_env(executable_stack_mib),
-        )
-
-    def get_make_target_command(self, executable_stack_mib: int) -> MakeInfo:
-        return MakeInfo(
-            makefile=os.path.join(
-                self.context.path.script_dir,
-                "internal/compilation/languages/makefiles/cpp.target.Makefile",
-            ),
-            extra_env=self._construct_make_env(executable_stack_mib),
-        )
+    @property
+    def flag_environment_variable(self):
+        return "CXXFLAGS"
